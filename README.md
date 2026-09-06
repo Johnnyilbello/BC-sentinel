@@ -12,6 +12,8 @@ BC Sentinel is **not production-ready yet** and is **not a replacement for Micro
 
 The current `v0.8.0-beta.1` source snapshot is being validated as the next development milestone. Earlier v0.7.x security foundations have completed native Windows acceptance, while v0.8 introduces a new signed threat-content and secure-update supply chain that must complete its own Windows acceptance before it is frozen as accepted.
 
+The current source candidate has completed the cross-platform regression with **409 passed, 1 Windows-only skip**, `compileall` PASS and all five local acceptance gates PASS. This does **not** replace the required native Windows service/UAC/YARA acceptance. See `TEST-STATUS-v0.8.0-beta.1.md` and `SOURCE-MANIFEST-v0.8.0-beta.1.sha256` for the exact tested snapshot.
+
 ## What BC Sentinel is
 
 BC Sentinel started as an antivirus MVP and is evolving into an integrated Windows endpoint-security suite. The project is designed around one shared event, correlation and incident pipeline instead of isolated protection modules.
@@ -128,6 +130,8 @@ BC Sentinel uses explicit release gates instead of assuming that a feature works
 
 For the current v0.8 development snapshot, see:
 
+- `TEST-STATUS-v0.8.0-beta.1.md`
+- `SOURCE-MANIFEST-v0.8.0-beta.1.sha256`
 - `RELEASE-NOTES-v0.8.0-beta.1.md`
 - `BC_SENTINEL_V080_BETA1_SIGNED_THREAT_INTELLIGENCE_REPORT.md`
 - `BC_Sentinel_Roadmap_v0_8_0_Beta1_Updated.md`
