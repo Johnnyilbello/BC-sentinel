@@ -2,15 +2,17 @@
 
 ## Current status
 
-**Current development line:** `v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation`
+**Frozen accepted line:** `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`
 
-The v0.8 supply-chain/signed-threat-intelligence macro-phase reached `v0.8.0-rc.1` and completed native Windows acceptance. v0.9 Beta1 and Beta2 are accepted baselines; Beta3 is the current native-acceptance candidate.
+**Next development line:** `v0.10.0-beta.1 — Web Protection / Anti-Phishing / Anti-Scam Mature Expansion Foundation`
+
+The v0.9 release-candidate completed native Windows acceptance on 2026-09-07. Its regression and safety boundaries are frozen and must remain green throughout v0.10 development.
 
 ## v0.9 — Antispyware & Advanced Antimalware
 
 ### v0.9.0-beta.1 — Antispyware & Persistence Detection Foundation
 
-Implemented and native Windows accepted:
+Native Windows accepted:
 
 - Run/RunOnce and Startup discovery;
 - Scheduled Tasks and automatic-service persistence inventory;
@@ -24,7 +26,7 @@ Implemented and native Windows accepted:
 
 ### v0.9.0-beta.2 — Reversible Persistence Remediation & PUP/Adware Response
 
-Implemented and native Windows accepted:
+Native Windows accepted:
 
 - HMAC-authenticated remediation plans;
 - explicit approval gate for apply and restore;
@@ -40,9 +42,7 @@ Implemented and native Windows accepted:
 
 ### v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation
 
-**Current candidate — ready for native Windows acceptance.**
-
-Implemented:
+Frozen into RC1:
 
 - advisory `AdvancedAntimalwareEngine`;
 - conservative PowerShell/script-host command analysis;
@@ -52,35 +52,55 @@ Implemented:
 - same-PID temporal process→network correlation;
 - deterministic file/IOC evidence fusion that may strengthen an existing behavioral chain;
 - persistent explainable findings with evidence families, confidence, provenance and ATT&CK-style technique identifiers;
-- read-only Protection Service status/findings surfaces;
-- dedicated `antimalware-v090-beta3-*` Windows acceptance gates.
+- read-only Protection Service status/findings surfaces.
 
-False-positive and response invariants:
+### v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening
+
+**NATIVE WINDOWS ACCEPTED / v0.9 FROZEN.**
+
+Freeze evidence:
+
+- Python regression: **482/482 PASS** on target Windows;
+- dedicated RC1 false-positive gate: PASS;
+- aggregate Windows foundation acceptance: PASS;
+- native Protection Service/UAC/firewall build: PASS;
+- upgrade acceptance and protected upgrade: PASS;
+- live-service Windows acceptance: PASS;
+- repair acceptance and protected repair: PASS;
+- service-hardening benchmark: PASS;
+- post-reboot live acceptance: PASS.
+
+Frozen safety invariants:
 
 - a single PowerShell/script/LOLBin process is not malware by identity;
 - one evidence family cannot independently qualify HIGH;
 - no broad command blocking solely from a LOLBin name;
-- no automatic process termination;
-- no automatic file deletion/quarantine from this module;
-- no automatic persistence mutation;
-- existing Threat Decision, quarantine and reversible-remediation boundaries remain authoritative.
+- no automatic process termination from Advanced Antimalware;
+- no automatic file deletion/quarantine from Advanced Antimalware;
+- persistence mutation remains explicit-approval and reversible;
+- rollback/recovery fails closed rather than silently weakening protection.
 
-Development verification on the exact extracted release tree: `477 passed, 1 Windows-only skipped`; `compileall` PASS.
+## v0.10 — Mature Web Protection, Anti-Phishing & Anti-Scam
 
-### v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening
+### v0.10.0-beta.1 — Deception & Scam-Signal Foundation
 
-Next planned milestone:
+Planned first milestone:
 
-- consolidate Beta1–Beta3 regression requirements;
-- false-positive hardening across administrative/script-heavy workloads;
-- clean install / upgrade / repair matrix;
-- persistence-remediation rollback/recovery matrix;
-- Windows-native acceptance and performance regression;
-- release/packaging hardening before closing v0.9.
+- build on the existing PID-scoped DNS/Web Protection architecture introduced in v0.7 rather than replacing it;
+- richer explainable URL/domain deception evidence;
+- mixed-script/IDN display-risk analysis;
+- credential, payment/refund and prize/investment lure context only when combined with independent structural risk;
+- nested-redirect and obfuscation context kept advisory;
+- evidence-family/provenance output suitable for Security Center and incident correlation;
+- signed domain/network IOC precedence remains authoritative;
+- exact local domain trust remains bounded and revocable;
+- all heuristic-only outcomes stay below HIGH and cannot auto-block;
+- no HTTPS MITM, injected root CA, local TLS proxy or traffic decryption.
+
+Later v0.10 betas may add safer browser-context collection, redirect-chain provenance, stronger signed threat-content integration and user-facing anti-scam explanations, subject to the same deterministic safety boundaries.
 
 ## Later macro-phases
 
-- **v0.10** — mature Web Protection, anti-phishing and anti-scam protection;
 - **v0.11** — EDR core and endpoint identity graph;
 - **v0.12** — isolated sandbox and dynamic analysis;
 - **v0.13** — IDS/IPS plus brute-force, password-spraying and credential-stuffing protection;
@@ -99,4 +119,5 @@ Next planned milestone:
 - BLOCK-only BC-owned firewall mutations;
 - explicit privileged approval for reversible persistence mutation;
 - dual-use administration tooling is not malware by identity alone;
+- signed IOC evidence overrides weaker local heuristic/trust state where designed;
 - rollback/recovery must fail closed rather than silently weaken protection.
