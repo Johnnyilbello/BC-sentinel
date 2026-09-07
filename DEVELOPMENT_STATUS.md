@@ -1,47 +1,38 @@
-# BC Sentinel Development Status
+# BC Sentinel — Development Status
 
-## Current
+## Current line
 
-**v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening**
+**v0.10.0-beta.1 — Web Deception & Anti-Scam Foundation**
 
-Status: **NATIVE WINDOWS ACCEPTED / v0.9 FROZEN**.
+Status: **LOCAL BASELINE ACCEPTED / READY FOR NATIVE WINDOWS VALIDATION**.
 
-Target-machine verification completed on Windows on 2026-09-07:
+Frozen baseline: **v0.9.0-rc.1 NATIVE WINDOWS ACCEPTED** with 482/482 Python tests and foundation/build/upgrade/live/repair/hardening/post-reboot acceptance passing on the target Windows machine.
 
-- pytest: **482 passed / 482 executed**;
-- v0.9 RC1 acceptance: **PASS**;
-- aggregate Windows foundation acceptance: **PASS**;
-- native Protection Service/UAC/firewall build: **PASS**;
-- upgrade acceptance and protected upgrade: **PASS**;
-- live-service Windows acceptance: **PASS**;
-- repair acceptance and protected repair: **PASS**;
-- service-hardening benchmark: **PASS**;
-- post-reboot live acceptance: **PASS**;
-- release SHA-256: `8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350`.
+BC Sentinel is not production-ready and should not replace Microsoft Defender or the native Windows security stack during development testing.
 
-No protection threshold or accepted destructive-action boundary was weakened to obtain the RC1 freeze.
+## v0.10.0-beta.1 scope
 
-## Frozen baseline
+The first v0.10 milestone matures the existing Web Protection architecture without HTTPS interception. It adds explainable URL/domain deception evidence and bounded anti-scam lure context while preserving deterministic signed-IOC precedence and exact local domain trust.
 
-- `v0.8.0-rc.1 — Consolidation & Release Hardening`: **NATIVE WINDOWS ACCEPTED**.
-- `v0.9.0-beta.1 — Antispyware & Persistence Detection Foundation`: **NATIVE WINDOWS ACCEPTED**.
-- `v0.9.0-beta.2 — Reversible Persistence Remediation & PUP/Adware Response`: **NATIVE WINDOWS ACCEPTED**.
-- `v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation`: **REGRESSION FROZEN INTO RC1**.
-- `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`: **NATIVE WINDOWS ACCEPTED**.
+Safety invariants:
 
-The v0.7 firewall/Web Protection, v0.8 signed-threat/update-channel and v0.9 antispyware/remediation/advanced-antimalware safety invariants remain mandatory regression requirements.
+- heuristic-only score hard cap: 49;
+- heuristic-only HIGH qualification: disabled;
+- heuristic auto-block: disabled;
+- HTTPS MITM/root CA/TLS proxy: disabled;
+- lure vocabulary does not score without independent structural risk;
+- signed IOC evidence remains authoritative;
+- v0.9 RC1 acceptance remains a frozen regression requirement.
 
-## RC1 freeze guarantees
+## Local verification
 
-- benign PowerShell, CertUtil, MSIExec and BITSAdmin administrative scenarios stay below HIGH;
-- Office/browser → PowerShell evidence remains bounded unless independent evidence converges;
-- strong multi-signal chains remain HIGH/CRITICAL;
-- no automatic process termination from Advanced Antimalware;
-- no automatic file deletion/quarantine from Advanced Antimalware;
-- persistence mutation remains explicit-approval and reversible;
-- heuristic-only Web Protection remains non-destructive;
-- HTTPS MITM remains disabled.
+- pytest: **491 passed, 1 Windows-only skipped**;
+- `compileall`: **PASS**;
+- `tools.v010_web_deception_acceptance`: **PASS**;
+- frozen `tools.v090_release_candidate_acceptance`: **PASS**;
+- exact packaged ZIP re-test: **PASS**;
+- aggregate v0.10 Windows foundation probe logic: **PASS** in the non-Windows development environment; full native Windows execution remains required.
 
-## Next
+## Next release gate
 
-Development proceeds to **`v0.10.0-beta.1`**, the first milestone of the mature Web Protection, Anti-Phishing & Anti-Scam expansion. The v0.9 RC1 baseline is frozen and must remain green throughout v0.10 development.
+Run the v0.10 foundation/build/upgrade/live/repair/hardening/post-reboot matrix on the target Windows system. Do not merge/freeze Beta1 if a critical v0.9 regression or v0.10 web-deception gate fails.
