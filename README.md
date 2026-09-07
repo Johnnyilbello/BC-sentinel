@@ -1,161 +1,110 @@
 # BC Sentinel
 
-> **Windows endpoint security platform under active development.** BC Sentinel is a local-first security project that brings antivirus, behavioral monitoring, managed firewall controls, Web Protection, incident response and signed threat intelligence into one explainable protection pipeline.
+> **Windows endpoint security under active development:** antivirus, antispyware, reversible persistence response, behavioral protection, managed firewall, Web Protection, incident response and signed threat intelligence.
 
 ## Development status
 
-**Current development line:** `v0.8.0-beta.1 — Signed Threat Intelligence & Secure Update Channel`
+**Current line:** `v0.9.0-beta.2 — Reversible Persistence Remediation & PUP/Adware Response`
 
-**Status:** active development / development preview.
+BC Sentinel is a development preview. It is **not production-ready** and should not replace Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
 
-BC Sentinel is **not production-ready yet** and is **not a replacement for Microsoft Defender, Windows Firewall or a production EDR/NGFW**. Keep the native Windows security stack enabled while testing.
+The v0.8 release-candidate line completed native Windows acceptance. v0.9 expands BC Sentinel into an antispyware and advanced-antimalware platform while preserving the existing local-first security architecture.
 
-The current `v0.8.0-beta.1` source snapshot is being validated as the next development milestone. Earlier v0.7.x security foundations have completed native Windows acceptance, while v0.8 introduces a new signed threat-content and secure-update supply chain that must complete its own Windows acceptance before it is frozen as accepted.
+### v0.9 Beta1
 
-The current source candidate has completed the cross-platform regression with **409 passed, 1 Windows-only skip**, `compileall` PASS and all five local acceptance gates PASS. This does **not** replace the required native Windows service/UAC/YARA acceptance. See `TEST-STATUS-v0.8.0-beta.1.md` and `SOURCE-MANIFEST-v0.8.0-beta.1.sha256` for the exact tested snapshot.
+Beta1 introduced read-only spyware/persistence discovery and conservative multi-signal scoring across:
 
-## What BC Sentinel is
+- Run / RunOnce and Startup entries;
+- Scheduled Tasks;
+- automatic Windows services;
+- WMI permanent persistence;
+- browser policy and forced-extension surfaces;
+- proxy and DNS configuration;
+- suspicious user-writable, Temp and missing targets;
+- Authenticode/provenance and file/network correlation.
 
-BC Sentinel started as an antivirus MVP and is evolving into an integrated Windows endpoint-security suite. The project is designed around one shared event, correlation and incident pipeline instead of isolated protection modules.
+The dedicated Beta1 native service acceptance passed. Full aggregate Windows freeze evidence for Beta1 was not supplied before development moved to Beta2.
 
-Current capabilities include:
+### v0.9 Beta2
 
-- static malware scanning with SHA-256 identity, YARA and PE-aware analysis;
-- realtime filesystem protection;
-- ransomware and behavioral shields;
-- encrypted quarantine, restore and explicit Threat Decision workflows;
-- Windows Protection Service running under a hardened service boundary;
-- authenticated local Named Pipe IPC and one-action UAC broker;
-- install-tree/configuration integrity checks, ACL/SCM hardening and tamper detection;
-- process, file and network attribution with ETW-based telemetry;
-- behavioral correlation and persistent incident timelines;
-- BC Sentinel-managed Windows Firewall **BLOCK-only** rules;
-- firewall drift detection, reconciliation, policy-conflict analysis and abuse-rate limiting;
-- Ed25519-signed IOC feeds with anti-rollback controls;
-- reversible incident-driven network containment leases;
+Beta2 adds the first **explicit reversible response layer**. It can create authenticated remediation plans for suspicious Run/RunOnce entries, Startup items, Scheduled Tasks, automatic services and selected browser policies.
+
+Every plan:
+
+- snapshots the exact original object;
+- is authenticated with machine-local `HMAC-SHA256`;
+- requires explicit operator approval;
+- re-checks the object immediately before mutation and fails closed if it changed;
+- can be restored from the recorded original state;
+- is compatible with the existing one-action UAC broker.
+
+Safety remains strict:
+
+```text
+automatic_remediation          = false
+automatic_destructive_action   = false
+service_process_termination    = false
+```
+
+WMI subscriptions, proxy settings and DNS settings remain **review-only** in Beta2 because their restore semantics are not yet strong enough for the same remediation guarantees.
+
+PUP/adware evidence is advisory. A PUP candidate or suspicious persistence entry does not become malware solely because it exists; HIGH/CRITICAL decisions continue to require stronger qualified evidence.
+
+## Existing protection stack
+
+BC Sentinel currently includes:
+
+- realtime and on-demand malware scanning;
+- SHA-256 identity, YARA and PE-aware inspection;
+- ransomware and behavior shields;
+- encrypted quarantine and Threat Decision workflows;
+- hardened Windows Protection Service;
+- authenticated Named Pipe IPC and one-action UAC broker;
+- ETW process/file/network attribution;
+- persistent incident timelines and behavioral correlation;
+- BC Sentinel-owned Windows Firewall BLOCK-only controls;
+- firewall drift/reconciliation and conflict analysis;
+- Ed25519-signed IOC and threat-content packages;
+- key rotation/revocation and anti-rollback state;
+- signed reputation as advisory evidence;
 - DNS/process-correlated Web Protection without HTTPS MITM;
-- signed-domain threat decisions and shared-IP/CDN safety guards;
-- exact-domain local trust with strict precedence: **signed IOC > local trust > heuristics**;
-- browser/process context and browser-download provenance;
-- browser → domain → connection → download → file → process → incident correlation;
-- persistent Web Findings and Security Center workflows;
-- signed threat-package staging/activation with last-known-good rollback;
-- separate trust anchors for threat content and future application-release signing.
+- browser/download provenance and Web Incident Chain;
+- signed remote threat index and content-addressed threat cache;
+- crash-consistent staged threat-content activation;
+- antispyware/persistence discovery and reversible remediation foundation.
 
-## v0.8.0-beta.1
+## Core security principles
 
-The v0.8 line introduces a declarative signed security-content channel.
+- deterministic protection does not depend on AI or cloud availability;
+- AI, when introduced, remains advisory/explanatory rather than the sole enforcement authority;
+- private signing keys are never distributed with release artifacts;
+- no HTTPS MITM or injected root CA in the current Web Protection architecture;
+- heuristic-only evidence cannot perform destructive response;
+- firewall management is BC-owned and BLOCK-only;
+- signed IOC evidence has precedence over local trust;
+- remote retrieval does not imply staging or activation;
+- all privileged mutations remain behind authenticated service/UAC boundaries.
 
-Threat packages can contain bounded security data such as:
+## Current verification
 
-- IOC indicators;
-- YARA rules;
-- advisory behavioral metadata.
-
-Packages are verified before activation using Ed25519 signatures, canonical payload validation, validity windows, component hashes and sequence-based anti-rollback controls. Content is validated in staging and published atomically. A lower sequence cannot be activated arbitrarily; rollback is restricted to the recorded **last-known-good** package.
-
-The v0.8 architecture intentionally does **not** allow threat packages to execute arbitrary code, scripts or shell commands.
-
-A separate signed application-release envelope is also being introduced for the future production updater. The development `BUILD -> Upgrade/Repair` workflow remains compatible while external production signing infrastructure is still being built.
-
-## Security principles
-
-BC Sentinel follows several non-negotiable rules:
-
-- deterministic protection must work without AI or a cloud model;
-- AI, when used in the future, is advisory/explanatory rather than the only security decision-maker;
-- no HTTPS MITM, injected root CA or transparent TLS decryption in the current Web Protection architecture;
-- no heuristic-only destructive response;
-- quarantine/delete actions require qualified file verdicts and explicit protected decision paths;
-- firewall management is BC-owned and BLOCK-only; global Windows Firewall policy and third-party rules are not modified;
-- local domain trust cannot override an active signed malicious IOC;
-- DNS-only observations are insufficient for domain-to-IP containment: a matching real connection and safety checks are required;
-- private signing keys are never distributed with the application.
-
-## Local-first architecture
-
-BC Sentinel is designed so that core protection remains available locally. External threat-intelligence, remote retrieval and cloud services are not required for the deterministic protection engine in the current development line.
-
-Mutable service state is stored under:
+The packaged `v0.9.0-beta.2` development candidate passed on the extracted release tree:
 
 ```text
-%PROGRAMDATA%\BCSentinel\Protection
+469 passed, 1 Windows-only skipped
+compileall PASS
+10/10 local acceptance suites PASS
 ```
 
-The hardened Protection Service deployment lives under:
+Native Windows target: **470 passed** plus the aggregate Windows acceptance with no critical failures.
 
-```text
-%ProgramFiles%\BC Sentinel\Protection
-```
+See:
 
-## Development setup
-
-Target environment: **Windows 11 / Python 3.12**.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-Run the test suite with an isolated temp directory:
-
-```powershell
-$PytestTemp = Join-Path $env:TEMP "bc-sentinel-pytest"
-Remove-Item $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
-.\.venv\Scripts\python.exe -m pytest -q --basetemp "$PytestTemp"
-```
-
-Do not upgrade pip as part of the normal BC Sentinel acceptance workflow unless there is a specific reason to do so.
-
-## Build the Protection Service
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\BUILD-SERVIZIO-PROTEZIONE.ps1
-```
-
-The protected build contains the Windows service, one-action UAC broker and the authenticated integrity manifest used by the upgrade/install process.
-
-## Current acceptance model
-
-BC Sentinel uses explicit release gates instead of assuming that a feature works because unit tests pass. Releases are exercised through:
-
-- full pytest regression;
-- Windows-native service acceptance;
-- updater/repair acceptance;
-- firewall and drift acceptance;
-- IOC and containment acceptance;
-- Web Protection / Web Threat Response acceptance;
-- Domain Trust and browser/download-chain acceptance;
-- security and performance benchmarks.
-
-For the current v0.8 development snapshot, see:
-
-- `TEST-STATUS-v0.8.0-beta.1.md`
-- `SOURCE-MANIFEST-v0.8.0-beta.1.sha256`
-- `RELEASE-NOTES-v0.8.0-beta.1.md`
-- `BC_SENTINEL_V080_BETA1_SIGNED_THREAT_INTELLIGENCE_REPORT.md`
-- `BC_Sentinel_Roadmap_v0_8_0_Beta1_Updated.md`
+- `RELEASE-NOTES-v0.9.0-beta.2.md`
+- `BC_SENTINEL_V090_BETA2_REVERSIBLE_REMEDIATION_REPORT.md`
+- `TEST-STATUS-v0.9.0-beta.2.md`
+- `DEVELOPMENT_STATUS.md`
 - `ROADMAP.md`
-
-## Roadmap
-
-Major planned development phases include:
-
-1. **v0.8** — signed threat intelligence, key lifecycle and secure update channel;
-2. **v0.9** — antispyware and advanced antimalware;
-3. **v0.10** — mature Web Protection, anti-phishing and anti-scam protection;
-4. **v0.11** — EDR core and endpoint identity graph;
-5. **v0.12** — isolated sandbox and dynamic analysis;
-6. **v0.13** — IDS/IPS plus brute-force, password-spraying and credential-stuffing protection;
-7. **v0.14** — webcam/microphone privacy controls and Safe Banking;
-8. **v0.15** — identity protection, password vault and 2FA;
-9. **v0.16** — VPN and untrusted-network protection;
-10. **v1.0** — production endpoint protection suite, only after native acceptance, secure packaging, update signing, compatibility testing and operational runbooks are complete.
 
 ## Responsible testing
 
-Do **not** test BC Sentinel with real malware on an everyday Windows installation. Use harmless fixtures such as EICAR where appropriate, TEST-NET addresses, or an isolated disposable virtual machine.
-
-## Project note
-
-This repository documents and tracks an **actively developed security product**. Interfaces, internal schemas and implementation details may change between beta releases while safety, compatibility and native Windows acceptance are being hardened.
+Use harmless fixtures, TEST-NET addresses and disposable VMs. Do not expose an everyday workstation to live malware solely to test a development build.
