@@ -4,11 +4,11 @@
 
 ## Development status
 
-**Current line:** `v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation`
+**Frozen line:** `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`
 
-BC Sentinel is a development preview. It is **not production-ready** and should not replace Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
+BC Sentinel remains a development preview. It is **not production-ready** and should not replace Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
 
-The `v0.8.0-rc.1` line completed native Windows acceptance. `v0.9.0-beta.1` and `v0.9.0-beta.2` are also recorded as native Windows accepted baselines. Beta3 extends the antispyware/remediation foundation with a conservative advisory antimalware layer for fileless and dual-use Windows execution chains.
+The v0.9 line has completed its release-candidate freeze on the target Windows machine. The RC1 baseline passed the complete Python suite, native foundation acceptance, native build, upgrade, live-service acceptance, repair, service-hardening benchmark and post-reboot live acceptance.
 
 ### v0.9 Beta1 — Antispyware foundation
 
@@ -28,19 +28,13 @@ service_process_termination    = false
 
 ### v0.9 Beta3 — Advanced Antimalware & Fileless Correlation
 
-Beta3 adds the `AdvancedAntimalwareEngine` for explainable correlation of:
-
-- PowerShell and script-host command context;
-- bounded encoded/dynamic and in-memory execution indicators;
-- Windows LOLBins including MSHTA, Rundll32, Regsvr32, Certutil, BITSAdmin, MSIExec, WMIC and CMSTP patterns;
-- Office/browser/script-host parent-child relationships;
-- short-lived same-PID process → network chains;
-- deterministic file/IOC evidence that can strengthen an existing behavioral chain;
-- ATT&CK-style technique identifiers, confidence, provenance and persistent findings.
+Beta3 added the `AdvancedAntimalwareEngine` for explainable correlation of PowerShell/script-host command context, bounded encoded/dynamic and in-memory indicators, Windows LOLBins, Office/browser/script-host parent-child relationships, short-lived same-PID process → network chains and deterministic file/IOC evidence that may strengthen an existing behavioral chain.
 
 A single dual-use Windows tool is **not malware by identity**. One evidence family cannot qualify HIGH on its own. Stronger outcomes require converging independent evidence or qualified deterministic evidence.
 
-Beta3 introduces **no automatic process termination, file deletion, quarantine or persistence mutation**. Existing Threat Decision, quarantine and reversible-remediation boundaries remain unchanged.
+### v0.9 RC1 — Consolidation & Native Hardening
+
+RC1 freezes the v0.9 Beta1→Beta3 model and adds explicit false-positive hardening for administrative/script-heavy workloads. It preserves the existing protected response boundaries and introduces no automatic process termination, file deletion, quarantine or persistence mutation from the Advanced Antimalware layer.
 
 ## Existing protection stack
 
@@ -69,7 +63,7 @@ BC Sentinel currently includes:
 ## Core security principles
 
 - deterministic protection does not depend on AI or cloud availability;
-- AI, when introduced, remains advisory/explanatory rather than the sole enforcement authority;
+- AI remains advisory/explanatory rather than the sole enforcement authority;
 - private signing keys are never distributed with release artifacts;
 - no HTTPS MITM or injected root CA in the current Web Protection architecture;
 - heuristic-only evidence cannot perform destructive response;
@@ -79,38 +73,44 @@ BC Sentinel currently includes:
 - all privileged mutations remain behind authenticated service/UAC boundaries;
 - dual-use administration tools are not classified as malware by executable name alone.
 
-## Current verification
+## v0.9 RC1 verification
 
-The exact extracted `v0.9.0-beta.3` release tree was rechecked during the repository update:
+Target Windows validation completed on 2026-09-07:
 
 ```text
-477 passed, 1 Windows-only skipped
-compileall PASS
+pytest                         482 / 482 PASS
+RC1 acceptance                 PASS
+Windows foundation             PASS
+native build                   PASS
+upgrade                        PASS
+live-service acceptance        PASS
+repair                         PASS
+service-hardening benchmark    PASS
+post-reboot live acceptance    PASS
 ```
-
-Beta3 is therefore **ready for native Windows acceptance**, but this repository update does not claim that the Beta3 native freeze has already passed.
 
 Release SHA-256:
 
 ```text
-36d7fe86b8741567c67505b7ccb429915afe89d5bff5ac95b6f61d56e17c32eb
+8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350
 ```
 
 See:
 
-- `RELEASE-NOTES-v0.9.0-beta.3.md`
-- `BC_SENTINEL_V090_BETA3_ADVANCED_ANTIMALWARE_REPORT.md`
-- `BC_Sentinel_Roadmap_v0_9_0_Beta3_Updated.md`
-- `TEST-STATUS-v0.9.0-beta.3.md`
-- `RELEASE-SHA256-v0.9.0-beta.3.txt`
+- `RELEASE-NOTES-v0.9.0-rc.1.md`
+- `BC_SENTINEL_V090_RC1_CONSOLIDATION_REPORT.md`
+- `BC_Sentinel_Roadmap_v0_9_0_RC1_Updated.md`
+- `TEST-STATUS-v0.9.0-rc.1.md`
+- `WINDOWS-ACCEPTANCE-v0.9.0-rc.1.md`
+- `RELEASE-SHA256-v0.9.0-rc.1.txt`
 - `DEVELOPMENT_STATUS.md`
 - `ROADMAP.md`
 
 ## Next milestone
 
-`v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`
+**`v0.10.0-beta.1` — Web Protection / Anti-Phishing / Anti-Scam Mature Expansion Foundation**
 
-The RC phase is intended to consolidate Beta1–Beta3, harden false-positive boundaries, exercise clean install/upgrade/repair and rollback matrices, and freeze v0.9 only after native Windows regression succeeds.
+The v0.10 line builds on the existing v0.7 DNS/process-correlated Web Protection instead of replacing it. New heuristic/deception signals remain explainable and bounded below destructive-response thresholds unless stronger deterministic evidence exists.
 
 ## Responsible testing
 
