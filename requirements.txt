@@ -1,0 +1,12 @@
+PySide6>=6.8,<7
+psutil>=6.0,<8
+watchdog>=5.0,<7
+yara-python>=4.5,<5
+pefile>=2024.8.26
+cryptography>=43,<47
+pytest>=8,<10
+pyinstaller>=6.10,<8
+
+# Windows native telemetry/service freeze-gate dependencies
+pywintrace==0.2.0; platform_system == "Windows"
+pywin32>=311; platform_system == "Windows"
