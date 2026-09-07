@@ -1,0 +1,19 @@
+[project]
+name = "bc-sentinel"
+version = "0.9.0b3"
+description = "BC Sentinel - Intelligent Windows Protection MVP"
+requires-python = ">=3.12"
+dependencies = [
+  "PySide6>=6.8,<7",
+  "psutil>=6.0,<8",
+  "watchdog>=5.0,<7",
+  "yara-python>=4.5,<5",
+  "pefile>=2024.8.26",
+  "cryptography>=43,<47",
+  "pywintrace==0.2.0; platform_system == 'Windows'",
+  "pywin32>=311; platform_system == 'Windows'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
