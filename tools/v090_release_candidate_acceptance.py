@@ -171,7 +171,7 @@ def run(*, service_live: bool = False) -> dict:
 
     docs_missing = [name for name in REQUIRED_DOCS if not (ROOT / name).is_file()]
     version_order_ok = version_key("0.9.0-beta.3") < version_key("0.9.0-rc.1") < version_key("0.9.0")
-    current_is_rc1 = APP_VERSION == "0.9.0-rc.1"
+    current_supports_rc1 = version_key(APP_VERSION) >= version_key("0.9.0-rc.1")
 
     result = {
         "product": "BC Sentinel",
@@ -179,7 +179,8 @@ def run(*, service_live: bool = False) -> dict:
         "release_candidate": "0.9.0-rc.1",
         "service_live_requested": bool(service_live),
         "consolidation": {
-            "current_version_is_rc1": current_is_rc1,
+            "current_version_is_rc1": APP_VERSION == "0.9.0-rc.1",
+            "current_version_supports_rc1_baseline": current_supports_rc1,
             "version_order": "0.9.0-beta.3 < 0.9.0-rc.1 < 0.9.0",
             "version_order_valid": version_order_ok,
             "required_docs_present": not docs_missing,
@@ -205,7 +206,7 @@ def run(*, service_live: bool = False) -> dict:
     }
 
     local_ok = bool(
-        current_is_rc1
+        current_supports_rc1
         and version_order_ok
         and not docs_missing
         and all(result["regression_gates"].values())
