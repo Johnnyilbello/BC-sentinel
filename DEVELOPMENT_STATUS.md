@@ -2,40 +2,46 @@
 
 ## Current
 
-**v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation**
+**v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening**
 
-Status: **READY FOR NATIVE WINDOWS ACCEPTANCE**.
+Status: **NATIVE WINDOWS ACCEPTED / v0.9 FROZEN**.
 
-Verification on the exact extracted release tree during the repository update:
+Target-machine verification completed on Windows on 2026-09-07:
 
-- pytest: **477 passed, 1 Windows-only skipped**;
-- compileall: **PASS**;
-- release SHA-256: `36d7fe86b8741567c67505b7ccb429915afe89d5bff5ac95b6f61d56e17c32eb`;
-- no automatic process termination introduced by Beta3;
-- no automatic file deletion/quarantine introduced by Beta3;
-- no automatic persistence mutation introduced by Beta3.
+- pytest: **482 passed / 482 executed**;
+- v0.9 RC1 acceptance: **PASS**;
+- aggregate Windows foundation acceptance: **PASS**;
+- native Protection Service/UAC/firewall build: **PASS**;
+- upgrade acceptance and protected upgrade: **PASS**;
+- live-service Windows acceptance: **PASS**;
+- repair acceptance and protected repair: **PASS**;
+- service-hardening benchmark: **PASS**;
+- post-reboot live acceptance: **PASS**;
+- release SHA-256: `8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350`.
 
-The single skipped test is Windows-only. Beta3 is not marked as native-frozen by this update; the dedicated `antimalware-v090-beta3-*` gates and aggregate Windows acceptance remain the freeze requirement.
+No protection threshold or accepted destructive-action boundary was weakened to obtain the RC1 freeze.
 
-## Accepted baseline
+## Frozen baseline
 
 - `v0.8.0-rc.1 — Consolidation & Release Hardening`: **NATIVE WINDOWS ACCEPTED**.
 - `v0.9.0-beta.1 — Antispyware & Persistence Detection Foundation`: **NATIVE WINDOWS ACCEPTED**.
 - `v0.9.0-beta.2 — Reversible Persistence Remediation & PUP/Adware Response`: **NATIVE WINDOWS ACCEPTED**.
+- `v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation`: **REGRESSION FROZEN INTO RC1**.
+- `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`: **NATIVE WINDOWS ACCEPTED**.
 
-The v0.7 firewall/Web Protection, v0.8 signed-threat/update-channel and v0.9 persistence/remediation safety invariants remain regression requirements.
+The v0.7 firewall/Web Protection, v0.8 signed-threat/update-channel and v0.9 antispyware/remediation/advanced-antimalware safety invariants remain mandatory regression requirements.
 
-## Beta3 scope
+## RC1 freeze guarantees
 
-Beta3 adds advisory advanced-antimalware and fileless correlation for PowerShell, script hosts and Windows LOLBins. It correlates command context, parent/child relationships, short-lived same-PID process→network chains and qualified deterministic file/IOC evidence.
-
-False-positive boundaries remain conservative:
-
-- one dual-use executable is not malware by identity;
-- one evidence family cannot independently qualify HIGH;
-- stronger outcomes require converging independent evidence or qualified deterministic evidence;
-- high-severity findings remain explainable and do not bypass existing protected response workflows.
+- benign PowerShell, CertUtil, MSIExec and BITSAdmin administrative scenarios stay below HIGH;
+- Office/browser → PowerShell evidence remains bounded unless independent evidence converges;
+- strong multi-signal chains remain HIGH/CRITICAL;
+- no automatic process termination from Advanced Antimalware;
+- no automatic file deletion/quarantine from Advanced Antimalware;
+- persistence mutation remains explicit-approval and reversible;
+- heuristic-only Web Protection remains non-destructive;
+- HTTPS MITM remains disabled.
 
 ## Next
 
-After Beta3 native acceptance: `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`.
+Development proceeds to **`v0.10.0-beta.1`**, the first milestone of the mature Web Protection, Anti-Phishing & Anti-Scam expansion. The v0.9 RC1 baseline is frozen and must remain green throughout v0.10 development.
