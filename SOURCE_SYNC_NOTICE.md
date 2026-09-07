@@ -1,32 +1,25 @@
 # Source synchronization status
 
-The repository tracks the current `v0.9.0-beta.3 — Advanced Antimalware & Fileless Correlation` development line and its verified release metadata.
+The repository now records the frozen `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening` baseline and its verified release metadata.
 
-## Navigable source currently synchronized
+## Navigable source synchronized
 
-The Beta3-specific technical delta is stored directly in the repository:
+The repository intentionally exposes the security-relevant development deltas and acceptance evidence rather than claiming that every file from the complete release archive has been materialized individually through the connected GitHub integration.
 
-- `sentinel/__init__.py`
-- `sentinel/advanced_antimalware.py`
-- `tests/test_v090_beta3_advanced_antimalware_fileless.py`
-- `tools/advanced_antimalware_acceptance.py`
-- `pyproject.toml`
-- `requirements.txt`
-
-Release notes, development status, roadmap and verification evidence are also tracked on `main`.
+Tracked v0.9 material includes the Beta3 advanced-antimalware delta, RC1 consolidation/false-positive acceptance, package/runtime versioning, roadmap/status/release evidence and Windows acceptance documentation.
 
 ## Complete source snapshot
 
-The complete verified release snapshot contains **316 files**. The connected GitHub integration used for this update does not expose a bulk directory/`git push` operation, so this update does **not** claim that all 316 archive files have been materialized individually in the repository.
+The complete source-of-record for the accepted RC1 is:
 
-The complete source-of-record for this development candidate is:
-
-`BC_Sentinel_v0_9_0_Beta3_Advanced_Antimalware_Fileless_Correlation.zip`
+`BC_Sentinel_v0_9_0_RC1_Antimalware_Consolidation_Native_Hardening.zip`
 
 SHA-256:
 
-`36d7fe86b8741567c67505b7ccb429915afe89d5bff5ac95b6f61d56e17c32eb`
+`8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350`
 
-The exact extracted archive was verified with `compileall` PASS and `477 passed, 1 Windows-only skipped` before this repository update.
+Target-Windows validation completed on 2026-09-07 with 482/482 Python tests and all RC1 foundation/build/upgrade/live/repair/hardening/post-reboot gates passing.
 
-Generated caches are not source-of-record. Historical design screenshots are not required for the Beta3 antimalware delta.
+Generated caches, local virtual environments and acceptance output JSON files are not source-of-record and are not committed.
+
+The next development line is `v0.10.0-beta.1`; the RC1 source snapshot and its safety gates remain frozen regression requirements.
