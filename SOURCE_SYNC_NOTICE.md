@@ -6,10 +6,12 @@ The repository tracks the current `v0.9.0-beta.3 — Advanced Antimalware & File
 
 The Beta3-specific technical delta is stored directly in the repository:
 
+- `sentinel/__init__.py`
 - `sentinel/advanced_antimalware.py`
 - `tests/test_v090_beta3_advanced_antimalware_fileless.py`
 - `tools/advanced_antimalware_acceptance.py`
 - `pyproject.toml`
+- `requirements.txt`
 
 Release notes, development status, roadmap and verification evidence are also tracked on `main`.
 
