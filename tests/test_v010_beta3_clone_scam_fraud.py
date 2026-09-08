@@ -5,11 +5,12 @@ import json
 from sentinel.config import APP_VERSION
 from sentinel.protection_protocol import decode_request
 from sentinel.protection_service_core import ProtectionRuntime
+from sentinel.service_update import version_key
 from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 
 
 def test_beta3_version_and_profile():
-    assert APP_VERSION in {"0.10.0-beta.3", "0.10.0-rc.1"}
+    assert version_key(APP_VERSION) >= version_key("0.10.0-beta.3")
     assert CLONE_SCAM_PROFILE == "v0.10.0-beta.3"
 
 
