@@ -1,0 +1,114 @@
+--- a/sentinel/protection_service_core.py
++++ b/sentinel/protection_service_core.py
+@@ -33,6 +33,7 @@
+ from .web_response import (
+     WEB_RESPONSE_PROFILE, WEB_CONTAINMENT_TTL_MIN, WEB_CONTAINMENT_TTL_MAX, qualify_web_containment,
+ )
++from .web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
+ from .path_security import is_reparse_point, secure_write_parent
+ from .persistence_monitor import PersistenceMonitor
+ from .antispyware import AntispywareEngine
+@@ -1419,6 +1420,12 @@
+             "heuristic_can_qualify_high": False,
+             "heuristic_auto_block": False,
+             "cloud_dependency_required": False,
++            "clone_scam_profile": CLONE_SCAM_PROFILE,
++            "clone_site_context_analysis": True,
++            "sensitive_form_destination_analysis": True,
++            "scam_fraud_multi_signal_analysis": True,
++            "scam_text_alone_never_blocks": True,
++            "page_context_auto_block": False,
+         }
+ 
+     def web_findings(self, limit: int = 100) -> list[dict[str, Any]]:
+@@ -1582,6 +1589,20 @@
+             payload["reputation"] = self.db.web_domain_reputation(domain)
+         return payload
+ 
++    def web_clone_scam_assess(self, payload: dict[str, Any]) -> dict[str, Any]:
++        result = assess_page_context(
++            url=str(payload.get("url") or ""),
++            declared_identity=str(payload.get("declared_identity") or ""),
++            page_title=str(payload.get("page_title") or ""),
++            visible_text=str(payload.get("visible_text") or ""),
++            form_action=str(payload.get("form_action") or ""),
++            form_fields=payload.get("form_fields") or (),
++            payment_methods=payload.get("payment_methods") or (),
++            link_hosts=payload.get("link_hosts") or (),
++            redirect_chain=payload.get("redirect_chain") or (),
++        )
++        return result.to_dict()
++
+     def ioc_status(self) -> dict[str, Any]:
+         return self.db.ioc_status()
+ 
+@@ -2178,6 +2199,8 @@
+                 return response_ok(request.request_id, download=self.runtime.web_download_detail(p["download_id"]))
+             if op == "web_assess":
+                 return response_ok(request.request_id, assessment=self.runtime.web_assess(p["value"]))
++            if op == "web_clone_scam_assess":
++                return response_ok(request.request_id, assessment=self.runtime.web_clone_scam_assess(p))
+             if op == "web_domain_trust":
+                 return response_ok(request.request_id, trust=self.runtime.web_domain_trust())
+             if op == "web_domain_reputation":
+--- a/sentinel/protection_protocol.py
++++ b/sentinel/protection_protocol.py
+@@ -37,6 +37,7 @@
+     "web_downloads",
+     "web_download_detail",
+     "web_assess",
++    "web_clone_scam_assess",
+     "web_domain_trust",
+     "web_domain_reputation",
+     "web_finding_decide",
+@@ -237,6 +238,24 @@
+         if not value or len(value) > 4096 or "\x00" in value:
+             raise ProtocolError("invalid_payload", "web assessment value is invalid")
+         p = {"value": value}
++    elif op == "web_clone_scam_assess":
++        allowed = {"url", "declared_identity", "page_title", "visible_text", "form_action", "form_fields", "payment_methods", "link_hosts", "redirect_chain"}
++        _reject_unknown(p, allowed)
++        url = _require_type(p, "url", str).strip()
++        if not url or len(url) > 4096 or "\x00" in url:
++            raise ProtocolError("invalid_payload", "clone/scam url is invalid")
++        out = {"url": url}
++        for key, limit in (("declared_identity", 128), ("page_title", 512), ("visible_text", 20000), ("form_action", 4096)):
++            value = p.get(key, "")
++            if not isinstance(value, str) or "\x00" in value or len(value) > limit:
++                raise ProtocolError("invalid_payload", f"{key} is invalid")
++            out[key] = value
++        for key, max_items, item_limit in (("form_fields", 64, 128), ("payment_methods", 32, 128), ("link_hosts", 128, 2048), ("redirect_chain", 32, 4096)):
++            value = p.get(key, [])
++            if not isinstance(value, list) or len(value) > max_items or any(not isinstance(item, str) or "\x00" in item or len(item) > item_limit for item in value):
++                raise ProtocolError("invalid_payload", f"{key} is invalid")
++            out[key] = list(value)
++        p = out
+     elif op == "web_domain_reputation":
+         _reject_unknown(p, {"domain"})
+         domain = _require_type(p, "domain", str).strip().rstrip(".")
+--- a/sentinel/config.py
++++ b/sentinel/config.py
+@@ -5,7 +5,7 @@
+ import sys
+ 
+ APP_NAME = "BC Sentinel"
+-APP_VERSION = "0.10.0-beta.2"
++APP_VERSION = "0.10.0-beta.3"
+ 
+ DATA_DIR = Path(os.getenv("LOCALAPPDATA", Path.home() / ".bc_sentinel")) / "BCSentinel"
+ DB_PATH = DATA_DIR / "sentinel.db"
+--- a/sentinel/__init__.py
++++ b/sentinel/__init__.py
+@@ -1 +1 @@
+-__version__ = "0.10.0-beta.2"
++__version__ = "0.10.0-beta.3"
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "bc-sentinel"
+-version = "0.10.0b2"
++version = "0.10.0b3"
+ description = "BC Sentinel - Intelligent Windows Protection MVP"
+ requires-python = ">=3.12"
+ dependencies = [

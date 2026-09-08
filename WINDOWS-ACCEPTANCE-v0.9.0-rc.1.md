@@ -1,70 +1,25 @@
 # BC Sentinel v0.9.0-rc.1 — Native Windows Acceptance
 
-The full matrix below was completed successfully on the target Windows machine on 2026-09-07.
+## Superseding status — 8 September 2026
 
-## 1. Python regression + RC local gate
+The older 7 September acceptance narrative for a 482-test RC artifact is retained only as historical context and **does not certify the current checkpoint-4 build**.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m tools.v090_release_candidate_acceptance --output acceptance-v090-rc1-local.json
-```
+Current checkpoint-4 evidence:
 
-Final result: **482/482 PASS**, RC acceptance `passed: true`.
+- 578 tests passed, zero skipped;
+- local RC acceptance passed;
+- fresh Protection Service/Broker builds passed;
+- native Authenticode foundation sub-gate passed;
+- compileall and artifact integrity passed.
 
-## 2. Native Windows foundation
+The following current-build native gates remain **OPEN / DEFERRED**:
 
-```powershell
-.\.venv\Scripts\python.exe -m tools.windows_acceptance --output acceptance-v090-rc1-windows-foundation.json
-```
+1. elevated Windows foundation / ETW;
+2. live Protection Service acceptance;
+3. standard-user → UAC broker path;
+4. transactional upgrade acceptance on the checkpoint-4 build;
+5. same-version repair acceptance on the checkpoint-4 build;
+6. reboot-persistence acceptance;
+7. aggregate native benchmarking/freeze evidence.
 
-Final result: **PASS**, zero critical failures.
-
-## 3. Build frozen Protection Service + Broker
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\BUILD-SERVIZIO-PROTEZIONE.ps1
-```
-
-Final result: **PASS**.
-
-## 4. Upgrade acceptance + protected upgrade
-
-```powershell
-.\.venv\Scripts\python.exe -m tools.update_acceptance --mode upgrade --output acceptance-v090-rc1-update-plan.json
-powershell -ExecutionPolicy Bypass -File .\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 -Mode Upgrade
-```
-
-Final result: **PASS**.
-
-## 5. Aggregate live-service acceptance
-
-```powershell
-.\.venv\Scripts\python.exe -m tools.windows_acceptance --service-live --output acceptance-v090-rc1-windows-live.json
-```
-
-Final result: **PASS**, zero critical failures.
-
-## 6. Same-version repair
-
-```powershell
-.\.venv\Scripts\python.exe -m tools.update_acceptance --mode repair --output acceptance-v090-rc1-repair-plan.json
-powershell -ExecutionPolicy Bypass -File .\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 -Mode Repair
-```
-
-Final result: **PASS**.
-
-## 7. Reboot/live persistence
-
-The protected installation was revalidated after reboot with the aggregate live-service gate. Final result: **PASS**.
-
-## 8. Service-hardening benchmark
-
-```powershell
-.\.venv\Scripts\python.exe -m tools.service_hardening_benchmark --output benchmark-v090-rc1-service-hardening.json
-```
-
-Final result: **PASS**.
-
-## Freeze rule
-
-The v0.9 RC1 gates are now frozen regression requirements. Do not weaken or bypass a historical gate to make a later version pass; diagnose the regression and rerun the complete aggregate acceptance.
+Development is allowed to proceed to v0.10 by explicit decision, but these gates must remain visible and must not be rewritten as PASS. A historical installed-service result cannot substitute for acceptance of the current artifact.

@@ -1,6 +1,6 @@
 [project]
 name = "bc-sentinel"
-version = "0.9.0rc1"
+version = "0.10.0b3"
 description = "BC Sentinel - Intelligent Windows Protection MVP"
 requires-python = ">=3.12"
 dependencies = [

@@ -1,21 +1,25 @@
-# BC Sentinel Roadmap — v0.9.0-rc.1
+# BC Sentinel Roadmap — v0.9.0-rc.1 status correction
 
-Frozen line: **v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening**.
+Current authoritative status: **v0.9.0-rc.1 local regression green / native freeze deferred**.
 
-- v0.9.0-beta.1: Antispyware & persistence detection foundation.
-- v0.9.0-beta.2: Reversible persistence remediation & PUP/Adware response.
-- v0.9.0-beta.3: Advanced antimalware, PowerShell/script/LOLBin and fileless correlation.
-- v0.9.0-rc.1: regression freeze, false-positive hardening, native Windows aggregate acceptance and live-service release gate.
+The earlier 482-test “completed/frozen” statement is superseded by the 8 September 2026 checkpoint-4 evidence.
 
-## Exit criteria for v0.9 — completed
+## Current checkpoint-4 state
 
-- full Python regression suite green: **482/482 PASS**;
-- cross-platform v0.8/v0.9 acceptance gates green;
-- benign dual-use/admin matrix stays below HIGH while strong malicious chains remain detectable;
-- native Windows aggregate acceptance passes with zero critical failures;
-- live Protection Service acceptance passes;
-- upgrade/repair acceptance remains green;
-- post-reboot live acceptance remains green;
-- service-hardening benchmark passes.
+- complete Python regression: **578 passed, zero skipped**;
+- local RC acceptance: PASS;
+- fresh service/broker builds: PASS;
+- native Authenticode sub-gate: PASS;
+- compileall and artifact integrity: PASS;
+- updater/quarantine/YARA/AuthentiCode regressions retained.
 
-The roadmap now proceeds to **v0.10.0-beta.1 — Web Protection / Anti-Phishing / Anti-Scam Mature Expansion Foundation**, followed by EDR, sandbox, IDS/IPS, privacy and identity modules.
+## Still open
+
+- elevated current-build Windows foundation/ETW;
+- live Protection Service;
+- UAC path;
+- upgrade/repair on the current build;
+- reboot persistence;
+- aggregate native freeze/benchmark evidence.
+
+These gates are **DEFERRED**, not completed. Development has advanced to **v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation** without converting this technical debt into a false PASS.

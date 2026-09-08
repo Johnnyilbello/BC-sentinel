@@ -1,36 +1,28 @@
 # BC Sentinel v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening
 
-Release-candidate freeze completed on the target Windows machine on 2026-09-07. BC Sentinel remains a development preview and is not yet a production replacement for Microsoft Defender or the native Windows security stack.
+## Status correction — 8 September 2026
 
-## Consolidation scope
+The earlier release note that described the 7 September RC artifact as fully frozen is **superseded by security checkpoint 4**.
 
-- freezes the v0.9 Beta1 antispyware discovery and provenance model;
-- freezes the v0.9 Beta2 reversible persistence-remediation and PUP/adware safety boundaries;
-- freezes the v0.9 Beta3 PowerShell/script/LOLBin and fileless correlation model;
-- adds a dedicated v0.9 release-candidate acceptance gate;
-- adds a benign dual-use/admin false-positive matrix that must remain below HIGH;
-- verifies that strong multi-signal and deterministic chains still qualify HIGH/CRITICAL;
-- preserves advisory-only advanced antimalware behavior: no automatic kill, delete or quarantine;
-- preserves explicit-approval-only persistence remediation.
+The current v0.9.0-rc.1 source-of-record has:
 
-## Native acceptance result
+- **578 passed, zero skipped**;
+- checkpoint-3 updater hardening retained;
+- checkpoint-4 Authenticode command-injection correction;
+- OS PowerShell executable/module selection pinned;
+- native Authenticode sub-gate PASS;
+- local RC acceptance, fresh builds, compileall and artifact integrity PASS.
 
-The target Windows validation completed with:
+However, the current-build elevated foundation/live Protection Service/UAC/upgrade/repair/reboot gates remain **OPEN / DEFERRED**. Therefore v0.9.0-rc.1 is not currently claimed as a frozen or production-accepted release.
 
-- `pytest`: **482/482 PASS**;
-- RC1 local acceptance: **PASS**;
-- aggregate Windows foundation: **PASS**;
-- Protection Service/UAC/firewall build: **PASS**;
-- upgrade plan + protected upgrade: **PASS**;
-- aggregate live-service acceptance: **PASS**;
-- repair plan + protected repair: **PASS**;
-- service-hardening benchmark: **PASS**;
-- post-reboot live acceptance: **PASS**.
+## Consolidation scope retained
 
-## False-positive hardening
+- v0.9 Beta1 antispyware discovery/provenance model;
+- v0.9 Beta2 reversible persistence-remediation and PUP/adware boundaries;
+- v0.9 Beta3 PowerShell/script/LOLBin/fileless correlation;
+- benign dual-use/admin false-positive matrix;
+- strong multi-signal/deterministic detection retention;
+- no automatic antimalware kill/delete/quarantine from advisory fileless evidence;
+- explicit-approval-only persistence remediation.
 
-Harmless or legitimate-looking PowerShell, CertUtil, MSIExec, BITSAdmin and browser/Office-to-PowerShell scenarios remain bounded below HIGH. Routine administrative cases remain SAFE. This is not implemented as a blanket allowlist for dual-use binaries, so converging malicious evidence remains detectable.
-
-## Freeze policy
-
-The v0.9 safety boundaries are now frozen regression requirements for v0.10 and later development. A future feature may not weaken these gates merely to make a new acceptance suite pass.
+Development may proceed to v0.10 while the native freeze debt remains documented, but later milestones must preserve all v0.9 and checkpoint-3/4 regressions.
