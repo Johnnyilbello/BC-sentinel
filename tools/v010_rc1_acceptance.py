@@ -8,6 +8,7 @@ from pathlib import Path
 
 from sentinel.config import APP_VERSION
 from sentinel.protection_client import ProtectionServiceClient
+from sentinel.service_update import version_key
 from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 from sentinel.web_deception import HEURISTIC_PROFILE, HEURISTIC_SCORE_CAP
 from sentinel.web_response import WEB_RESPONSE_PROFILE
@@ -101,7 +102,7 @@ def run(*, service_live: bool = False) -> dict:
         "safety":{"heuristic_score_cap":HEURISTIC_SCORE_CAP,"heuristic_only_below_high":HEURISTIC_SCORE_CAP<=49,"clone_detection_preserved":clone.status=="suspicious" and clone.block_recommended is False,"mitm_https":False,"heuristic_auto_block":False,"cloud_required":False,"reboot_gate_deferred":True},
         "service_live_requested":bool(service_live),"service":None,"local_passed":False,"service_live_passed":None,"passed":False,
     }
-    result["local_passed"] = bool(APP_VERSION == "0.10.0-rc.1" and compatibility["passed"] and latency["passed"] and result["safety"]["heuristic_only_below_high"] and result["safety"]["clone_detection_preserved"])
+    result["local_passed"] = bool(version_key(APP_VERSION) >= version_key("0.10.0-rc.1") and compatibility["passed"] and latency["passed"] and result["safety"]["heuristic_only_below_high"] and result["safety"]["clone_detection_preserved"])
     if service_live:
         client = ProtectionServiceClient(timeout=3.0); status = client.request("web_status")
         latencies=[]; responses=[]
