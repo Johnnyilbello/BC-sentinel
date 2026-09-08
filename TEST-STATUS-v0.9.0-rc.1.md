@@ -1,33 +1,33 @@
 # BC Sentinel v0.9.0-rc.1 — Test Status
 
-## Final target-Windows result
+## Current authoritative status — 8 September 2026
 
-Validation completed on 2026-09-07.
+The earlier 7 September 482-test freeze claim in this file is **superseded** by the later security checkpoints.
 
-- Python regression: **482 passed / 482 executed**.
-- RC1 local acceptance: **PASS**.
-- Aggregate Windows foundation acceptance: **PASS**.
-- Native Protection Service/UAC/firewall build: **PASS**.
-- Upgrade acceptance: **PASS**.
-- Protected transactional upgrade: **PASS**.
-- Aggregate live-service Windows acceptance: **PASS**.
-- Repair acceptance: **PASS**.
-- Protected same-version repair: **PASS**.
-- Service-hardening benchmark: **PASS**.
-- Post-reboot live acceptance: **PASS**.
+Checkpoint 4 is the current source-of-record:
 
-## False-positive hardening
+- complete regression: **578 passed, zero skipped**;
+- targeted Authenticode/reputation invocation tests: 26 passed;
+- native Authenticode foundation sub-gate: PASS;
+- local RC acceptance: PASS;
+- fresh Protection Service and UAC Broker builds: PASS;
+- isolated pipe self-test: PASS;
+- compileall: PASS;
+- artifact integrity: 169 files verified.
 
-- harmless PowerShell write/output: SAFE;
-- signed Microsoft CertUtil hash operation: SAFE;
-- signed Microsoft MSIExec remote-package fixture: SAFE;
-- browser → PowerShell `-NoProfile` fixture: SAFE;
-- BITSAdmin transfer-only fixture: SAFE;
-- Office → PowerShell download-only fixture: bounded below HIGH;
-- strong multi-signal fileless chain: HIGH;
-- deterministic-qualified chain: CRITICAL;
-- automatic process termination/delete/quarantine remains disabled.
+## Native freeze status
 
-## Freeze conclusion
+**v0.9.0-rc.1 is NOT frozen.** The following current-build gates remain OPEN / DEFERRED:
 
-All required RC1 gates passed on the target Windows environment. `v0.9.0-rc.1` is the frozen v0.9 regression baseline. Newer milestones must preserve these accepted safety and compatibility gates.
+- elevated Windows foundation/ETW;
+- live Protection Service;
+- UAC broker path;
+- upgrade/repair on the checkpoint-4 build;
+- reboot persistence;
+- aggregate native benchmarking/freeze evidence.
+
+Historical acceptance of an older RC artifact is not acceptance of the later checkpoint-4 artifact. Development may proceed to v0.10, but these gates must not be recorded as PASS without new evidence.
+
+## Regression obligations retained
+
+The v0.9 Beta1→Beta3 safety model, false-positive controls, updater/quarantine/YARA hardening and checkpoint-4 Authenticode corrections remain mandatory regression requirements for later development.
