@@ -37,7 +37,10 @@ From Beta3 onward, both one-command launchers include upgrade/repair and the sta
 - legacy Web Response regression: PASS;
 - compileall: PASS.
 
-Windows upgrade/repair, service-live and standard-user -> UAC gates remain to be proven by the packaged one-command launchers on the Windows host. Reboot remains deferred by roadmap decision.
+Windows evidence now confirms the full regression suite, native/admin phase, build, repair, Beta1/Beta2/Beta3 live acceptance and hardening. The only remaining Beta3 acceptance item is the standard-user -> UAC launcher gate; reboot remains deferred by roadmap decision.
 
 ## Harness FIX1
 The ADMIN one-command launcher now starts its standard-user helper from the filtered Explorer token using `CreateProcessWithTokenW`, instead of relying on `Shell.Application`. The helper independently requires `is_admin=false` before the UAC broker test can pass. This is a test-harness correction only; no protection or response policy was relaxed.
+
+## Acceptance harness FIX2
+Sostituito il launcher Explorer-token/`CreateProcessWithTokenW` con un task temporaneo Windows `Interactive` + `RunLevel Limited`. Il child continua a verificare `is_admin=false` prima del broker, il task viene rimosso in `finally`, e il retest mirato crea autonomamente `.venv` quando necessario. Nessuna modifica al motore di protezione.
