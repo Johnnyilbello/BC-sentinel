@@ -1,0 +1,215 @@
+--- a/sentinel/protection_service_core.py
++++ b/sentinel/protection_service_core.py
+@@ -30,6 +30,9 @@
+ from .network_monitor import NetworkMonitor
+ from .web_protection import DNSCorrelationCache, WebProtectionEngine, normalize_domain
+ from .web_download_protection import BrowserDownloadCorrelation
++from .web_response import (
++    WEB_RESPONSE_PROFILE, WEB_CONTAINMENT_TTL_MIN, WEB_CONTAINMENT_TTL_MAX, qualify_web_containment,
++)
+ from .path_security import is_reparse_point, secure_write_parent
+ from .persistence_monitor import PersistenceMonitor
+ from .antispyware import AntispywareEngine
+@@ -988,6 +991,15 @@
+                     fw_running = False
+                     fw_detail = str(exc)
+                 self._set_component("firewall", True, fw_running, critical=False, detail=fw_detail)
++                try:
++                    recovery = self.recover_web_containment_state()
++                    if recovery.get("expired") or recovery.get("stale"):
++                        self.db.record_security_event(SecurityEvent(
++                            category="containment", action="startup_recovery", source="protection_service",
++                            data=recovery,
++                        ))
++                except Exception as recovery_exc:
++                    self._last_error = f"web containment recovery: {recovery_exc}"
+ 
+                 self._set_component("reputation", self.settings.reputation_enabled, self.settings.reputation_enabled)
+                 self._set_component("correlation", True, True, critical=True)
+@@ -1388,6 +1400,14 @@
+             "download_correlation": self.download_correlation.status() if hasattr(self, "download_correlation") else {},
+             "dns_cache": self.dns_cache.status() if hasattr(self, "dns_cache") else {},
+             "deception_profile": "v0.10.0-beta.1",
++            "response_profile": WEB_RESPONSE_PROFILE,
++            "response_mode": "operator_approved_reversible",
++            "web_containment_ttl_min_seconds": WEB_CONTAINMENT_TTL_MIN,
++            "web_containment_ttl_max_seconds": WEB_CONTAINMENT_TTL_MAX,
++            "duplicate_rule_prevention": True,
++            "restart_recovery": True,
++            "stale_rule_cleanup": True,
++            "shared_ip_never_address_blocked": True,
+             "mixed_script_detection": True,
+             "lookalike_detection": True,
+             "typosquat_detection": True,
+@@ -1732,60 +1752,132 @@
+             ioc_label=str((signed_ioc or {}).get("label") or ""),
+         )
+ 
++    def _lease_payload(self, row, *, idempotent: bool = False, reused_existing: bool = False) -> dict[str, Any]:
++        data = self._row_dict(row)
++        created = float(data.get("created_at") or 0.0)
++        expires = float(data.get("expires_at") or 0.0)
++        data["ttl_seconds"] = max(0, int(round(expires - created)))
++        data["idempotent"] = bool(idempotent)
++        data["reused_existing"] = bool(reused_existing)
++        return data
++
+     def create_web_containment(self, payload: dict[str, Any]) -> dict[str, Any]:
+         if not bool(payload.get("approved")):
+             raise PermissionError("Explicit operator approval is required for Web Protection containment.")
+         ttl = int(payload.get("ttl_seconds") or 0)
+-        if not 60 <= ttl <= 3600:
+-            raise ValueError("web containment TTL must be between 60 and 3600 seconds")
++        if not WEB_CONTAINMENT_TTL_MIN <= ttl <= WEB_CONTAINMENT_TTL_MAX:
++            raise ValueError(
++                f"web containment TTL must be between {WEB_CONTAINMENT_TTL_MIN} and {WEB_CONTAINMENT_TTL_MAX} seconds"
++            )
+         finding_id = str(payload.get("finding_id") or "")
+         row = self.db.web_finding(finding_id)
+         if row is None:
+             raise KeyError("web finding not found")
++        if str(row["status"] or "") == "contained" and str(row["lease_id"] or ""):
++            existing = self.db.containment_lease(str(row["lease_id"]))
++            if existing is not None and str(existing["status"] or "") == "active":
++                return self._lease_payload(existing, idempotent=True)
+         if str(row["status"] or "") != "pending":
+             raise PermissionError("web finding is no longer pending")
+-        if int(row["score"] or 0) < 70 or not bool(row["block_recommended"]):
+-            raise PermissionError("web finding is not qualified for containment")
++
+         domain = str(row["domain"] or "").casefold()
+         remote_address = str(row["remote_address"] or "")
+-        if not remote_address:
+-            raise PermissionError("web finding has no resolved remote address")
+         source = str(row["source"] or "")
+-        qualification = ""
++        try:
++            evidence = json.loads(str(row["evidence_json"] or "{}"))
++        except Exception:
++            evidence = {}
++
++        context = self.dns_cache.lookup_context(row["pid"], remote_address) if remote_address else None
++        dns_domain = str(getattr(context, "domain", "") or "")
++        shared = bool(row["shared_ip"]) or bool(getattr(context, "shared_ip", False))
++        endpoint = self.db.match_ioc_endpoint(remote_address) if remote_address and hasattr(self.db, "match_ioc_endpoint") else None
++        signed_network_active = bool(endpoint and str(endpoint.get("kind") or "") == "network")
++        assessment = self.web_protection.assess_domain(domain) if domain else None
++        signed_domain_active = bool(assessment and assessment.signed_ioc)
++
++        qualified = qualify_web_containment(
++            source=source,
++            score=int(row["score"] or 0),
++            block_recommended=bool(row["block_recommended"]),
++            event_category=str(evidence.get("event_category") or ""),
++            domain=domain,
++            remote_address=remote_address,
++            dns_domain=dns_domain,
++            shared_ip=shared,
++            signed_network_active=signed_network_active,
++            signed_domain_active=signed_domain_active,
++        )
++        if not qualified.eligible:
++            legacy_messages = {
++                "shared_ip_guard": "shared/CDN IP guard blocked address containment",
++                "finding_not_qualified": "web finding is not qualified for containment",
++                "same_pid_dns_revalidation_failed": "PID-scoped DNS correlation expired or changed; reassess before containment",
++                "network_observation_required": "domain containment requires an observed same-PID network connection",
++            }
++            raise PermissionError(legacy_messages.get(qualified.reason, f"web containment denied: {qualified.reason}"))
++
++        existing_remote = self.db.active_containment_lease_for_remote(remote_address)
++        if existing_remote is not None:
++            lease_id = str(existing_remote["lease_id"] or "")
++            self.db.resolve_web_finding(
++                finding_id, status="contained", resolution="reused existing temporary containment", lease_id=lease_id
++            )
++            return self._lease_payload(existing_remote, idempotent=True, reused_existing=True)
++
+         ioc_label = ""
+-        if source == "signed_ioc_network":
+-            endpoint = self.db.match_ioc_endpoint(remote_address)
+-            if endpoint is None or str(endpoint.get("kind") or "") != "network":
+-                raise PermissionError("signed network IOC is no longer active")
+-            qualification = "signed_network_ioc"
+-            ioc_label = str(endpoint.get("label") or "")
+-        else:
+-            try:
+-                evidence = json.loads(str(row["evidence_json"] or "{}"))
+-            except Exception:
+-                evidence = {}
+-            if str(evidence.get("event_category") or "") != "network":
+-                raise PermissionError("domain containment requires an observed same-PID network connection")
+-            assessment = self.web_protection.assess_domain(domain)
+-            if not assessment.signed_ioc:
+-                raise PermissionError("signed domain IOC is no longer active")
+-            context = self.dns_cache.lookup_context(row["pid"], remote_address)
+-            if not context.domain or context.domain != domain:
+-                raise PermissionError("PID-scoped DNS correlation expired or changed; reassess before containment")
+-            if context.shared_ip:
+-                raise PermissionError("shared/CDN IP guard blocked address containment")
+-            qualification = "signed_domain_nonshared_ip"
++        if qualified.qualification == "signed_network_ioc":
++            ioc_label = str((endpoint or {}).get("label") or "")
++        elif assessment is not None:
+             ioc_label = assessment.reasons[0] if assessment.reasons else ""
++
+         reason = str(payload.get("reason") or f"Web Protection finding {finding_id}")
+         lease = self._create_containment_lease_qualified(
+             remote_address=remote_address, ttl=ttl, reason=reason, incident_id="",
+-            qualification=qualification, ioc_label=ioc_label, finding_id=finding_id,
++            qualification=qualified.qualification, ioc_label=ioc_label, finding_id=finding_id,
+         )
++        lease["response_profile"] = WEB_RESPONSE_PROFILE
++        lease["qualification_policy"] = qualified.to_dict()
+         self.db.resolve_web_finding(
+             finding_id, status="contained", resolution="temporary containment approved", lease_id=str(lease.get("lease_id") or "")
+         )
+         return lease
+ 
++    def recover_web_containment_state(self) -> dict[str, Any]:
++        now = time.time()
++        expired: list[str] = []
++        stale: list[str] = []
++        active: list[str] = []
++        observed = {str(row.get("rule_id") or "") for row in self.firewall.list_rules(500)}
++        for row in list(self.db.active_containment_leases()):
++            lease_id = str(row["lease_id"] or "")
++            rule_id = str(row["rule_id"] or "")
++            if float(row["expires_at"] or 0.0) <= now:
++                self._release_containment_lease(lease_id, reason="startup_ttl_expired")
++                expired.append(lease_id)
++                continue
++            if rule_id not in observed:
++                self.db.delete_firewall_expected_rule(rule_id)
++                self.db.mark_containment_lease_released(lease_id, reason="startup_missing_rule", released_at=now)
++                try:
++                    self.db.resolve_web_findings_by_lease(
++                        lease_id, status="released", resolution="containment released: startup_missing_rule", resolved_at=now
++                    )
++                except Exception:
++                    pass
++                stale.append(lease_id)
++                continue
++            active.append(lease_id)
++        return {"active": active, "expired": expired, "stale": stale, "ok": True}
++
+--- a/sentinel/config.py
++++ b/sentinel/config.py
+@@ -5,7 +5,7 @@
+ import sys
+ 
+ APP_NAME = "BC Sentinel"
+-APP_VERSION = "0.10.0-beta.1"
++APP_VERSION = "0.10.0-beta.2"
+--- a/sentinel/__init__.py
++++ b/sentinel/__init__.py
+@@ -1 +1 @@
+-__version__ = "0.10.0-beta.1"
++__version__ = "0.10.0-beta.2"
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "bc-sentinel"
+-version = "0.10.0b1"
++version = "0.10.0b2"
