@@ -14,7 +14,18 @@ Il launcher esegue automaticamente la suite completa, le acceptance Beta1/Beta2/
 .\TEST-V010-BETA3-ALL-ADMIN.bat
 ```
 
-Il launcher esegue la suite completa, upgrade/repair e tutti i gate live, quindi tenta di avviare tramite Explorer un helper a integrità media per il vero standard-user -> UAC. L'helper fallisce chiuso se resta elevato.
+Il launcher esegue la suite completa, upgrade/repair e tutti i gate live, quindi avvia tramite il token filtrato dell'Explorer della sessione corrente un helper a integrità media per il vero standard-user -> UAC. L'helper fallisce chiuso se resta elevato.
 
 ## Unico gate escluso
 Il reboot è deliberatamente rinviato alla chiusura finale della roadmap. Nessun launcher Beta3 deve marcarlo PASS.
+
+## FIX1 — admin standard-user UAC launcher
+Su alcune build di Windows 11 `Shell.Application` può ereditare il token elevato. FIX1 usa invece il token filtrato dell'Explorer della sessione corrente; il child deve confermare `is_admin=false` prima di poter eseguire la broker acceptance.
+
+Dopo aver già completato la suite Beta3, per verificare soltanto questa correzione da PowerShell amministratore:
+
+```powershell
+.\RETEST-V010-BETA3-STANDARD-UAC-ADMIN.bat
+```
+
+Il launcher completo `TEST-V010-BETA3-ALL-ADMIN.bat` usa automaticamente lo stesso percorso corretto.
