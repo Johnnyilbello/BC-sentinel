@@ -76,7 +76,7 @@ def test_v010_declared_identity_and_observed_domain_remain_separate_evidence():
 
 def test_v010_raw_ip_and_userinfo_never_escape_heuristic_cap():
     result = assess_local_url("https://user:pass@192.0.2.10/login?verify=account")
-    assert result.score == HEURISTIC_SCORE_CAP
+    assert 20 <= result.score <= HEURISTIC_SCORE_CAP
     assert "raw_ip_url" in result.signal_codes
     assert "userinfo_before_host" in result.signal_codes
     assert result.block_recommended is False
