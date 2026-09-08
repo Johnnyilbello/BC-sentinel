@@ -121,7 +121,9 @@ _LURE_GROUPS: dict[str, tuple[str, ...]] = {
 
 _PERCENT_ESCAPE_RE = re.compile(r"%[0-9a-fA-F]{2}")
 _URL_TOKEN_RE = re.compile(r"[a-z0-9]+", re.I)
-_HOST_TOKEN_RE = re.compile(r"[a-z0-9]+", re.I)
+# Unicode-aware hostname tokenizer: preserve Cyrillic/Greek/Latin alphanumerics
+# before deriving the bounded confusable skeleton.
+_HOST_TOKEN_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 # Common cross-script glyphs used only to derive a bounded comparison skeleton.
 _CONFUSABLES = {
@@ -447,7 +449,6 @@ def url_deception_signals(
         ))
     except ValueError:
         pass
-
     if parsed.username is not None or parsed.password is not None:
         signals.append(WebHeuristicSignal(
             "url_deception", "userinfo_before_host", 15,
