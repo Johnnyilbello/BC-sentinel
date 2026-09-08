@@ -1,156 +1,186 @@
 --- a/sentinel/web_protection.py
 +++ b/sentinel/web_protection.py
-@@ -8,6 +8,7 @@
- from urllib.parse import urlsplit
- 
- from .database import Database
-+from .web_deception import HEURISTIC_PROFILE, domain_deception_signals, serialize_signals, url_deception_signals
-@@ -59,6 +60,9 @@
-     trusted_domain: bool = False
-     trust_scope: str = ""
+@@
+-from .web_deception import HEURISTIC_PROFILE, domain_deception_signals, serialize_signals, url_deception_signals
++from .web_deception import (
++    HEURISTIC_PROFILE,
++    HEURISTIC_SCORE_CAP,
++    assess_local_url,
++    domain_deception_signals,
++    serialize_signals,
++    stable_deception_fingerprint,
++    url_deception_signals,
++)
+@@
+ class WebAssessment:
+@@
      provenance: list[dict[str, object]] = field(default_factory=list)
-+    risk_families: list[str] = field(default_factory=list)
-+    signal_codes: list[str] = field(default_factory=list)
-+    heuristic_profile: str = HEURISTIC_PROFILE
-@@ -332,32 +336,29 @@
--        labels = normalized.split(".")
--        if any(label.startswith("xn--") for label in labels):
--            score += 18
--            reasons.append("Dominio IDN/Punycode: richiede verifica visiva")
--        if len(labels) >= 6:
--            score += 8
--            reasons.append("Numero elevato di sottodomini")
--        if len(normalized) >= 90:
--            score += 6
--            reasons.append("Nome dominio insolitamente lungo")
--        if sum(label.count("-") for label in labels) >= 5:
--            score += 5
--            reasons.append("Hostname con molte separazioni tramite trattini")
--
--        score = min(49, score)
+     risk_families: list[str] = field(default_factory=list)
+     signal_codes: list[str] = field(default_factory=list)
+     heuristic_profile: str = HEURISTIC_PROFILE
++    identity_context: dict[str, object] = field(default_factory=dict)
++    heuristic_fingerprint: str = ""
+@@
+-        signals = domain_deception_signals(original, normalized)
+-        score = min(49, sum(max(0, int(signal.weight)) for signal in signals))
 +        signals = domain_deception_signals(original, normalized)
-+        score = min(49, sum(max(0, int(signal.weight)) for signal in signals))
-+        reasons = list(dict.fromkeys(signal.reason for signal in signals))
-+        families = list(dict.fromkeys(signal.family for signal in signals))
-+        codes = list(dict.fromkeys(signal.code for signal in signals))
-@@ -371,7 +372,15 @@
--            provenance=[{"tier": "local_heuristics", "signals": list(dict.fromkeys(reasons))}],
-+            provenance=[{
-+                "tier": "local_heuristics",
-+                "profile": HEURISTIC_PROFILE,
-+                "signals": reasons,
-+                "signal_details": serialize_signals(signals),
-+            }],
-+            risk_families=families,
++        score = min(HEURISTIC_SCORE_CAP, sum(max(0, int(signal.weight)) for signal in signals))
+@@
+-            signal_codes=codes,
 +            signal_codes=codes,
-@@ -440,34 +449,63 @@
--            reasons = ["URL usa un indirizzo IP al posto di un dominio"]
--            score = 24
--            if parsed.username is not None or parsed.password is not None:
--                score += 15
--                reasons.append("URL contiene credenziali/userinfo prima dell'host")
--            score = min(49, score)
-+            signals = url_deception_signals(candidate, structural_score=0)
-+            score = min(49, sum(max(0, int(signal.weight)) for signal in signals))
-+            reasons = list(dict.fromkeys(signal.reason for signal in signals))
-+            families = list(dict.fromkeys(signal.family for signal in signals))
-+            codes = list(dict.fromkeys(signal.code for signal in signals))
-@@ -480,14 +518,34 @@
--        if parsed.username is not None or parsed.password is not None:
--            result.reasons.append("URL contiene credenziali/userinfo prima dell'host")
--            if not result.signed_ioc and not result.trusted_domain:
--                result.score = min(49, result.score + 15)
--                result.level = self._level(result.score)
--                result.status = "suspicious"
--                result.decision = "review"
--        result.reasons = list(dict.fromkeys(result.reasons))
++            heuristic_fingerprint=stable_deception_fingerprint(normalized, codes),
+@@
+-    def assess_url(self, value: str) -> WebAssessment:
++    def assess_url(
++        self,
++        value: str,
++        *,
++        declared_identity: str = "",
++        redirect_chain: list[str] | tuple[str, ...] | None = None,
++    ) -> WebAssessment:
+@@
+-            signals = url_deception_signals(candidate, structural_score=0)
+-            score = min(49, sum(max(0, int(signal.weight)) for signal in signals))
+-            reasons = list(dict.fromkeys(signal.reason for signal in signals))
+-            families = list(dict.fromkeys(signal.family for signal in signals))
+-            codes = list(dict.fromkeys(signal.code for signal in signals))
++            local = assess_local_url(
++                candidate,
++                declared_identity=declared_identity,
++                redirect_chain=redirect_chain,
++            )
++            score = local.score
++            reasons = [str(item.get("reason") or "") for item in local.signals if str(item.get("reason") or "")]
++            families = list(local.risk_families)
++            codes = list(local.signal_codes)
+@@
+-                provenance=[{
++                provenance=[{
+                     "tier": "local_heuristics",
+                     "profile": HEURISTIC_PROFILE,
+                     "signals": reasons,
+-                    "signal_details": serialize_signals(signals),
++                    "signal_details": list(local.signals),
+                 }],
+                 risk_families=families,
+                 signal_codes=codes,
++                identity_context=dict(local.identity_context),
++                heuristic_fingerprint=local.heuristic_fingerprint,
+             )
+@@
+-        if result.signed_ioc or result.trusted_domain:
++        local = assess_local_url(
++            candidate,
++            declared_identity=declared_identity,
++            redirect_chain=redirect_chain,
++        )
++        # Deterministic precedence is unchanged. We may expose identity context for
++        # explanation, but local heuristics cannot lower/replace a signed IOC verdict
++        # or broaden exact-domain trust.
++        result.identity_context = dict(local.identity_context)
++        result.heuristic_fingerprint = local.heuristic_fingerprint
 +        if result.signed_ioc or result.trusted_domain:
-+            return result
-+
-+        url_signals = url_deception_signals(candidate, structural_score=result.score)
-+        if url_signals:
-+            base_details: list[dict[str, object]] = []
-+            for item in result.provenance:
-+                if str(item.get("tier") or "") == "local_heuristics":
-+                    raw_details = item.get("signal_details")
-+                    if isinstance(raw_details, list):
-+                        base_details.extend(detail for detail in raw_details if isinstance(detail, dict))
-+            details = base_details + serialize_signals(url_signals)
-+            reasons = list(dict.fromkeys(result.reasons + [signal.reason for signal in url_signals]))
-+            result.score = min(49, result.score + sum(max(0, int(signal.weight)) for signal in url_signals))
-+            result.level = self._level(result.score)
-+            result.status = "suspicious" if result.score >= 20 else "unknown"
-+            result.decision = "review" if result.score >= 20 else "observe"
-+            result.block_recommended = False
-+            result.reasons = reasons
-+            result.risk_families = list(dict.fromkeys(result.risk_families + [signal.family for signal in url_signals]))
-+            result.signal_codes = list(dict.fromkeys(result.signal_codes + [signal.code for signal in url_signals]))
-+            result.provenance = [{
-+                "tier": "local_heuristics",
-+                "profile": HEURISTIC_PROFILE,
-+                "signals": reasons,
-+                "signal_details": details,
-+            }]
+             return result
+ 
+-        url_signals = url_deception_signals(candidate, structural_score=result.score)
+-        if url_signals:
+-            base_details: list[dict[str, object]] = []
+-            for item in result.provenance:
+-                if str(item.get("tier") or "") == "local_heuristics":
+-                    raw_details = item.get("signal_details")
+-                    if isinstance(raw_details, list):
+-                        base_details.extend(detail for detail in raw_details if isinstance(detail, dict))
+-            details = base_details + serialize_signals(url_signals)
+-            reasons = list(dict.fromkeys(result.reasons + [signal.reason for signal in url_signals]))
+-            result.score = min(49, result.score + sum(max(0, int(signal.weight)) for signal in url_signals))
++        if local.signals:
++            details = [detail for detail in local.signals if isinstance(detail, dict)]
++            reasons = list(dict.fromkeys(result.reasons + [str(detail.get("reason") or "") for detail in details if str(detail.get("reason") or "")]))
++            # local.score already includes domain + URL evidence. max() avoids
++            # double-counting the domain evidence produced by assess_domain().
++            result.score = min(HEURISTIC_SCORE_CAP, max(result.score, local.score))
+             result.level = self._level(result.score)
+             result.status = "suspicious" if result.score >= 20 else "unknown"
+             result.decision = "review" if result.score >= 20 else "observe"
+             result.block_recommended = False
+             result.reasons = reasons
+-            result.risk_families = list(dict.fromkeys(result.risk_families + [signal.family for signal in url_signals]))
+-            result.signal_codes = list(dict.fromkeys(result.signal_codes + [signal.code for signal in url_signals]))
++            result.risk_families = list(dict.fromkeys(result.risk_families + list(local.risk_families)))
++            result.signal_codes = list(dict.fromkeys(result.signal_codes + list(local.signal_codes)))
+             result.provenance = [{
+                 "tier": "local_heuristics",
+                 "profile": HEURISTIC_PROFILE,
+                 "signals": reasons,
+                 "signal_details": details,
+             }]
          return result
 --- a/sentinel/protection_service_core.py
 +++ b/sentinel/protection_service_core.py
-@@ -1387,6 +1387,12 @@
+@@
              "download_origin_never_overrides_file_verdict": True,
              "download_correlation": self.download_correlation.status() if hasattr(self, "download_correlation") else {},
              "dns_cache": self.dns_cache.status() if hasattr(self, "dns_cache") else {},
-+            "deception_profile": "v0.10.0-beta.1",
-+            "mixed_script_detection": True,
-+            "scam_lure_context": True,
-+            "lure_requires_structural_risk": True,
+             "deception_profile": "v0.10.0-beta.1",
+             "mixed_script_detection": True,
++            "lookalike_detection": True,
++            "typosquat_detection": True,
+             "scam_lure_context": True,
+             "lure_requires_structural_risk": True,
+-            "heuristic_score_cap": 49,
++            "redirect_chain_analysis": True,
++            "stable_heuristic_fingerprint": True,
 +            "heuristic_score_cap": 49,
-+            "heuristic_can_qualify_high": False,
+             "heuristic_can_qualify_high": False,
++            "heuristic_auto_block": False,
++            "cloud_dependency_required": False,
          }
 --- a/tools/windows_acceptance.py
 +++ b/tools/windows_acceptance.py
-@@ -48,6 +48,7 @@
- from tools.antispyware_remediation_acceptance import run as run_antispyware_remediation_acceptance
- from tools.advanced_antimalware_acceptance import run as run_advanced_antimalware_acceptance
- from tools.v090_release_candidate_acceptance import run as run_v090_release_candidate_acceptance
-+from tools.v010_web_deception_acceptance import run as run_v010_web_deception_acceptance
-@@ -1231,6 +1232,39 @@
-+def _v010_beta1_web_deception_probe() -> dict:
-+    result = run_v010_web_deception_acceptance(service_live=False)
-+    safety = result.get("safety") or {}
-+    ok = bool(result.get("passed"))
-+    return _check(
-+        "web-deception-v010-beta1-foundation",
-+        "pass" if ok else "fail",
-+        (
-+            f"profile={result.get('profile')}; cap={safety.get('heuristic_score_cap')}; "
-+            f"below_high={safety.get('all_heuristics_below_high')}; lure_safe={safety.get('safe_lure_words_unscored')}; "
-+            f"signed_precedence={safety.get('signed_ioc_precedence')}; mitm={safety.get('mitm_https')}"
-+        ) if ok else str(result),
-+        critical=True,
-+    )
-+
-+
-+def _live_v010_beta1_web_deception_probe() -> dict:
-+    result = run_v010_web_deception_acceptance(service_live=True)
-+    live = result.get("service") or {}
-+    status = live.get("status") if isinstance(live, dict) else {}
-+    ok = bool(result.get("passed"))
-+    return _check(
-+        "web-deception-v010-beta1-live",
-+        "pass" if ok else "fail",
-+        (
-+            f"profile={status.get('deception_profile')}; cap={status.get('heuristic_score_cap')}; "
-+            f"single_high={status.get('heuristic_can_qualify_high')}; auto_block={status.get('auto_block')}; "
+@@
+ from tools.v010_web_deception_acceptance import run as run_v010_web_deception_acceptance
+@@
+ def _v010_beta1_web_deception_probe() -> dict:
+     result = run_v010_web_deception_acceptance(service_live=False)
+     safety = result.get("safety") or {}
+     ok = bool(result.get("passed"))
+     return _check(
+-        "web-deception-v010-beta1-foundation",
++        "web-reputation-v010-beta1-foundation",
+         "pass" if ok else "fail",
+         (
+             f"profile={result.get('profile')}; cap={safety.get('heuristic_score_cap')}; "
+-            f"below_high={safety.get('all_heuristics_below_high')}; lure_safe={safety.get('safe_lure_words_unscored')}; "
+-            f"signed_precedence={safety.get('signed_ioc_precedence')}; mitm={safety.get('mitm_https')}"
++            f"below_high={safety.get('all_heuristics_below_high')}; typo={safety.get('typosquat_detected')}; "
++            f"identity={safety.get('declared_identity_separated')}; fp={safety.get('enterprise_false_positive_matrix_green')}; "
++            f"signed_precedence={safety.get('signed_ioc_precedence')}; signed_over_trust={safety.get('signed_ioc_overrides_exact_trust')}; "
++            f"mitm={safety.get('mitm_https')}"
+         ) if ok else str(result),
+         critical=True,
+     )
+@@
+ def _live_v010_beta1_web_deception_probe() -> dict:
+@@
+     return _check(
+-        "web-deception-v010-beta1-live",
++        "web-reputation-v010-beta1-live",
+         "pass" if ok else "fail",
+         (
+             f"profile={status.get('deception_profile')}; cap={status.get('heuristic_score_cap')}; "
+             f"single_high={status.get('heuristic_can_qualify_high')}; auto_block={status.get('auto_block')}; "
+-            f"mitm={status.get('mitm_https')}"
++            f"download_verdict_guard={status.get('download_origin_never_overrides_file_verdict')}; "
 +            f"mitm={status.get('mitm_https')}"
-+        ) if ok else str(result),
-+        critical=True,
-+    )
-@@ -1518,6 +1552,7 @@
-         checks.append(_v090_beta2_remediation_probe())
-         checks.append(_v090_beta3_advanced_antimalware_probe())
-         checks.append(_v090_rc1_release_probe())
-+        checks.append(_v010_beta1_web_deception_probe())
-@@ -1540,6 +1575,7 @@
-             checks.append(_live_v090_beta2_remediation_probe())
-             checks.append(_live_v090_beta3_advanced_antimalware_probe())
-             checks.append(_live_v090_rc1_release_probe())
-+            checks.append(_live_v010_beta1_web_deception_probe())
+         ) if ok else str(result),
+         critical=True,
+     )
+@@
+         checks.append(_v010_beta1_web_deception_probe())
+@@
+             checks.append(_live_v010_beta1_web_deception_probe())
+
+# IMPORTANT REBASE NOTE (2026-09-08):
+# This integration delta must be applied to the checkpoint-4 full source tree, not
+# to the older 491-test v0.10 archive. The v0.9 native elevated/live/UAC/
+# upgrade/repair/reboot gates remain deferred/open and MUST NOT be rewritten as PASS.

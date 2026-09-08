@@ -1,69 +1,74 @@
-# BC Sentinel v0.10.0-beta.1 — Native Windows Acceptance
+# Windows Acceptance — BC Sentinel v0.10.0-beta.1
 
-Run from an elevated PowerShell in the extracted `BC-Sentinel` directory.
+Release line: **Web Reputation & Phishing Detection Foundation**
 
-## 1. Environment and Python regression
+Status: **NOT YET RUN ON THE CHECKPOINT-4-REBASED COMPLETE TREE**.
 
-```powershell
-py -3.12 -m venv .venv
-& ".\.venv\Scripts\python.exe" -m pip install --upgrade pip
-& ".\.venv\Scripts\python.exe" -m pip install -r requirements.txt
-& ".\.venv\Scripts\python.exe" -m pytest -q
-```
+## Required v0.10 gates
 
-Expected candidate baseline: all tests pass on Windows (the development environment has 491 passed + 1 Windows-only skipped, so Windows should execute that additional test).
+### `web-reputation-v010-beta1-foundation`
 
-## 2. Dedicated v0.10 acceptance
+Must prove, using deterministic/local fixtures:
 
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.v010_web_deception_acceptance --output acceptance-v010-beta1-local.json
-```
+- APP version is `0.10.0-beta.1`;
+- heuristic score cap is 49;
+- safe lure words alone remain unscored;
+- benign IDN remains below the review threshold by itself;
+- mixed-script/confusable look-alike is detected but remains advisory;
+- edit-distance-one typosquatting is detected but remains advisory;
+- declared identity is kept separate from observed/canonical domain identity;
+- redirect look-alike context is detected without automatic containment;
+- enterprise false-positive matrix remains below review threshold;
+- signed malicious domain IOC remains deterministic;
+- exact-domain trust remains exact only;
+- active signed IOC overrides older exact-domain trust;
+- `mitm_https=false`;
+- heuristic auto-block/destructive action are false;
+- no mandatory cloud dependency.
 
-Require `"passed": true`.
+### `web-reputation-v010-beta1-live`
 
-## 3. Aggregate Windows foundation
+When native live validation is intentionally resumed, the running Protection Service must expose and prove:
 
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.windows_acceptance --output acceptance-v010-beta1-windows-foundation.json
-```
+- `deception_profile=v0.10.0-beta.1`;
+- `heuristic_score_cap=49`;
+- `heuristic_can_qualify_high=false`;
+- `auto_block=false`;
+- `mitm_https=false`;
+- look-alike/typosquat/scam-lure/redirect capabilities enabled as advisory context;
+- `download_origin_never_overrides_file_verdict=true`;
+- safe URL assessment stays below review threshold;
+- risky mixed-script fixture remains ≤49 and cannot request blocking by heuristic evidence alone.
 
-Require zero critical failures, including `web-deception-v010-beta1-foundation` and frozen v0.9 gates.
+## Frozen regression requirements reused from v0.7.2
 
-## 4. Native build
+The acceptance run must retain the already established Web Protection invariants:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\BUILD-SERVIZIO-PROTEZIONE.ps1
-```
+- PID-scoped DNS→IP→connection attribution;
+- exact known-browser process context;
+- shared-IP/CDN suppression for unsafe domain→address inference;
+- signed IOC precedence;
+- exact-domain trust only;
+- persistent `BCW-*` findings;
+- browser/domain/network→`BCD-*` download provenance;
+- independent file verdict;
+- downloaded-file execution evidence feeding incident correlation;
+- no origin-driven automatic quarantine.
 
-## 5. Upgrade from frozen v0.9 RC1
+## Deferred v0.9 native debt
 
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.update_acceptance --mode upgrade --output acceptance-v010-beta1-update-plan.json
-powershell -ExecutionPolicy Bypass -File .\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 -Mode Upgrade
-```
+The v0.9.0-rc.1 checkpoint-4 elevated current-build/live/UAC/upgrade/repair/reboot gates remain **OPEN / DEFERRED**. v0.10 acceptance must not mark them PASS merely because v0.10 development proceeds.
 
-## 6. Aggregate live-service acceptance
+## Full acceptance order
 
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.windows_acceptance --service-live --output acceptance-v010-beta1-windows-live.json
-```
+1. rebase v0.10 delta onto exact checkpoint-4 complete source tree;
+2. targeted v0.10 pytest modules;
+3. complete regression suite, preserving all 578 existing tests and adding the new tests;
+4. compileall;
+5. local v0.10 acceptance;
+6. fresh Protection Service and UAC Broker builds;
+7. artifact integrity;
+8. `web-reputation-v010-beta1-foundation`;
+9. `web-reputation-v010-beta1-live` only when running the live native service.
 
-Require zero critical failures, including `web-deception-v010-beta1-live`.
-
-## 7. Repair and hardening
-
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.update_acceptance --mode repair --output acceptance-v010-beta1-repair-plan.json
-powershell -ExecutionPolicy Bypass -File .\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 -Mode Repair
-& ".\.venv\Scripts\python.exe" -m tools.service_hardening_benchmark --output benchmark-v010-beta1-service-hardening.json
-```
-
-## 8. Post-reboot live validation
-
-After reboot:
-
-```powershell
-& ".\.venv\Scripts\python.exe" -m tools.windows_acceptance --service-live --output acceptance-v010-beta1-post-reboot.json
-```
-
-A later version must not weaken the frozen v0.9 gates or the v0.10 heuristic safety cap merely to obtain a green acceptance result.
+No archive/release checksum should be generated before the relevant gates pass.

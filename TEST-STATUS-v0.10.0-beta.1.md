@@ -1,26 +1,57 @@
-# BC Sentinel v0.10.0-beta.1 — Test Status
+# TEST STATUS — BC Sentinel v0.10.0-beta.1
 
-## Development baseline
+Status: **PENDING COMPLETE CHECKPOINT-4 REBASE / NOT ACCEPTED**.
 
-Local validation completed on the exact candidate tree on 2026-09-07:
+## Source-of-record baseline before v0.10 delta
 
-- Python suite: **491 passed, 1 Windows-only skipped**;
-- `compileall` across `app`, `sentinel`, `tools`, `tests`: **PASS**;
-- `tools.v010_web_deception_acceptance`: **PASS**;
-- frozen `tools.v090_release_candidate_acceptance`: **PASS**;
-- v0.10 aggregate Windows foundation probe logic: **PASS** (`profile=v0.10.0-beta.1`, heuristic cap 49, signed-IOC precedence true, HTTPS MITM false).
+Checkpoint 4 on 8 September 2026:
 
-## Web-deception safety matrix
+- complete regression: **578 passed, zero skipped**;
+- native Authenticode foundation sub-gate: PASS;
+- local v0.9 RC acceptance: PASS;
+- fresh Protection Service / UAC Broker builds: PASS;
+- isolated pipe self-test: PASS;
+- compileall: PASS;
+- artifact integrity: 169 files verified.
 
-- ordinary `login`/`invoice` vocabulary without structural risk: observe / no heuristic escalation;
-- nested redirect context alone: bounded low signal;
-- mixed-script/IDN + structural deception + lure context: detected but hard-capped at **49**;
-- raw-IP + lure context: review, no containment;
-- signed malicious domain IOC: deterministic **CRITICAL** precedence retained;
-- exact trusted domain: trusted only when no stronger signed IOC is active;
-- heuristic-only automatic blocking: **disabled**;
-- HTTPS MITM / injected root CA / local TLS proxy: **disabled**.
+These are pre-delta results and MUST NOT be presented as v0.10 test results.
 
-## Native gate still required
+## v0.10 tests added/expanded in the delta
 
-This is not yet a native-Windows freeze. Before Beta1 is accepted, run the full Python suite, dedicated v0.10 acceptance, aggregate Windows foundation, build/upgrade, live-service aggregate acceptance, repair/hardening and post-reboot validation on the Windows target.
+- `tests/test_v010_beta1_web_reputation_primitives.py`
+  - benign lure words;
+  - benign IDN;
+  - mixed-script/confusable identity;
+  - typosquatting;
+  - brand/subdomain abuse;
+  - declared identity vs observed host;
+  - raw-IP/userinfo cap;
+  - redirect look-alike/raw-IP context;
+  - enterprise false-positive matrix;
+  - deterministic `WDR-*` fingerprint;
+  - cap/profile invariants.
+
+- `tests/test_v010_beta1_web_deception_anti_scam.py`
+  - existing WebProtectionEngine integration;
+  - deterministic signed IOC precedence;
+  - exact-domain trust;
+  - signed IOC overriding older exact-domain trust;
+  - v0.10 service safety posture;
+  - download-origin/file-verdict separation;
+  - deferred v0.9 native-gate metadata;
+  - v0.10 Windows acceptance gate registration.
+
+## Required green gate
+
+After applying the delta to the exact checkpoint-4 full source tree:
+
+1. targeted v0.10 tests PASS;
+2. full regression PASS with **no loss of any of the existing 578 tests** and no skips introduced to hide failures;
+3. compileall PASS;
+4. `python -m tools.v010_web_deception_acceptance` PASS;
+5. fresh service/broker builds PASS;
+6. artifact integrity PASS;
+7. `web-reputation-v010-beta1-foundation` PASS;
+8. live gate only when native Windows validation is resumed.
+
+Until those results exist, no Beta1 acceptance count or release checksum is claimed.

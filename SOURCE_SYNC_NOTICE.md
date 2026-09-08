@@ -1,25 +1,17 @@
-# Source synchronization status
+# SOURCE SYNC NOTICE — v0.10.0-beta.1
 
-This branch advances BC Sentinel to `v0.10.0-beta.1 — Web Deception & Anti-Scam Foundation` while preserving `v0.9.0-rc.1` as the frozen native-Windows regression baseline.
+The connected `Johnnyilbello/BC-sentinel` repository is being used as a **security-relevant development delta**, not as proof that it contains the complete latest Windows source tree.
 
-## Candidate source delta
+## Current source-of-record boundary
 
-The v0.10 Beta1 delta adds explainable Web Protection deception/scam evidence, a dedicated acceptance harness, regression tests, aggregate Windows acceptance hooks and updated release/version documentation.
+The latest documented complete baseline is v0.9.0-rc.1 checkpoint 4 (8 September 2026): 578 tests passed, zero skipped, plus the updater/AuthentiCode hardening described by the checkpoint-3/checkpoint-4 audits.
 
-Core safety boundaries remain unchanged: no HTTPS MITM, no injected root CA/TLS proxy, no heuristic-only HIGH qualification or automatic blocking, and signed IOC precedence remains authoritative.
+The older generated `BC_Sentinel_v0_10_0_Beta1_Web_Deception_Anti_Scam_Foundation.zip` predates checkpoint 4. It must not be used as a replacement base because doing so could discard later security corrections.
 
-The connected GitHub integration tracks the navigable security-relevant delta and release evidence; it does not claim that every file from the complete candidate archive has been materialized individually in the repository.
+## Required rebase
 
-## Complete source-of-record
+Apply the v0.10.0-beta.1 files and `V010_BETA1_CORE_INTEGRATION.patch` to the **exact complete checkpoint-4 source tree**, resolve conflicts without removing checkpoint-3/4 fixes, then rerun targeted + complete regressions before producing a new archive.
 
-`BC_Sentinel_v0_10_0_Beta1_Web_Deception_Anti_Scam_Foundation.zip`
+The historical repository claims that v0.9 RC1 was frozen/native accepted with 482/491-test-era evidence are superseded. Current v0.9 native elevated/live/UAC/upgrade/repair/reboot gates remain deferred/open.
 
-SHA-256:
-
-`82e82ae4cfd7fe0b075d35fd4f7fe1e7b7d67e9707cb92b7cc6fe3675c34b8f0`
-
-The exact packaged archive was re-extracted and verified with **491 passed, 1 Windows-only skipped**, `compileall` PASS and the dedicated v0.10 acceptance PASS. The frozen v0.9 RC1 regression gate also passes.
-
-Generated caches, local virtual environments and local acceptance JSON outputs are not source-of-record.
-
-Native Windows acceptance is still required before this Beta1 milestone is frozen or merged as an accepted baseline.
+No new v0.10 release archive SHA-256 is valid until the rebased complete tree has passed its required gates and a fresh immutable artifact is built.

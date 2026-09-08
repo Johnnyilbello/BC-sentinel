@@ -1,28 +1,31 @@
-# BC Sentinel v0.10.0-beta.1 — Web Deception & Anti-Scam Report
+# BC Sentinel v0.10.0-beta.1 — Web Reputation & Phishing Detection Development Report
 
-## Goal
+## Baseline
 
-Mature the existing Web Protection engine without introducing HTTPS interception or heuristic auto-blocking. The new layer focuses on explainable deception context that can support operator review and later incident correlation.
+Development advances from the documented v0.9.0-rc.1 checkpoint-4 state: 578 tests passed / zero skipped before this v0.10 delta. The current branch must not claim that v0.9 is frozen; elevated/live/UAC/upgrade/repair/reboot gates remain deferred/open.
 
-## Evidence families
+## What changed
 
-- `identity_deception`: IDN/Punycode and mixed-script hostnames;
-- `host_structure`: raw-IP URLs, deep subdomain chains, long or hyphen-dense hostnames;
-- `url_deception`: userinfo/credentials before the host;
-- `url_obfuscation`: dense percent encoding;
-- `redirect_context`: nested HTTP/HTTPS destinations in query parameters;
-- `scam_lure`: account/credential, payment/refund and prize/investment wording only after independent structural risk exists.
+The previous Beta1 deception helper has been expanded into an offline web-reputation/phishing foundation:
 
-## Safety model
+- IDN/Punycode and mixed-script context;
+- common cross-script confusable comparison;
+- bounded edit-distance-one typosquat evidence;
+- protected-identity token outside canonical domains;
+- declared identity vs observed/canonical domain context;
+- raw-IP, userinfo, deep-subdomain and hostname-obfuscation evidence;
+- bounded redirect-chain evidence;
+- scam/fraud lure families gated by independent structural risk;
+- stable `WDR-*` fingerprint for deterministic deduplication support.
 
-- lure vocabulary alone scores zero;
-- all local heuristic evidence is capped at 49;
-- heuristic evidence cannot independently qualify HIGH;
-- heuristic evidence cannot create containment recommendations;
-- active signed IOC evidence retains deterministic malicious precedence;
-- exact local trust is not broadened to wildcard trust;
-- no HTTPS MITM or root-certificate installation.
+The existing WebProtectionEngine remains authoritative for signed IOC, exact-domain trust, PID-scoped DNS/network context, `BCW-*` findings and download/execution correlation. Local heuristics cannot replace deterministic evidence or request destructive response.
 
-## Regression model
+## Test expansion
 
-`tools.v010_web_deception_acceptance` invokes the frozen v0.9 RC1 acceptance first, then validates safe-lure cases, mixed-script deception, raw-IP lure context, nested redirects, signed IOC precedence and exact-domain trust precedence.
+The delta adds a pure deterministic test matrix plus full-tree integration requirements for signed IOC, trust, IOC-over-trust, service policy status, download verdict separation and v0.10 Windows acceptance gates.
+
+## Current result
+
+**Implementation delta prepared; Beta1 not accepted.** The complete checkpoint-4 source tree is not present in the connected GitHub repository, while the available older v0.10 archive predates checkpoint 4. A truthful post-delta full regression/build result therefore cannot be produced from this repository alone.
+
+The next acceptance evidence must come from applying this delta to the exact checkpoint-4 complete tree and running targeted tests + all 578 existing regressions + new tests, compileall, local acceptance, fresh builds and integrity checks.

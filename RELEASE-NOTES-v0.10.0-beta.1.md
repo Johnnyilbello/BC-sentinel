@@ -1,33 +1,38 @@
-# BC Sentinel v0.10.0-beta.1 — Web Deception & Anti-Scam Foundation
+# BC Sentinel v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation
 
-First milestone of the mature Web Protection / Anti-Phishing / Anti-Scam expansion.
+## Release line
+
+Development beta. **Not accepted / not production-ready.**
+
+This milestone advances from the v0.9.0-rc.1 checkpoint-4 baseline while leaving the still-open v0.9 elevated/live/UAC/upgrade/repair/reboot gates explicitly deferred.
 
 ## Added
 
-- explainable Web heuristic profile `v0.10.0-beta.1`;
-- mixed Latin/Cyrillic/Greek hostname detection as bounded identity-deception evidence;
-- IDN/Punycode, deep-subdomain, long-host and hyphen-density evidence consolidated into explicit signal codes/families;
-- raw-IP URL and userinfo-before-host evidence;
-- dense percent-encoding and nested HTTP/HTTPS redirect-parameter context;
-- credential/account, payment/refund and prize/investment lure context only when independent structural risk is already present;
-- `risk_families`, `signal_codes` and detailed heuristic provenance in `WebAssessment`;
-- Protection Service status flags for the v0.10 deception profile and heuristic safety cap;
-- dedicated `tools.v010_web_deception_acceptance` gate;
-- foundation/live Windows acceptance gates for the new profile.
+- Pure local/offline URL/domain reputation primitives.
+- IDN/Punycode and mixed-script evidence.
+- Bounded look-alike and edit-distance-one typosquatting detection.
+- Brand-token evidence outside canonical domains.
+- Explicit declared-identity / observed-domain / canonical-identity separation.
+- Raw-IP, userinfo, deep-subdomain and URL-obfuscation context.
+- Bounded redirect-chain analysis, including canonical-brand → look-alike and raw-IP transitions.
+- Conservative scam/fraud lure context that scores only when independent structural risk exists.
+- Stable `WDR-*` heuristic fingerprint for deterministic deduplication support.
+- Enterprise false-positive fixtures for Microsoft, Google, GitHub, CDN, Cloudflare, Salesforce and Atlassian endpoints.
+- Explicit signed-IOC-over-local-trust regression requirement.
+- v0.10 foundation/live gate names: `web-reputation-v010-beta1-foundation` and `web-reputation-v010-beta1-live`.
 
-## False-positive policy
+## Preserved security boundaries
 
-Words such as `login`, `invoice`, `refund`, `wallet`, `verify` and similar are not suspicious by themselves. They contribute only when structural/obfuscation risk has already been observed.
+- heuristic score cap: 49;
+- no heuristic-only HIGH/CRITICAL;
+- no heuristic auto-block;
+- no heuristic-driven quarantine/delete/process kill/persistence mutation;
+- no HTTPS MITM/root CA/TLS proxy/decryption;
+- no mandatory cloud/external runtime dependency;
+- signed IOC > exact-domain trust > local heuristics;
+- shared-IP/CDN protections remain mandatory;
+- download origin never overrides the independent file verdict.
 
-Heuristic-only outcomes are hard-capped at **49**, cannot qualify HIGH, cannot recommend containment and cannot trigger destructive response.
+## Validation status
 
-## Preserved precedence
-
-- active signed domain/network IOC evidence remains authoritative;
-- exact local domain trust remains bounded and revocable;
-- signed IOC evidence can override older local trust under the existing v0.7 policy;
-- no HTTPS MITM, injected root CA, local TLS proxy or traffic decryption.
-
-## Frozen regression baseline
-
-Every v0.10 acceptance run must retain the accepted v0.9.0-rc.1 regression gate. The target-Windows RC1 baseline was frozen with 482/482 Python tests and all native foundation/build/upgrade/live/repair/hardening/post-reboot gates passing.
+The latest documented pre-delta baseline is checkpoint 4: **578 passed, zero skipped**. The connected repository does not contain the complete checkpoint-4 source tree, and the older v0.10 archive predates those fixes. Therefore this Beta1 is **not accepted** until the delta is rebased onto the complete checkpoint-4 tree and targeted tests, full regressions, compileall, acceptance, fresh builds and integrity checks pass.
