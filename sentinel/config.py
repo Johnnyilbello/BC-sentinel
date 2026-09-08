@@ -5,7 +5,7 @@ import os
 import sys
 
 APP_NAME = "BC Sentinel"
-APP_VERSION = "0.10.0-beta.3"
+APP_VERSION = "0.10.0-rc.1"
 
 DATA_DIR = Path(os.getenv("LOCALAPPDATA", Path.home() / ".bc_sentinel")) / "BCSentinel"
 DB_PATH = DATA_DIR / "sentinel.db"
