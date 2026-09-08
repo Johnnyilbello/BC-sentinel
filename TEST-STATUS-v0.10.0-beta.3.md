@@ -37,3 +37,6 @@ Reboot persistence/recovery is intentionally deferred to the final roadmap accep
 - standard-user -> UAC from ADMIN launcher: harness failure because COM launch remained elevated (`is_admin=true`).
 
 FIX1 changes only this de-elevation harness. The product engine and already-green acceptance results are unchanged. The final UAC gate remains pending until `RETEST-V010-BETA3-STANDARD-UAC-ADMIN.bat` returns PASS.
+
+## Windows evidence / FIX2
+Il core Windows è già verde con 545/545 regression e 115/115 admin/security tests, build native, repair, live acceptance e hardening PASS. FIX1 ha fallito esclusivamente nel launcher di de-elevazione (`CreateProcessWithTokenW`). FIX2 usa un Scheduled Task temporaneo `Interactive + RunLevel Limited`; il gate resta pending finché il retest mirato non produce `STANDARD-USER -> UAC PASS`.
