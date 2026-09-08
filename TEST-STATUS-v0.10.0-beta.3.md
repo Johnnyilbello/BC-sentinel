@@ -24,3 +24,16 @@ Both supported master launchers include all gates except reboot:
 8. true standard-user -> UAC one-action broker acceptance.
 
 Reboot persistence/recovery is intentionally deferred to the final roadmap acceptance and must not be marked PASS before then.
+
+## Windows acceptance evidence — 2026-09-08 before UAC harness FIX1
+- full Windows pytest: **545 passed, 0 failed**;
+- admin targeted phase: **115 passed, 0 failed**;
+- Protection Service + UAC Broker fresh builds: PASS;
+- same-version upgrade attempt: correctly rejected as `same_version_upgrade_rejected` (anti-downgrade invariant);
+- real same-version repair: PASS;
+- Beta1/Beta2/Beta3 service-live acceptance: PASS;
+- Windows native acceptance: PASS with zero critical failures;
+- service hardening benchmark: PASS;
+- standard-user -> UAC from ADMIN launcher: harness failure because COM launch remained elevated (`is_admin=true`).
+
+FIX1 changes only this de-elevation harness. The product engine and already-green acceptance results are unchanged. The final UAC gate remains pending until `RETEST-V010-BETA3-STANDARD-UAC-ADMIN.bat` returns PASS.
