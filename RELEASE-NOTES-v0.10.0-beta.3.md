@@ -38,3 +38,6 @@ From Beta3 onward, both one-command launchers include upgrade/repair and the sta
 - compileall: PASS.
 
 Windows upgrade/repair, service-live and standard-user -> UAC gates remain to be proven by the packaged one-command launchers on the Windows host. Reboot remains deferred by roadmap decision.
+
+## Harness FIX1
+The ADMIN one-command launcher now starts its standard-user helper from the filtered Explorer token using `CreateProcessWithTokenW`, instead of relying on `Shell.Application`. The helper independently requires `is_admin=false` before the UAC broker test can pass. This is a test-harness correction only; no protection or response policy was relaxed.
