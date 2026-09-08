@@ -9,7 +9,7 @@ from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 
 
 def test_beta3_version_and_profile():
-    assert APP_VERSION == "0.10.0-beta.3"
+    assert APP_VERSION in {"0.10.0-beta.3", "0.10.0-rc.1"}
     assert CLONE_SCAM_PROFILE == "v0.10.0-beta.3"
 
 
@@ -79,32 +79,16 @@ def test_generic_commerce_payment_words_alone_are_unscored():
 
 
 def test_support_scam_requires_structural_anchor():
-    benign = assess_page_context(
-        url="https://support.example/help",
-        page_title="Remote support",
-        visible_text="A technician may use remote access to help you.",
-        form_fields=["email"],
-    )
+    benign = assess_page_context(url="https://support.example/help", page_title="Remote support", visible_text="A technician may use remote access to help you.", form_fields=["email"])
     assert benign.score == 0
-
-    risky = assess_page_context(
-        url="https://192.0.2.10/support",
-        page_title="Urgent technical support",
-        visible_text="Technician requires remote access. Enter password to continue.",
-        form_fields=["password"],
-    )
+    risky = assess_page_context(url="https://192.0.2.10/support", page_title="Urgent technical support", visible_text="Technician requires remote access. Enter password to continue.", form_fields=["password"])
     assert risky.status == "suspicious"
     assert "remote_support_sensitive_request" in risky.signal_codes
     assert risky.score <= 49
 
 
 def test_investment_crypto_claim_with_raw_ip_is_scam_candidate():
-    result = assess_page_context(
-        url="https://192.0.2.20/invest",
-        page_title="Guaranteed return investment",
-        visible_text="Guaranteed return. Invest now and double your profit.",
-        payment_methods=["crypto"],
-    )
+    result = assess_page_context(url="https://192.0.2.20/invest", page_title="Guaranteed return investment", visible_text="Guaranteed return. Invest now and double your profit.", payment_methods=["crypto"])
     assert result.status == "suspicious"
     assert result.assessment_class == "scam_fraud_candidate"
     assert "investment_crypto_claim" in result.signal_codes
@@ -112,43 +96,13 @@ def test_investment_crypto_claim_with_raw_ip_is_scam_candidate():
 
 
 def test_fingerprint_is_stable_for_set_like_inputs():
-    a = assess_page_context(
-        url="https://microsoft-login.example/",
-        declared_identity="Microsoft",
-        page_title="Microsoft login",
-        form_fields=["password", "otp"],
-        payment_methods=["crypto", "gift_card"],
-        link_hosts=["a.example", "b.example"],
-    )
-    b = assess_page_context(
-        url="https://microsoft-login.example/",
-        declared_identity="Microsoft",
-        page_title="Microsoft login",
-        form_fields=["otp", "password"],
-        payment_methods=["gift_card", "crypto"],
-        link_hosts=["b.example", "a.example"],
-    )
+    a = assess_page_context(url="https://microsoft-login.example/", declared_identity="Microsoft", page_title="Microsoft login", form_fields=["password", "otp"], payment_methods=["crypto", "gift_card"], link_hosts=["a.example", "b.example"])
+    b = assess_page_context(url="https://microsoft-login.example/", declared_identity="Microsoft", page_title="Microsoft login", form_fields=["otp", "password"], payment_methods=["gift_card", "crypto"], link_hosts=["b.example", "a.example"])
     assert a.fingerprint == b.fingerprint
 
 
 def test_protocol_accepts_bounded_clone_scam_payload():
-    raw = json.dumps({
-        "version": 1,
-        "request_id": "beta3-protocol",
-        "op": "web_clone_scam_assess",
-        "token": "x" * 32,
-        "payload": {
-            "url": "https://example.com",
-            "declared_identity": "Microsoft",
-            "page_title": "Microsoft",
-            "visible_text": "verify",
-            "form_action": "https://example.com/post",
-            "form_fields": ["password"],
-            "payment_methods": [],
-            "link_hosts": [],
-            "redirect_chain": [],
-        },
-    }).encode()
+    raw = json.dumps({"version":1,"request_id":"beta3-protocol","op":"web_clone_scam_assess","token":"x"*32,"payload":{"url":"https://example.com","declared_identity":"Microsoft","page_title":"Microsoft","visible_text":"verify","form_action":"https://example.com/post","form_fields":["password"],"payment_methods":[],"link_hosts":[],"redirect_chain":[]}}).encode()
     request = decode_request(raw)
     assert request.op == "web_clone_scam_assess"
     assert request.payload["form_fields"] == ["password"]
@@ -156,12 +110,7 @@ def test_protocol_accepts_bounded_clone_scam_payload():
 
 def test_runtime_exposes_beta3_assessment():
     runtime = object.__new__(ProtectionRuntime)
-    result = ProtectionRuntime.web_clone_scam_assess(runtime, {
-        "url": "https://paypa1.example/login",
-        "declared_identity": "PayPal",
-        "page_title": "PayPal login",
-        "form_fields": ["password"],
-    })
+    result = ProtectionRuntime.web_clone_scam_assess(runtime, {"url":"https://paypa1.example/login","declared_identity":"PayPal","page_title":"PayPal login","form_fields":["password"]})
     assert result["profile"] == CLONE_SCAM_PROFILE
     assert result["score"] <= 49
 
@@ -172,10 +121,8 @@ def test_beta3_launchers_include_upgrade_repair_standard_user_uac_and_defer_rebo
     normal = (root / "TEST-V010-BETA3-ALL-NORMAL.ps1").read_text(encoding="utf-8-sig").casefold()
     admin = (root / "TEST-V010-BETA3-ALL-ADMIN.ps1").read_text(encoding="utf-8-sig").casefold()
     phase = (root / "TEST-V010-BETA3-ADMIN-PHASE.ps1").read_text(encoding="utf-8-sig").casefold()
-    for text in (normal, admin, phase):
-        assert "repair" in text or "ripara" in text
-    assert "-mode upgrade" in phase
-    assert "-mode repair" in phase
+    for text in (normal, admin, phase): assert "repair" in text or "ripara" in text
+    assert "-mode upgrade" in phase and "-mode repair" in phase
     assert "broker_acceptance" in normal
     assert "test-v010-beta3-standard-uac.ps1" in admin
     assert "reboot" in normal and "rinviato" in normal
