@@ -6,6 +6,7 @@ from pathlib import Path
 
 from sentinel.config import APP_VERSION
 from sentinel.protection_client import ProtectionServiceClient
+from sentinel.service_update import version_key
 from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 
 
@@ -18,7 +19,7 @@ def run(*, service_live: bool = False) -> dict:
     investment = assess_page_context(url="https://192.0.2.20/invest", page_title="Guaranteed return investment", visible_text="Double your profit with guaranteed return", payment_methods=["crypto"])
     result={"product":"BC Sentinel","version":APP_VERSION,"milestone":"v0.10.0-beta.3","profile":CLONE_SCAM_PROFILE,"service_live_requested":bool(service_live),"matrix":{"canonical":canonical.to_dict(),"clone":clone.to_dict(),"clone_scam":scam.to_dict(),"benign_commerce":benign_commerce.to_dict(),"support_scam":support.to_dict(),"investment_scam":investment.to_dict()},"safety":{"heuristic_score_cap":49,"canonical_brand_green":canonical.score==0,"generic_commerce_unscored":benign_commerce.score==0,"clone_detected":clone.status=="suspicious" and "credential_form_on_noncanonical_brand" in clone.signal_codes,"cross_origin_sensitive_form_detected":"sensitive_form_cross_origin" in clone.signal_codes,"scam_requires_structural_anchor":True,"clone_and_scam_detected":scam.assessment_class=="clone_and_scam_candidate","support_scam_detected":"remote_support_sensitive_request" in support.signal_codes,"investment_scam_detected":"investment_crypto_claim" in investment.signal_codes,"heuristic_auto_block":False,"mitm_https":False,"cloud_dependency_required":False},"local_passed":False,"service":None,"service_live_passed":None,"passed":False}
     safety=result["safety"]
-    result["local_passed"]=bool(APP_VERSION in {"0.10.0-beta.3","0.10.0-rc.1"} and all((safety["canonical_brand_green"],safety["generic_commerce_unscored"],safety["clone_detected"],safety["cross_origin_sensitive_form_detected"],safety["clone_and_scam_detected"],safety["support_scam_detected"],safety["investment_scam_detected"],clone.score<=49,scam.score<=49,not clone.block_recommended,not scam.block_recommended)))
+    result["local_passed"]=bool(version_key(APP_VERSION) >= version_key("0.10.0-beta.3") and all((safety["canonical_brand_green"],safety["generic_commerce_unscored"],safety["clone_detected"],safety["cross_origin_sensitive_form_detected"],safety["clone_and_scam_detected"],safety["support_scam_detected"],safety["investment_scam_detected"],clone.score<=49,scam.score<=49,not clone.block_recommended,not scam.block_recommended)))
     if service_live:
         client=ProtectionServiceClient(timeout=3.0)
         status=client.request("web_status")
