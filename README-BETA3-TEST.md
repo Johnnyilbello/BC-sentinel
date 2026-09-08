@@ -14,7 +14,7 @@ Il launcher esegue automaticamente la suite completa, le acceptance Beta1/Beta2/
 .\TEST-V010-BETA3-ALL-ADMIN.bat
 ```
 
-Il launcher esegue la suite completa, upgrade/repair e tutti i gate live, quindi avvia tramite il token filtrato dell'Explorer della sessione corrente un helper a integrità media per il vero standard-user -> UAC. L'helper fallisce chiuso se resta elevato.
+Il launcher esegue la suite completa, upgrade/repair e tutti i gate live, quindi crea un task temporaneo della sessione interattiva con `RunLevel Limited` per il vero standard-user -> UAC. L'helper fallisce chiuso se resta elevato e il task viene eliminato automaticamente.
 
 ## Unico gate escluso
 Il reboot è deliberatamente rinviato alla chiusura finale della roadmap. Nessun launcher Beta3 deve marcarlo PASS.
@@ -29,3 +29,6 @@ Dopo aver già completato la suite Beta3, per verificare soltanto questa correzi
 ```
 
 Il launcher completo `TEST-V010-BETA3-ALL-ADMIN.bat` usa automaticamente lo stesso percorso corretto.
+
+## FIX2 harness UAC
+Il launcher ADMIN non usa più `CreateProcessWithTokenW`: Windows Task Scheduler crea il processo della sessione interattiva con `RunLevel Limited`. Il retest mirato ora prepara automaticamente `.venv` se assente.
