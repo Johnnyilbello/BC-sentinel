@@ -6,6 +6,7 @@ import time
 from sentinel.config import APP_VERSION
 from sentinel.database import Database
 from sentinel.protection_service_core import ProtectionRuntime
+from sentinel.service_update import version_key
 from sentinel.web_deception import HEURISTIC_PROFILE, HEURISTIC_SCORE_CAP, assess_local_url
 from sentinel.web_protection import DNSCorrelationCache, WebProtectionEngine
 
@@ -170,9 +171,10 @@ def test_v010_beta1_acceptance_records_deferred_v090_native_gates():
 
 
 def test_v010_beta1_version_and_release_artifacts():
-    assert APP_VERSION == "0.10.0-beta.1"
-    assert (ROOT / "sentinel" / "__init__.py").read_text(encoding="utf-8").strip() == '__version__ = "0.10.0-beta.1"'
-    assert 'version = "0.10.0b1"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert version_key(APP_VERSION) >= version_key("0.10.0-beta.1")
+    assert (ROOT / "sentinel" / "__init__.py").read_text(encoding="utf-8").strip() == f'__version__ = "{APP_VERSION}"'
+    expected_project_version = APP_VERSION.replace("-alpha.", "a").replace("-beta.", "b").replace("-rc.", "rc")
+    assert f'version = "{expected_project_version}"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert (ROOT / "RELEASE-NOTES-v0.10.0-beta.1.md").is_file()
     assert (ROOT / "SECURITY-AUDIT-2026-09-08-V010-BETA1-CHECKPOINT1.md").is_file()
 
