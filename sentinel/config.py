@@ -5,13 +5,14 @@ import os
 import sys
 
 APP_NAME = "BC Sentinel"
-APP_VERSION = "0.10.0-rc.1"
+APP_VERSION = "0.11.0-beta.1"
 
 DATA_DIR = Path(os.getenv("LOCALAPPDATA", Path.home() / ".bc_sentinel")) / "BCSentinel"
 DB_PATH = DATA_DIR / "sentinel.db"
 QUARANTINE_DIR = DATA_DIR / "quarantine"
 KEY_PATH = DATA_DIR / "quarantine.key"
 PROGRAM_DATA_DIR = Path(os.getenv("PROGRAMDATA", str(Path.home() / ".bc_sentinel_programdata"))) / "BCSentinel"
+EDR_DB_PATH = PROGRAM_DATA_DIR / "EDR" / "edr-telemetry.sqlite3"
 
 if getattr(sys, "frozen", False):
     APP_ROOT = Path(
@@ -43,6 +44,10 @@ class Settings:
     ransomware_startup_grace_seconds: int = 30
     etw_enabled: bool = True
     telemetry_service_enabled: bool = True
+    edr_enabled: bool = True
+    edr_retention_days: int = 7
+    edr_max_events: int = 100000
+    edr_correlation_window_seconds: int = 90
     notifications_enabled: bool = True
     close_to_tray: bool = True
     animations_enabled: bool = True
