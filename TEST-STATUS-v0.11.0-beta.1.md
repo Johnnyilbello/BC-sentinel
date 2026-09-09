@@ -1,129 +1,120 @@
 # TEST STATUS — BC Sentinel v0.11.0-beta.1
 
 ## Current state
-**WINDOWS FUNCTIONAL ACCEPTANCE PASS / SERVICE PERFORMANCE FIX IMPLEMENTED / THREAT-PACKAGE WINDOWS PUBLISH FIX IMPLEMENTED / NATIVE RETEST REQUIRED**
+**LOCAL/FUNCTIONAL WINDOWS SUITE GREEN / ELEVATED PHASE DIAGNOSTICS IMPROVED / FINAL NATIVE+PERFORMANCE RETEST REQUIRED**
 
-### Functional Windows evidence — 2026-09-09
-A complete one-command Windows run previously reached the final functional PASS marker before the service-performance defect was promoted to a hard gate.
+### Latest Windows evidence — 2026-09-09
+The newest one-command Windows run confirms the previously failing local regression path is now green:
 
-Observed evidence:
-- **563 pytest tests passed, 0 failed**;
-- v0.11 EDR local and post-admin acceptance: PASS;
-- telemetry persistence, process tree, query surface, deduplication, flood guard and restart persistence: PASS;
-- HIGH multi-signal incident with deterministic + execution evidence: PASS;
-- v0.10 Beta1/Beta2/Beta3/RC1 regressions: PASS;
-- Protection Service + UAC Broker PyInstaller builds: PASS;
-- named-pipe self-test: PASS;
-- automatic UAC/admin orchestration: PASS;
-- upgrade/same-version anti-downgrade + real repair path: PASS;
-- standard-user direct gate correctly required elevation;
-- broker issued/consumed/completed: 1/1/1, rejected: 0;
-- service health: `HEALTHY`;
-- hardening: `sealed`;
-- authenticated integrity manifest, HMAC config, ACL and SCM checks: PASS;
-- reboot remains explicitly deferred to final-roadmap validation.
+- dependency preparation: PASS;
+- legacy regression compatibility: canonical;
+- threat-package Windows compatibility migration: applied;
+- **570 pytest passed, 0 failed**;
+- v0.11 EDR local acceptance: PASS;
+- telemetry persistence: PASS;
+- process tree: PASS;
+- download/execution/network/persistence correlation: PASS;
+- HIGH multi-signal incident: PASS;
+- deterministic evidence: PASS;
+- incident persistence across restart: PASS;
+- stable event deduplication: PASS;
+- flood guard: PASS;
+- query surface: PASS;
+- EDR throughput floor: PASS;
+- v0.10 Beta1/Beta2/Beta3/RC1 local regressions: PASS;
+- Protection Service + UAC Broker + firewall build: PASS.
 
-## Performance defect discovered after the functional PASS
-Generated Windows benchmark `benchmark-v011-beta1-service.json` reported:
+The run then entered the automatic UAC administrator phase but returned only:
 
-- service PID: `5548`;
-- RSS idle: `194,719,744` bytes;
-- **idle CPU: 116.55% of one core** over 5 seconds;
+```text
+BC SENTINEL v0.11.0-beta.1 - ALL GATES FAIL
+Automated administrator phase failed with exit code 1
+```
+
+The parent console did not expose the failing elevated gate, so this run does **not** provide valid new evidence for upgrade/repair/live Windows acceptance or the enforced service-performance benchmark.
+
+## Elevated-phase diagnostics fix implemented
+The branch now persists an administrator-phase result to:
+
+```text
+acceptance-v011-beta1-admin-phase-result.json
+```
+
+The elevated script records:
+
+- `status` (`PASS`/`FAIL`);
+- exact `stage`;
+- failure/success `message`;
+- timestamp.
+
+Tracked stages include:
+
+- `targeted_tests`;
+- `build_preflight`;
+- `service_install_preflight`;
+- `upgrade`;
+- `repair`;
+- `live_regressions`;
+- `edr_admin_acceptance`;
+- `windows_acceptance`;
+- `service_performance`;
+- `completed`.
+
+The normal launcher removes stale admin/benchmark artifacts before UAC, reads the new result after the elevated process exits, prints the exact stage/message in the parent console, and refuses to accept a missing/unreadable admin result.
+
+## Previously discovered performance blocker
+A prior Windows benchmark reported:
+
+- idle CPU: **116.55% of one core** over 5 seconds;
 - IPC: `200/200`, `31.1 req/s`;
-- benign event storm: `500` files / `1500` operations, `154.68%` of one core;
+- benign event storm: `154.68%` of one core;
 - hardening: healthy/sealed.
 
-The old benchmark returned `passed=true` because it checked only IPC completion and hardening posture. That result is now considered a **false performance PASS**. v0.11.0-beta.1 is not frozen or merge-ready with 116.55% idle CPU.
+That legacy `passed=true` was a false performance PASS because CPU was not part of the pass criteria.
 
-## Performance fix implemented
-The branch now adds:
+The current benchmark is fail-closed and requires:
 
-1. **Kernel-File ETW early filtering**
-   - keeps path-bearing events used by the existing correlation pipeline: Create (12), DeletePath (26), RenamePath (27), CreateNewFile (30);
-   - avoids fully decoding high-volume Read/Write/Cleanup/QueryInfo/FSCTL families that do not provide a usable path to the current monitor.
+```text
+idle <= 25.00% of one core
+IPC >= 10.00 requests/s with all requests successful
+storm <= 250.00% of one core
+hardening healthy
+```
 
-2. **Bounded microburst deduplication**
-   - identical PID/path/task/event-id file events inside a 350 ms window are suppressed;
-   - cache is bounded and time-pruned.
+The normal launcher also prints the current idle/IPC/storm measurements and cannot reach `ALL GATES PASS` if the benchmark fails.
 
-3. **Fail-closed service performance benchmark**
-   - idle CPU must be `<= 25%` of one core;
-   - IPC throughput must be `>= 10 req/s` and all requests must succeed;
-   - benign event-storm CPU must be `<= 250%` of one core;
-   - hardening must remain healthy;
-   - result includes checks, thresholds and failure reasons.
+## Performance and Windows compatibility fixes already implemented
+- Kernel-File ETW early filtering to path-bearing event families currently usable by the correlation pipeline;
+- bounded 350 ms PID/path/task/event microburst deduplication;
+- fail-closed service-performance benchmark with explicit thresholds and failure reasons;
+- regression encoding the old 116.55% idle result as a required failure;
+- bounded atomic-file replace retries for transient Windows WinError 5/32/33 during threat-package JSON publication;
+- fail-closed behavior after retry exhaustion;
+- regression coverage for transient/persistent/unrelated replace failures.
 
-4. **One-command visibility**
-   - the normal launcher deletes any stale service benchmark before UAC;
-   - after the elevated phase it reads and prints the current idle/IPC/storm metrics itself;
-   - `ALL GATES PASS` is impossible when the enforced service-performance benchmark fails.
-
-5. **Regression coverage**
-   - the exact observed `116.55%` idle case is encoded as a required benchmark failure;
-   - ETW provider filtering and duplicate-window behavior are covered by deterministic tests.
-
-### Local verification of the performance patch
-On the complete RC1 source tree used for development:
-
-- targeted ETW/Web/service-performance suite: **47 passed**;
-- complete local suite after patch: **551 passed, 2 Windows-only skipped**;
-- `compileall`: PASS.
-
-These local results validate the patch structure but do not prove Windows CPU reduction.
-
-## Latest Windows retest blocker — threat-package atomic publish
-The next Windows run progressed through dependency preparation and reached:
-
-- **566 pytest passed**;
-- **1 pytest failed**;
-- failure: `test_v010_beta1_acceptance_records_deferred_v090_native_gates`;
-- root exception: `PermissionError [WinError 5]` while atomically replacing `active-behavior.json.tmp -> active-behavior.json` during the v0.8 last-known-good threat-package rollback fixture.
-
-The failure occurred before the admin/performance phase, so it does not provide new CPU evidence and does not invalidate the already-green EDR logic.
-
-## Threat-package Windows publish fix implemented
-The v0.11 overlay now applies a guarded, fail-closed compatibility migration to the complete FULL baseline before pytest:
-
-- managed JSON publication uses a bounded atomic-file replace retry helper;
-- retries are limited to Windows transient access/share/lock conditions `WinError 5`, `32`, `33`;
-- unrelated errors are raised immediately;
-- after the bounded retry budget is exhausted the operation fails closed with `ThreatPackageError`;
-- YARA directory promotion semantics are left unchanged;
-- state, activation journal and active behavior JSON publication use the hardened helper;
-- the source-shape migration verifies exact anchors and refuses unexpected source variants.
-
-Regression coverage added:
-- transient WinError 5 succeeds after bounded retries;
-- persistent WinError 32 fails closed;
-- unrelated OSError is not retried.
-
-Fresh RC1 reproduction of this compatibility fix:
-- migration applied successfully;
-- threat-package + v0.8 signed-intelligence + v0.10 Web regression subset: **27 passed**.
-
-## Required native retest before Beta1 acceptance
-Synchronize the latest `v0.11.0-beta.1` branch over the complete FULL tree and run only the official one-command launcher:
+## Required final Beta1 retest
+Synchronize latest `v0.11.0-beta.1` over the complete FULL Windows tree and run only the official launcher:
 
 ```powershell
 .\TEST-V011-BETA1-ALL.bat
 ```
 
-Beta1 may be accepted only if both the new threat-package regression and the enforced performance outcome pass:
+Required final parent-console evidence:
 
 ```text
 full pytest = PASS
-threat-package atomic publish regression = PASS
-idle <= 25.00% of one core
-IPC >= 10.00 requests/s with all requests successful
-storm <= 250.00% of one core
-service benchmark passed = true
+ADMIN PHASE RESULT: status=PASS | stage=completed | message=Administrator phase completed successfully
+SERVICE PERFORMANCE: idle<=25% one-core | IPC>=10/s | storm<=250% one-core | passed=True
+REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION
 BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS
 ```
 
-If either the atomic publish or idle CPU remains unhealthy, the launcher must fail before v0.11.0-beta.2.
+If the elevated process fails, the parent console must now show the exact failing stage and message instead of only `exit code 1`.
+
+v0.11.0-beta.1 remains **not frozen / not merge-ready** until this final native retest is green.
 
 ### Deferred
 `REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION`
 
 ## GitHub caveat
-The connected repository's v0.10 RC1 branch is still smaller than the FULL Windows package used for native acceptance. The v0.11 branch is an overlay/delta until that baseline is synchronized; the launcher intentionally fails preflight when required FULL files are absent.
+The connected repository's v0.10 RC1 branch is smaller than the complete FULL Windows package used for native acceptance. The v0.11 branch remains an overlay/delta until that baseline is synchronized; the launcher intentionally fails preflight when required FULL files are absent.
