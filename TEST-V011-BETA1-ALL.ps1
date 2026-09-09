@@ -39,6 +39,9 @@ try {
     & $Py -m tools.v011_threat_package_windows_compat
     if ($LASTEXITCODE -ne 0) { throw 'Threat-package Windows compatibility migration failed' }
 
+    & $Py -m tools.v011_service_update_windows_compat
+    if ($LASTEXITCODE -ne 0) { throw 'Service-update Windows compatibility migration failed' }
+
     $Temp = Join-Path $env:TEMP 'bc-sentinel-v011-beta1-all'
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
     & $Py -m pytest -q --basetemp $Temp
