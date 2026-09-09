@@ -10,6 +10,7 @@ EXPECTED_DIRECT_REPLACES = 9
 DNS_ETW_START_ATTEMPTS = 4
 DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
 ETW_DNS_SESSION_MODE = "dedicated"
+ETW_SESSION_MODE = "split_process_file_dns"
 
 
 def apply_compat_patch(path: Path = TARGET) -> dict[str, object]:
@@ -78,22 +79,32 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
     text = path.read_text(encoding="utf-8")
     required = (
         'ETW_DNS_SESSION_MODE = "dedicated"',
+        'ETW_SESSION_MODE = "split_process_file_dns"',
+        "self._file_capture = None",
         "self._dns_capture = None",
         "for dns_attempt in range(DNS_ETW_START_ATTEMPTS):",
+        'etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER))',
+        'etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER))',
         'etw.ProviderInfo("Microsoft-Windows-DNS-Client", etw.GUID(DNS_PROVIDER))',
+        "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)",
         "DNS ETW dedicated session unavailable after bounded retries:",
+        "self._stop_capture(self._file_capture)",
+        "self._stop_capture(self._dns_capture)",
     )
     missing = [marker for marker in required if marker not in text]
     if missing:
         raise RuntimeError(
-            "Dedicated DNS ETW architecture missing; refusing to run with a mixed/legacy monitor: "
+            "Split Process/File/DNS ETW architecture missing or incomplete: "
             + "; ".join(missing)
         )
-    if text.count("self._dns_capture.stop()") < 1:
-        raise RuntimeError("Dedicated DNS ETW session lacks bounded cleanup")
+    if "providers_event_id_filters=" in text:
+        raise RuntimeError(
+            "Unsupported providers_event_id_filters remains in ETW runtime; pywintrace 0.2.0 compatibility not satisfied"
+        )
     return {
         "path": str(path),
-        "mode": ETW_DNS_SESSION_MODE,
+        "mode": ETW_SESSION_MODE,
+        "dns_mode": ETW_DNS_SESSION_MODE,
         "attempts": DNS_ETW_START_ATTEMPTS,
         "retry_delay_seconds": DNS_ETW_START_RETRY_DELAY_SECONDS,
     }
@@ -107,8 +118,9 @@ def main() -> int:
     else:
         print("v0.11 service-update Windows compatibility: already canonical")
     print(
-        "v0.11 ETW Windows compatibility: dedicated DNS ETW session verified "
-        f"({etw_result['attempts']} bounded attempts)"
+        "v0.11 ETW Windows compatibility: split Process/File/DNS sessions verified; "
+        "pywintrace 0.2.0-safe File event filter active; "
+        f"DNS retry budget={etw_result['attempts']}"
     )
     return 0
 
