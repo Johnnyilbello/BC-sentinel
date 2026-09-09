@@ -15,6 +15,7 @@
 - deterministic unit tests;
 - explicit SQLite connection lifecycle with commit/rollback + guaranteed close;
 - regression tests for closed SQLite handles/removable DB files;
+- deterministic acceptance cleanup on Windows;
 - one-command Normal → automatic UAC/Admin → standard-user UAC orchestration.
 
 ### Windows evidence — 2026-09-09
@@ -24,7 +25,7 @@ The latest complete Windows run reached:
 - EDR acceptance then stopped during temporary-directory cleanup with Windows `WinError 32` because `edr.sqlite3` remained locked;
 - this was isolated to SQLite connection lifecycle/cleanup, not detection logic or the full regression suite.
 
-The source fix now makes every `EdrTelemetryStore` connection explicitly close after commit/rollback, and the acceptance harness performs deterministic cleanup. A focused/full Windows retest is required before Beta1 can be accepted.
+The source fix now makes every `EdrTelemetryStore` connection explicitly close after commit/rollback, adds direct lifecycle regression tests, and makes the acceptance harness cleanup deterministic. A Windows retest is required before Beta1 can be accepted.
 
 ### Prior baseline evidence
 The v0.10.0-rc.1 FULL Windows package was reported with:
