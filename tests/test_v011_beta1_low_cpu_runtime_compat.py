@@ -18,7 +18,7 @@ def test_file_etw_dormancy_patch_is_idempotent_and_preserves_provider_shape(tmp_
         '        }\n'
         '    def start(self):\n'
         '        try:\n'
-        '            self._file_capture.start()\n'
+        '                self._file_capture.start()\n'
         '        except Exception as exc:\n'
         '            raise RuntimeError(str(exc))\n',
         encoding="utf-8",
