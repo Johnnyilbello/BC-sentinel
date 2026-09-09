@@ -2,9 +2,44 @@ from pathlib import Path
 
 from tools.v011_low_cpu_runtime_compat import (
     FILE_ETW_RUNTIME_MODE,
+    PROCESS_ETW_RUNTIME_MODE,
     apply_file_etw_idle_dormancy,
+    apply_process_etw_idle_dormancy,
     apply_realtime_high_churn_root_patch,
 )
+
+
+def test_process_etw_dormancy_patch_is_idempotent_and_keeps_psutil_fallback_visible(tmp_path: Path):
+    target = tmp_path / "etw_monitor.py"
+    target.write_text(
+        'ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"\n'
+        'class X:\n'
+        '    def status(self):\n'
+        '        return {\n'
+        '            "provider_filter_mode": ETW_PROVIDER_FILTER_MODE,\n'
+        '        }\n'
+        '    def start(self):\n'
+        '        try:\n'
+        '                self._capture.start()\n'
+        '        except Exception as exc:\n'
+        '            raise RuntimeError(str(exc))\n',
+        encoding="utf-8",
+    )
+
+    first = apply_process_etw_idle_dormancy(target)
+    second = apply_process_etw_idle_dormancy(target)
+    text = target.read_text(encoding="utf-8")
+
+    assert first["patched"] is True
+    assert second["patched"] is False
+    assert first["mode"] == PROCESS_ETW_RUNTIME_MODE == "dormant_idle_beta1"
+    assert "PROCESS_ETW_CONTINUOUS = False" in text
+    assert "self._stop_capture(self._capture)" in text
+    assert "self._capture = None" in text
+    assert '"process_runtime_mode": PROCESS_ETW_RUNTIME_MODE' in text
+    assert '"process_tracking": bool(self.running and self._capture is not None)' in text
+    assert '"process_fallback": "psutil_process_monitor"' in text
+    assert '"provider_filter_mode": ETW_PROVIDER_FILTER_MODE' in text
 
 
 def test_file_etw_dormancy_patch_is_idempotent_and_preserves_provider_shape(tmp_path: Path):
