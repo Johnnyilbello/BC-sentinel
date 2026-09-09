@@ -1,10 +1,10 @@
 # TEST STATUS — BC Sentinel v0.11.0-beta.1
 
 ## Current state
-**WINDOWS FUNCTIONAL ACCEPTANCE PASS / SERVICE PERFORMANCE FIX IMPLEMENTED / NATIVE RETEST REQUIRED**
+**WINDOWS FUNCTIONAL ACCEPTANCE PASS / SERVICE PERFORMANCE FIX IMPLEMENTED / THREAT-PACKAGE WINDOWS PUBLISH FIX IMPLEMENTED / NATIVE RETEST REQUIRED**
 
 ### Functional Windows evidence — 2026-09-09
-The latest complete one-command Windows run reached the final functional PASS marker before the service-performance defect was promoted to a hard gate.
+A complete one-command Windows run previously reached the final functional PASS marker before the service-performance defect was promoted to a hard gate.
 
 Observed evidence:
 - **563 pytest tests passed, 0 failed**;
@@ -35,7 +35,7 @@ Generated Windows benchmark `benchmark-v011-beta1-service.json` reported:
 
 The old benchmark returned `passed=true` because it checked only IPC completion and hardening posture. That result is now considered a **false performance PASS**. v0.11.0-beta.1 is not frozen or merge-ready with 116.55% idle CPU.
 
-## Performance fix now implemented
+## Performance fix implemented
 The branch now adds:
 
 1. **Kernel-File ETW early filtering**
@@ -71,6 +71,36 @@ On the complete RC1 source tree used for development:
 
 These local results validate the patch structure but do not prove Windows CPU reduction.
 
+## Latest Windows retest blocker — threat-package atomic publish
+The next Windows run progressed through dependency preparation and reached:
+
+- **566 pytest passed**;
+- **1 pytest failed**;
+- failure: `test_v010_beta1_acceptance_records_deferred_v090_native_gates`;
+- root exception: `PermissionError [WinError 5]` while atomically replacing `active-behavior.json.tmp -> active-behavior.json` during the v0.8 last-known-good threat-package rollback fixture.
+
+The failure occurred before the admin/performance phase, so it does not provide new CPU evidence and does not invalidate the already-green EDR logic.
+
+## Threat-package Windows publish fix implemented
+The v0.11 overlay now applies a guarded, fail-closed compatibility migration to the complete FULL baseline before pytest:
+
+- managed JSON publication uses a bounded atomic-file replace retry helper;
+- retries are limited to Windows transient access/share/lock conditions `WinError 5`, `32`, `33`;
+- unrelated errors are raised immediately;
+- after the bounded retry budget is exhausted the operation fails closed with `ThreatPackageError`;
+- YARA directory promotion semantics are left unchanged;
+- state, activation journal and active behavior JSON publication use the hardened helper;
+- the source-shape migration verifies exact anchors and refuses unexpected source variants.
+
+Regression coverage added:
+- transient WinError 5 succeeds after bounded retries;
+- persistent WinError 32 fails closed;
+- unrelated OSError is not retried.
+
+Fresh RC1 reproduction of this compatibility fix:
+- migration applied successfully;
+- threat-package + v0.8 signed-intelligence + v0.10 Web regression subset: **27 passed**.
+
 ## Required native retest before Beta1 acceptance
 Synchronize the latest `v0.11.0-beta.1` branch over the complete FULL tree and run only the official one-command launcher:
 
@@ -78,9 +108,11 @@ Synchronize the latest `v0.11.0-beta.1` branch over the complete FULL tree and r
 .\TEST-V011-BETA1-ALL.bat
 ```
 
-Required performance outcome is printed automatically in the parent PowerShell. Beta1 may be accepted only if:
+Beta1 may be accepted only if both the new threat-package regression and the enforced performance outcome pass:
 
 ```text
+full pytest = PASS
+threat-package atomic publish regression = PASS
 idle <= 25.00% of one core
 IPC >= 10.00 requests/s with all requests successful
 storm <= 250.00% of one core
@@ -88,7 +120,7 @@ service benchmark passed = true
 BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS
 ```
 
-If idle CPU remains excessive, the launcher must fail and the service requires further profiling/fix before v0.11.0-beta.2.
+If either the atomic publish or idle CPU remains unhealthy, the launcher must fail before v0.11.0-beta.2.
 
 ### Deferred
 `REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION`
