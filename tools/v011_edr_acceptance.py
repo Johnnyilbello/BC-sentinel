@@ -18,7 +18,7 @@ def run_acceptance() -> dict:
         db = Path(td) / "edr.sqlite3"
         store = EdrTelemetryStore(
             db,
-            retention_seconds=3600,
+            retention_seconds=36_000,
             max_events=5000,
             flood_window_seconds=5.0,
             max_events_per_pid_window=8,
