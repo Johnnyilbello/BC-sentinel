@@ -26,9 +26,42 @@ def _thread_cpu_snapshot(proc: psutil.Process) -> dict[int, float]:
         return {}
 
 
-def _thread_cpu_deltas(before: dict[int, float], after: dict[int, float], elapsed: float, *, limit: int = 8) -> list[dict]:
+def _thread_roles_from_status(status: dict) -> dict[int, str]:
+    roles: dict[int, str] = {}
+    python_threads = status.get("python_threads") or {}
+    if isinstance(python_threads, dict):
+        for raw_tid, name in python_threads.items():
+            try:
+                tid = int(raw_tid)
+            except (TypeError, ValueError):
+                continue
+            roles[tid] = str(name or "python_thread")
+
+    etw = status.get("etw") or {}
+    consumer_threads = etw.get("consumer_threads") if isinstance(etw, dict) else {}
+    if isinstance(consumer_threads, dict):
+        for role, raw_tid in consumer_threads.items():
+            if raw_tid in (None, ""):
+                continue
+            try:
+                tid = int(raw_tid)
+            except (TypeError, ValueError):
+                continue
+            roles[tid] = str(role)
+    return roles
+
+
+def _thread_cpu_deltas(
+    before: dict[int, float],
+    after: dict[int, float],
+    elapsed: float,
+    *,
+    limit: int = 8,
+    roles: dict[int, str] | None = None,
+) -> list[dict]:
     if elapsed <= 0:
         return []
+    role_map = roles or {}
     rows = []
     for tid, end_cpu in after.items():
         start_cpu = before.get(tid, end_cpu)
@@ -37,6 +70,7 @@ def _thread_cpu_deltas(before: dict[int, float], after: dict[int, float], elapse
             continue
         rows.append({
             "tid": int(tid),
+            "role": str(role_map.get(int(tid), "")),
             "cpu_seconds": round(delta, 6),
             "cpu_percent_of_one_core": round(delta / elapsed * 100.0, 2),
         })
@@ -95,12 +129,18 @@ def run(
     if pid <= 0:
         return {"passed": False, "error": "invalid service pid"}
     proc = psutil.Process(pid)
+    thread_roles = _thread_roles_from_status(status)
 
     rss_start = proc.memory_info().rss
     idle_threads_before = _thread_cpu_snapshot(proc)
     idle_cpu_seconds, idle_cpu_one_core, idle_elapsed = _cpu_delta(proc, idle_seconds)
     idle_threads_after = _thread_cpu_snapshot(proc)
-    idle_hot_threads = _thread_cpu_deltas(idle_threads_before, idle_threads_after, idle_elapsed)
+    idle_hot_threads = _thread_cpu_deltas(
+        idle_threads_before,
+        idle_threads_after,
+        idle_elapsed,
+        roles=thread_roles,
+    )
     rss_idle = proc.memory_info().rss
 
     ipc_start = time.perf_counter()
@@ -161,6 +201,7 @@ def run(
             "rss_start_bytes": rss_start,
             "rss_idle_bytes": rss_idle,
             "thread_count": len(idle_threads_after),
+            "thread_roles": {str(tid): role for tid, role in sorted(thread_roles.items())},
         },
         "idle": {
             "seconds": idle_seconds,
