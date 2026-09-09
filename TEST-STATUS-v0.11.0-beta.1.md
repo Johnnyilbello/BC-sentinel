@@ -1,78 +1,59 @@
 # TEST STATUS — BC Sentinel v0.11.0-beta.1
 
 ## Current state
-**LOCAL/FUNCTIONAL WINDOWS SUITE GREEN / ELEVATED PHASE DIAGNOSTICS IMPROVED / FINAL NATIVE+PERFORMANCE RETEST REQUIRED**
+**FUNCTIONAL/NATIVE GATES REACH SERVICE PERFORMANCE / IDLE CPU BLOCKER REMAINS / PROVIDER-SIDE ETW FIX IMPLEMENTED**
 
 ### Latest Windows evidence — 2026-09-09
-The newest one-command Windows run confirms the previously failing local regression path is now green:
+The newest one-command Windows run reached the enforced service-performance gate:
 
 - dependency preparation: PASS;
 - legacy regression compatibility: canonical;
-- threat-package Windows compatibility migration: applied;
-- **570 pytest passed, 0 failed**;
+- threat-package Windows compatibility: canonical;
+- service-update Windows compatibility: canonical;
+- split Process/File/DNS ETW compatibility: PASS;
+- **577 pytest passed, 0 failed**;
 - v0.11 EDR local acceptance: PASS;
-- telemetry persistence: PASS;
-- process tree: PASS;
-- download/execution/network/persistence correlation: PASS;
-- HIGH multi-signal incident: PASS;
-- deterministic evidence: PASS;
-- incident persistence across restart: PASS;
-- stable event deduplication: PASS;
-- flood guard: PASS;
-- query surface: PASS;
-- EDR throughput floor: PASS;
+- EDR throughput: `84.88 events/s` vs `50/s` minimum;
 - v0.10 Beta1/Beta2/Beta3/RC1 local regressions: PASS;
-- Protection Service + UAC Broker + firewall build: PASS.
+- compatibility matrix: `323/323`, 0 failures;
+- Protection Service + UAC Broker + firewall build: PASS;
+- named-pipe self-test: PASS;
+- automatic UAC/admin phase progressed through functional/live gates and reached `service_performance`.
 
-The run then entered the automatic UAC administrator phase but returned only:
+The enforced benchmark then correctly failed:
 
 ```text
+ADMIN PHASE RESULT: status=FAIL | stage=service_performance | message=Service hardening/performance benchmark failed
+SERVICE PERFORMANCE: idle=152.18% one-core | IPC=33.49/s | storm=172.01% one-core | passed=False
+idle CPU 152.18% exceeds 25.00% of one core
 BC SENTINEL v0.11.0-beta.1 - ALL GATES FAIL
-Automated administrator phase failed with exit code 1
 ```
 
-The parent console did not expose the failing elevated gate, so this run does **not** provide valid new evidence for upgrade/repair/live Windows acceptance or the enforced service-performance benchmark.
+This is a valid fail-closed result. IPC and benign-storm metrics are within their limits; **idle CPU is the only current performance blocker**.
 
-## Elevated-phase diagnostics fix implemented
-The branch now persists an administrator-phase result to:
+## Root cause and performance fix now implemented
+The previous `event_id_filters` optimization was consumer-side in `pywintrace`: unwanted events were still delivered by ETW to the Python process and only discarded inside the consumer callback path. This preserved correctness but did not remove the dominant idle event-processing cost.
 
-```text
-acceptance-v011-beta1-admin-phase-result.json
-```
+The branch now uses **provider-side ETW Event ID filters** through `ProviderParameters` / `EVENT_FILTER_EVENT_ID`, passed to `EnableTraceEx2` before events reach the Python consumer.
 
-The elevated script records:
+The three independent sessions are preserved and narrowed to the telemetry actually consumed by BC Sentinel:
 
-- `status` (`PASS`/`FAIL`);
-- exact `stage`;
-- failure/success `message`;
-- timestamp.
+- Process provider: event IDs `1, 2` only — ProcessStart / ProcessStop;
+- Kernel-File provider: event IDs `12, 26, 27, 30` only — path-bearing file families used by correlation;
+- DNS provider: event IDs `3006, 3008, 3018, 3020` only — query/response/cache telemetry used by Web/EDR correlation.
 
-Tracked stages include:
+Consumer-side `event_id_filters` remain as defense in depth. Provider-filter ctypes objects are explicitly kept alive for the full capture lifetime. No new dependency or cloud service is introduced; pinned `pywintrace==0.2.0` remains supported.
 
-- `targeted_tests`;
-- `build_preflight`;
-- `service_install_preflight`;
-- `upgrade`;
-- `repair`;
-- `live_regressions`;
-- `edr_admin_acceptance`;
-- `windows_acceptance`;
-- `service_performance`;
-- `completed`.
+The compatibility verifier and regression suite now require:
 
-The normal launcher removes stale admin/benchmark artifacts before UAC, reads the new result after the elevated process exits, prints the exact stage/message in the parent console, and refuses to accept a missing/unreadable admin result.
+- `ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"`;
+- `EVENT_FILTER_EVENT_ID` + `ProviderParameters` provider filtering;
+- all three session-specific Event ID sets;
+- no unsupported `providers_event_id_filters` constructor argument;
+- split Process/File/DNS architecture and bounded DNS retry.
 
-## Previously discovered performance blocker
-A prior Windows benchmark reported:
-
-- idle CPU: **116.55% of one core** over 5 seconds;
-- IPC: `200/200`, `31.1 req/s`;
-- benign event storm: `154.68%` of one core;
-- hardening: healthy/sealed.
-
-That legacy `passed=true` was a false performance PASS because CPU was not part of the pass criteria.
-
-The current benchmark is fail-closed and requires:
+## Performance acceptance thresholds
+The benchmark remains unchanged and fail-closed:
 
 ```text
 idle <= 25.00% of one core
@@ -81,19 +62,10 @@ storm <= 250.00% of one core
 hardening healthy
 ```
 
-The normal launcher also prints the current idle/IPC/storm measurements and cannot reach `ALL GATES PASS` if the benchmark fails.
+The threshold is **not** being relaxed to accommodate the current result.
 
-## Performance and Windows compatibility fixes already implemented
-- Kernel-File ETW early filtering to path-bearing event families currently usable by the correlation pipeline;
-- bounded 350 ms PID/path/task/event microburst deduplication;
-- fail-closed service-performance benchmark with explicit thresholds and failure reasons;
-- regression encoding the old 116.55% idle result as a required failure;
-- bounded atomic-file replace retries for transient Windows WinError 5/32/33 during threat-package JSON publication;
-- fail-closed behavior after retry exhaustion;
-- regression coverage for transient/persistent/unrelated replace failures.
-
-## Required final Beta1 retest
-Synchronize latest `v0.11.0-beta.1` over the complete FULL Windows tree and run only the official launcher:
+## Required Beta1 retest
+Synchronize the latest `v0.11.0-beta.1` overlay onto the authoritative FULL Windows tree and run only:
 
 ```powershell
 .\TEST-V011-BETA1-ALL.bat
@@ -109,9 +81,7 @@ REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION
 BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS
 ```
 
-If the elevated process fails, the parent console must now show the exact failing stage and message instead of only `exit code 1`.
-
-v0.11.0-beta.1 remains **not frozen / not merge-ready** until this final native retest is green.
+v0.11.0-beta.1 remains **not frozen / not merge-ready** until that native performance result is green.
 
 ### Deferred
 `REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION`
