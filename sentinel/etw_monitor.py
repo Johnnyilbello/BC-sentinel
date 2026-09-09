@@ -3,7 +3,7 @@ import ctypes
 import ctypes.wintypes as wt
 import logging
 import os
-from time import monotonic, time
+from time import monotonic, sleep, time
 
 from .core.events import SecurityEvent
 from .process_identity import ProcessIdentityResolver
@@ -20,6 +20,9 @@ DNS_EVENT_IDS = {3006, 3008, 3018, 3020}
 KERNEL_FILE_PATH_EVENT_IDS = frozenset({12, 26, 27, 30})  # Create, DeletePath, RenamePath, CreateNewFile
 FILE_EVENT_DEDUP_SECONDS = 0.35
 FILE_EVENT_DEDUP_MAX = 4096
+DNS_ETW_START_ATTEMPTS = 4
+DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
+ETW_DNS_SESSION_MODE = "dedicated"
 FILE_WORDS = ("CREATE", "WRITE", "DELETE", "RENAME", "SETINFORMATION")
 
 
@@ -82,6 +85,7 @@ class ETWMonitor:
         self.running = False
         self.error = ""
         self._capture = None
+        self._dns_capture = None
         self._log = logging.getLogger("bc_sentinel.etw")
         self._owns_identity = identity_resolver is None
         self.identity_resolver = identity_resolver or ProcessIdentityResolver()
@@ -101,35 +105,59 @@ class ETWMonitor:
             return False
         try:
             import etw
-            base_providers = [
-                etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER)),
-                etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER)),
-            ]
-            dns_provider = etw.ProviderInfo("Microsoft-Windows-DNS-Client", etw.GUID(DNS_PROVIDER))
-            last_error = ""
-            for providers, dns_tracking in ((base_providers + [dns_provider], True), (base_providers, False)):
+            self.error = ""
+            self.dns_tracking = False
+
+            try:
+                self._capture = etw.ETW(
+                    providers=[
+                        etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER)),
+                        etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER)),
+                    ],
+                    event_callback=self._on_event,
+                    providers_event_id_filters=etw_provider_event_filters(),
+                    callback_wait_time=0.003,
+                )
+                self._capture.start()
+            except Exception as exc:
+                if self._capture is not None:
+                    try:
+                        self._capture.stop()
+                    except Exception:
+                        pass
+                self._capture = None
+                raise RuntimeError("Base Process/File ETW startup failed: " + str(exc))
+
+            self.available = True
+            self.running = True
+            dns_error = ""
+            for dns_attempt in range(DNS_ETW_START_ATTEMPTS):
                 try:
-                    self._capture = etw.ETW(
-                        providers=providers,
+                    self._dns_capture = etw.ETW(
+                        providers=[
+                            etw.ProviderInfo("Microsoft-Windows-DNS-Client", etw.GUID(DNS_PROVIDER)),
+                        ],
                         event_callback=self._on_event,
-                        providers_event_id_filters=etw_provider_event_filters(),
                         callback_wait_time=0.003,
                     )
-                    self._capture.start()
-                    self.available = True
-                    self.running = True
-                    self.dns_tracking = dns_tracking
-                    self.error = last_error if not dns_tracking else ""
+                    self._dns_capture.start()
+                    self.dns_tracking = True
+                    self.error = ""
                     return True
                 except Exception as exc:
-                    last_error = str(exc)
-                    if self._capture is not None:
+                    dns_error = str(exc)
+                    if self._dns_capture is not None:
                         try:
-                            self._capture.stop()
+                            self._dns_capture.stop()
                         except Exception:
                             pass
-                    self._capture = None
-            raise RuntimeError(last_error or "ETW provider startup failed")
+                    self._dns_capture = None
+                    if dns_attempt + 1 < DNS_ETW_START_ATTEMPTS:
+                        sleep(DNS_ETW_START_RETRY_DELAY_SECONDS * (dns_attempt + 1))
+
+            self.dns_tracking = False
+            self.error = "DNS ETW dedicated session unavailable after bounded retries: " + dns_error
+            return True
         except Exception as exc:
             self.available = False
             self.running = False
@@ -138,6 +166,13 @@ class ETWMonitor:
             return False
 
     def stop(self):
+        dns = self._dns_capture
+        self._dns_capture = None
+        if dns:
+            try:
+                dns.stop()
+            except Exception:
+                pass
         c = self._capture
         self._capture = None
         if c:
