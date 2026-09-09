@@ -24,6 +24,34 @@ function Fail([string]$Message) {
     exit 1
 }
 
+function Invoke-Maintenance([ValidateSet('Upgrade','Repair')][string]$Mode) {
+    $maintenanceScript = Join-Path $PSScriptRoot 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1'
+    if (-not (Test-Path -LiteralPath $maintenanceScript)) {
+        throw ('Maintenance script missing: ' + $maintenanceScript)
+    }
+
+    $logPath = Join-Path $PSScriptRoot ('maintenance-' + $Mode.ToLowerInvariant() + '.log')
+    Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
+
+    try {
+        & $maintenanceScript -Mode $Mode *>&1 | Tee-Object -FilePath $logPath | ForEach-Object { Write-Host $_ }
+    }
+    catch {
+        $detail = $_.Exception.Message
+        $tail = ''
+        try {
+            if (Test-Path -LiteralPath $logPath) {
+                $tail = ((Get-Content -LiteralPath $logPath -Tail 30) -join ' | ')
+            }
+        }
+        catch { $tail = '' }
+        if ($tail) {
+            throw ('Live ' + $Mode + ' failed: ' + $detail + ' | log tail: ' + $tail)
+        }
+        throw ('Live ' + $Mode + ' failed: ' + $detail)
+    }
+}
+
 try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($id)
@@ -74,8 +102,7 @@ try {
     try { $upgradePlan = Get-Content -Raw -LiteralPath $upgradePlanPath | ConvertFrom-Json } catch { $upgradePlan = $null }
 
     if ($upgradeExit -eq 0) {
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1' -Mode Upgrade
-        if ($LASTEXITCODE -ne 0) { throw 'Live upgrade failed' }
+        Invoke-Maintenance -Mode Upgrade
         Write-Host 'UPGRADE LIVE PASS' -ForegroundColor Green
     }
     elseif (($null -ne $upgradePlan) -and ($upgradePlan.classification -eq 'same_version_upgrade_rejected')) {
@@ -90,8 +117,7 @@ try {
     & $Py -m tools.update_acceptance --mode repair --output $repairPlanPath
     if ($LASTEXITCODE -ne 0) { throw 'Repair plan acceptance failed' }
 
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1' -Mode Repair
-    if ($LASTEXITCODE -ne 0) { throw 'Real repair failed' }
+    Invoke-Maintenance -Mode Repair
     Write-Host 'REPAIR LIVE PASS' -ForegroundColor Green
 
     $script:CurrentStage = 'live_regressions'
