@@ -13,7 +13,18 @@
 - local query surface;
 - EDR acceptance harness;
 - deterministic unit tests;
+- explicit SQLite connection lifecycle with commit/rollback + guaranteed close;
+- regression tests for closed SQLite handles/removable DB files;
 - one-command Normal → automatic UAC/Admin → standard-user UAC orchestration.
+
+### Windows evidence — 2026-09-09
+The latest complete Windows run reached:
+- **561 pytest tests passed, 0 failed**;
+- legacy v0.7 contaminated ROADMAP regression canonicalization: PASS;
+- EDR acceptance then stopped during temporary-directory cleanup with Windows `WinError 32` because `edr.sqlite3` remained locked;
+- this was isolated to SQLite connection lifecycle/cleanup, not detection logic or the full regression suite.
+
+The source fix now makes every `EdrTelemetryStore` connection explicitly close after commit/rollback, and the acceptance harness performs deterministic cleanup. A focused/full Windows retest is required before Beta1 can be accepted.
 
 ### Prior baseline evidence
 The v0.10.0-rc.1 FULL Windows package was reported with:
@@ -26,7 +37,7 @@ The v0.10.0-rc.1 FULL Windows package was reported with:
 This evidence belongs to v0.10.0-rc.1 and is **not automatically transferred** to v0.11.0-beta.1.
 
 ### Required before accepting Beta1
-Run from the complete v0.10 RC1 FULL source tree after applying/synchronizing the v0.11 branch:
+Run from the complete v0.10 RC1 FULL source tree after applying/synchronizing the latest v0.11 branch:
 
 ```powershell
 .\TEST-V011-BETA1-ALL.bat
@@ -35,7 +46,7 @@ Run from the complete v0.10 RC1 FULL source tree after applying/synchronizing th
 Required result:
 
 ```text
-BC SENTINEL v0.11.0-beta.1 — ALL GATES PASS
+BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS
 ```
 
 The launcher must prove:
