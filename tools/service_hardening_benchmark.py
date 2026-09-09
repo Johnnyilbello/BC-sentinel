@@ -16,14 +16,42 @@ DEFAULT_MIN_IPC_RPS = 10.0
 DEFAULT_MAX_STORM_CPU_PERCENT = 250.0
 
 
-def _cpu_delta(proc: psutil.Process, seconds: float) -> tuple[float, float]:
+def _thread_cpu_snapshot(proc: psutil.Process) -> dict[int, float]:
+    try:
+        return {
+            int(thread.id): float(thread.user_time + thread.system_time)
+            for thread in proc.threads()
+        }
+    except (psutil.Error, OSError):
+        return {}
+
+
+def _thread_cpu_deltas(before: dict[int, float], after: dict[int, float], elapsed: float, *, limit: int = 8) -> list[dict]:
+    if elapsed <= 0:
+        return []
+    rows = []
+    for tid, end_cpu in after.items():
+        start_cpu = before.get(tid, end_cpu)
+        delta = max(0.0, end_cpu - start_cpu)
+        if delta <= 0:
+            continue
+        rows.append({
+            "tid": int(tid),
+            "cpu_seconds": round(delta, 6),
+            "cpu_percent_of_one_core": round(delta / elapsed * 100.0, 2),
+        })
+    rows.sort(key=lambda row: row["cpu_seconds"], reverse=True)
+    return rows[: max(1, int(limit))]
+
+
+def _cpu_delta(proc: psutil.Process, seconds: float) -> tuple[float, float, float]:
     start_cpu = sum(proc.cpu_times()[:2])
     start = time.perf_counter()
     time.sleep(max(0.2, seconds))
     elapsed = time.perf_counter() - start
     end_cpu = sum(proc.cpu_times()[:2])
     cpu = max(0.0, end_cpu - start_cpu)
-    return cpu, (cpu / elapsed * 100.0) if elapsed else 0.0
+    return cpu, (cpu / elapsed * 100.0) if elapsed else 0.0, elapsed
 
 
 def _evaluate(*, idle_cpu_percent: float, ipc_successful: int, ipc_requests: int, ipc_rps: float, storm_cpu_percent: float, hardening_ok: bool, max_idle_cpu_percent: float, min_ipc_rps: float, max_storm_cpu_percent: float) -> tuple[bool, dict, list[str]]:
@@ -69,7 +97,10 @@ def run(
     proc = psutil.Process(pid)
 
     rss_start = proc.memory_info().rss
-    idle_cpu_seconds, idle_cpu_one_core = _cpu_delta(proc, idle_seconds)
+    idle_threads_before = _thread_cpu_snapshot(proc)
+    idle_cpu_seconds, idle_cpu_one_core, idle_elapsed = _cpu_delta(proc, idle_seconds)
+    idle_threads_after = _thread_cpu_snapshot(proc)
+    idle_hot_threads = _thread_cpu_deltas(idle_threads_before, idle_threads_after, idle_elapsed)
     rss_idle = proc.memory_info().rss
 
     ipc_start = time.perf_counter()
@@ -129,11 +160,14 @@ def run(
             "transport": status.get("transport"),
             "rss_start_bytes": rss_start,
             "rss_idle_bytes": rss_idle,
+            "thread_count": len(idle_threads_after),
         },
         "idle": {
             "seconds": idle_seconds,
+            "measured_elapsed_seconds": round(idle_elapsed, 6),
             "cpu_seconds": round(idle_cpu_seconds, 6),
             "cpu_percent_of_one_core": round(idle_cpu_one_core, 2),
+            "hottest_threads": idle_hot_threads,
         },
         "ipc": {
             "requests": requested,
