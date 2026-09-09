@@ -4,6 +4,14 @@ import ctypes as ct
 import threading
 from time import monotonic
 
+from .thread_diagnostics import install_thread_attribution
+
+# Install the diagnostic naming shim as soon as the pywintrace compatibility
+# module is imported. ETWMonitor imports this module before creating its live
+# consumers, so anonymous Thread-N workers become attributable in the service
+# benchmark without changing scheduling or runtime behavior.
+install_thread_attribution()
+
 # pywintrace 0.2.0 EventConsumer._run() re-enters ProcessTrace() whenever the
 # call returns SUCCESS. For a real-time session ProcessTrace is expected to
 # remain blocked while the session is active. On some Windows builds it can
