@@ -15,18 +15,24 @@ DNS_PROVIDER = "{1C95126E-7EEA-49A9-A3FE-A378B03DDB4D}"
 DNS_EVENT_IDS = {3006, 3008, 3018, 3020}
 # Microsoft-Windows-Kernel-File emits a very high volume of events. Most of
 # them (Read/Write/Cleanup/QueryInfo/FSCTL...) do not carry a path that this
-# monitor can safely attribute. Decode only path-bearing event families that
-# the current correlation pipeline can actually use.
+# monitor can safely attribute. The File provider therefore runs in its own
+# ETW session where the pywintrace 0.2.0-compatible event_id_filters argument
+# can safely keep only the path-bearing event families used by this pipeline.
 KERNEL_FILE_PATH_EVENT_IDS = frozenset({12, 26, 27, 30})  # Create, DeletePath, RenamePath, CreateNewFile
 FILE_EVENT_DEDUP_SECONDS = 0.35
 FILE_EVENT_DEDUP_MAX = 4096
 DNS_ETW_START_ATTEMPTS = 4
 DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
 ETW_DNS_SESSION_MODE = "dedicated"
+ETW_SESSION_MODE = "split_process_file_dns"
 FILE_WORDS = ("CREATE", "WRITE", "DELETE", "RENAME", "SETINFORMATION")
 
 
 def etw_provider_event_filters():
+    # Retained as a deterministic description for regression/acceptance tests.
+    # pywintrace 0.2.0 does not accept providers_event_id_filters on ETW(); the
+    # actual runtime filtering is applied as event_id_filters on the isolated
+    # Kernel-File session.
     return {FILE_PROVIDER.upper(): sorted(KERNEL_FILE_PATH_EVENT_IDS)}
 
 
@@ -85,6 +91,7 @@ class ETWMonitor:
         self.running = False
         self.error = ""
         self._capture = None
+        self._file_capture = None
         self._dns_capture = None
         self._log = logging.getLogger("bc_sentinel.etw")
         self._owns_identity = identity_resolver is None
@@ -95,7 +102,22 @@ class ETWMonitor:
         self._recent_file_events = {}
 
     def status(self):
-        return {"name": self.name, "available": self.available, "running": self.running, "error": self.error, "dns_tracking": bool(self.running and self.dns_tracking)}
+        return {
+            "name": self.name,
+            "available": self.available,
+            "running": self.running,
+            "error": self.error,
+            "dns_tracking": bool(self.running and self.dns_tracking),
+            "session_mode": ETW_SESSION_MODE,
+        }
+
+    @staticmethod
+    def _stop_capture(capture):
+        if capture is not None:
+            try:
+                capture.stop()
+            except Exception:
+                pass
 
     def start(self):
         if self.running:
@@ -108,25 +130,42 @@ class ETWMonitor:
             self.error = ""
             self.dns_tracking = False
 
+            # Process telemetry is intentionally isolated from the high-volume
+            # Kernel-File provider. This uses only pywintrace 0.2.0 constructor
+            # arguments that are available in the pinned dependency.
             try:
                 self._capture = etw.ETW(
                     providers=[
                         etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER)),
-                        etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER)),
                     ],
                     event_callback=self._on_event,
-                    providers_event_id_filters=etw_provider_event_filters(),
                     callback_wait_time=0.003,
                 )
                 self._capture.start()
             except Exception as exc:
-                if self._capture is not None:
-                    try:
-                        self._capture.stop()
-                    except Exception:
-                        pass
+                self._stop_capture(self._capture)
                 self._capture = None
-                raise RuntimeError("Base Process/File ETW startup failed: " + str(exc))
+                raise RuntimeError("Process ETW startup failed: " + str(exc))
+
+            # File telemetry has its own session so the legacy-compatible global
+            # event_id_filters can restrict only this provider without suppressing
+            # Process or DNS event IDs.
+            try:
+                self._file_capture = etw.ETW(
+                    providers=[
+                        etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER)),
+                    ],
+                    event_callback=self._on_event,
+                    event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS),
+                    callback_wait_time=0.003,
+                )
+                self._file_capture.start()
+            except Exception as exc:
+                self._stop_capture(self._file_capture)
+                self._file_capture = None
+                self._stop_capture(self._capture)
+                self._capture = None
+                raise RuntimeError("Kernel-File ETW startup failed: " + str(exc))
 
             self.available = True
             self.running = True
@@ -146,11 +185,7 @@ class ETWMonitor:
                     return True
                 except Exception as exc:
                     dns_error = str(exc)
-                    if self._dns_capture is not None:
-                        try:
-                            self._dns_capture.stop()
-                        except Exception:
-                            pass
+                    self._stop_capture(self._dns_capture)
                     self._dns_capture = None
                     if dns_attempt + 1 < DNS_ETW_START_ATTEMPTS:
                         sleep(DNS_ETW_START_RETRY_DELAY_SECONDS * (dns_attempt + 1))
@@ -159,6 +194,12 @@ class ETWMonitor:
             self.error = "DNS ETW dedicated session unavailable after bounded retries: " + dns_error
             return True
         except Exception as exc:
+            self._stop_capture(self._dns_capture)
+            self._dns_capture = None
+            self._stop_capture(self._file_capture)
+            self._file_capture = None
+            self._stop_capture(self._capture)
+            self._capture = None
             self.available = False
             self.running = False
             self.dns_tracking = False
@@ -167,19 +208,15 @@ class ETWMonitor:
 
     def stop(self):
         dns = self._dns_capture
+        file_capture = self._file_capture
+        process_capture = self._capture
         self._dns_capture = None
-        if dns:
-            try:
-                dns.stop()
-            except Exception:
-                pass
-        c = self._capture
+        self._file_capture = None
         self._capture = None
-        if c:
-            try:
-                c.stop()
-            except Exception:
-                pass
+        self._stop_capture(dns)
+        self._stop_capture(file_capture)
+        self._stop_capture(process_capture)
+        self.available = False
         self.running = False
         self.dns_tracking = False
 
