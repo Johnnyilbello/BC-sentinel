@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -11,7 +12,9 @@ from sentinel.edr import EDR_PROFILE, EdrPipeline, EdrTelemetryEvent, EdrTelemet
 
 
 def run_acceptance() -> dict:
-    with TemporaryDirectory(prefix="bc-sentinel-v011-edr-") as td:
+    temp = TemporaryDirectory(prefix="bc-sentinel-v011-edr-")
+    try:
+        td = temp.name
         db = Path(td) / "edr.sqlite3"
         store = EdrTelemetryStore(
             db,
@@ -117,7 +120,7 @@ def run_acceptance() -> dict:
             "throughput_floor": throughput >= 50.0,
         }
         passed = all(acceptance.values())
-        return {
+        report = {
             "product": "BC Sentinel",
             "version": __version__,
             "milestone": EDR_PROFILE,
@@ -147,6 +150,13 @@ def run_acceptance() -> dict:
                 "reboot_gate_deferred": True,
             },
         }
+        return report
+    finally:
+        # SQLite connections are explicitly closed by EdrTelemetryStore. GC here
+        # makes the acceptance cleanup deterministic even if future fixtures add
+        # cursors/connection cycles that otherwise linger until a later collection.
+        gc.collect()
+        temp.cleanup()
 
 
 def main() -> int:
