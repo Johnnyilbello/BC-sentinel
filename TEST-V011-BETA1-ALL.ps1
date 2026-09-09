@@ -62,6 +62,8 @@ try {
 
     $adminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA1-ADMIN-PHASE.ps1'
     if (-not (Test-Path -LiteralPath $adminScript)) { throw 'v0.11 Beta1 admin script missing' }
+    $benchmarkPath = Join-Path $PSScriptRoot 'benchmark-v011-beta1-service.json'
+    Remove-Item -LiteralPath $benchmarkPath -Force -ErrorAction SilentlyContinue
 
     Write-Host 'Opening the UAC administrator phase automatically...' -ForegroundColor Yellow
     try {
@@ -72,7 +74,24 @@ try {
         throw ('UAC elevation cancelled or failed: ' + $_.Exception.Message)
     }
     if ($null -eq $proc) { throw 'Administrator process was not created' }
+
+    $benchmark = $null
+    if (Test-Path -LiteralPath $benchmarkPath) {
+        try { $benchmark = Get-Content -Raw -LiteralPath $benchmarkPath | ConvertFrom-Json } catch { $benchmark = $null }
+        if ($null -ne $benchmark) {
+            $idleValue = [double]$benchmark.idle.cpu_percent_of_one_core
+            $ipcValue = [double]$benchmark.ipc.requests_per_second
+            $stormValue = [double]$benchmark.benign_event_storm.cpu_percent_of_one_core
+            Write-Host (('SERVICE PERFORMANCE: idle={0:N2}% one-core | IPC={1:N2}/s | storm={2:N2}% one-core | passed={3}') -f $idleValue,$ipcValue,$stormValue,[bool]$benchmark.passed) -ForegroundColor Cyan
+            if ($benchmark.failure_reasons) {
+                foreach ($reason in $benchmark.failure_reasons) { Write-Host ('  - ' + $reason) -ForegroundColor Red }
+            }
+        }
+    }
+
     if ($proc.ExitCode -ne 0) { throw ('Automated administrator phase failed with exit code ' + $proc.ExitCode) }
+    if ($null -eq $benchmark) { throw 'Service performance benchmark result missing or unreadable' }
+    if (-not [bool]$benchmark.passed) { throw 'Service performance benchmark did not satisfy the enforced thresholds' }
 
     & $Py -m tools.broker_acceptance --output acceptance-v011-beta1-standard-user-uac.json
     if ($LASTEXITCODE -ne 0) { throw 'Standard-user to UAC broker acceptance failed' }
@@ -82,7 +101,7 @@ try {
 
     Write-Host 'REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION' -ForegroundColor Yellow
     Write-Host 'BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS' -ForegroundColor Green
-    Write-Host 'Included: full suite, EDR Beta1, v0.10 RC1 regressions, native/admin, upgrade, repair and standard-user to UAC. Reboot excluded.' -ForegroundColor Green
+    Write-Host 'Included: full suite, EDR Beta1, v0.10 RC1 regressions, native/admin, upgrade, repair, enforced service performance and standard-user to UAC. Reboot excluded.' -ForegroundColor Green
     exit 0
 }
 catch {
