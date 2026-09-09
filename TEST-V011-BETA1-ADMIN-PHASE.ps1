@@ -2,8 +2,25 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
+$AdminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-admin-phase-result.json'
+$script:CurrentStage = 'initialization'
+Remove-Item -LiteralPath $AdminResultPath -Force -ErrorAction SilentlyContinue
+
+function Write-AdminResult([string]$Status, [string]$Stage, [string]$Message) {
+    $payload = [ordered]@{
+        product = 'BC Sentinel'
+        version = '0.11.0-beta.1'
+        status = $Status
+        stage = $Stage
+        message = $Message
+        timestamp = (Get-Date).ToString('o')
+    }
+    $payload | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $AdminResultPath -Encoding UTF8
+}
+
 function Fail([string]$Message) {
-    Write-Host ('V0.11 BETA1 ADMIN PHASE FAIL: ' + $Message) -ForegroundColor Red
+    try { Write-AdminResult 'FAIL' $script:CurrentStage $Message } catch { }
+    Write-Host ('V0.11 BETA1 ADMIN PHASE FAIL [' + $script:CurrentStage + ']: ' + $Message) -ForegroundColor Red
     exit 1
 }
 
@@ -18,6 +35,7 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.1 - AUTOMATED ADMIN PHASE (no reboot)' -ForegroundColor Cyan
 
+    $script:CurrentStage = 'targeted_tests'
     $targeted = @('tests\test_checkpoint4_authenticode_hardening_reconstructed.py','tests\test_v062_privileged_broker_update.py','tests\test_v010_beta1_web_reputation_primitives.py','tests\test_v010_beta1_web_deception_anti_scam.py','tests\test_v010_beta2_reversible_web_response.py','tests\test_v010_beta3_clone_scam_fraud.py','tests\test_v010_rc1_consolidation.py','tests\test_v072_beta2_active_web_response.py','tests\test_v072_beta3_domain_trust_provenance_browser.py','tests\test_v072_beta4_browser_download_incident_chain.py','tests\test_v011_beta1_edr_foundation.py','tests\test_v011_beta1_service_performance.py','tests\test_v011_beta1_threat_package_atomic_replace.py')
     foreach ($item in $targeted) {
         if (-not (Test-Path -LiteralPath $item)) {
@@ -28,11 +46,13 @@ try {
     & $Py -m pytest -q $targeted
     if ($LASTEXITCODE -ne 0) { throw 'Targeted native/Web/EDR/update/performance/threat-package tests failed' }
 
+    $script:CurrentStage = 'build_preflight'
     $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
     if (-not (Test-Path -LiteralPath $distService)) {
         throw 'Standard-user build output missing. The main launcher must build before UAC elevation.'
     }
 
+    $script:CurrentStage = 'service_install_preflight'
     $Target = Join-Path $env:ProgramFiles 'BC Sentinel\Protection'
     $ServiceExe = Join-Path $Target 'BC-Sentinel-Protection.exe'
     if (-not (Test-Path -LiteralPath $ServiceExe)) {
@@ -46,6 +66,7 @@ try {
         }
     }
 
+    $script:CurrentStage = 'upgrade'
     $upgradePlanPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-upgrade-plan.json'
     & $Py -m tools.update_acceptance --mode upgrade --output $upgradePlanPath
     $upgradeExit = $LASTEXITCODE
@@ -64,6 +85,7 @@ try {
         throw 'Upgrade acceptance failed'
     }
 
+    $script:CurrentStage = 'repair'
     $repairPlanPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-repair-plan.json'
     & $Py -m tools.update_acceptance --mode repair --output $repairPlanPath
     if ($LASTEXITCODE -ne 0) { throw 'Repair plan acceptance failed' }
@@ -72,6 +94,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Real repair failed' }
     Write-Host 'REPAIR LIVE PASS' -ForegroundColor Green
 
+    $script:CurrentStage = 'live_regressions'
     & $Py -m tools.v010_web_deception_acceptance --service-live --output acceptance-v011-regression-deception-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 Beta1 deception live regression failed' }
     & $Py -m tools.v010_web_response_acceptance --service-live --output acceptance-v011-regression-response-live.json
@@ -83,16 +106,21 @@ try {
     & $Py -m tools.v010_rc1_acceptance --service-live --output acceptance-v011-regression-rc1-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 RC1 consolidation live regression failed' }
 
+    $script:CurrentStage = 'edr_admin_acceptance'
     & $Py -m tools.v011_edr_acceptance --output acceptance-v011-beta1-edr-admin.json
     if ($LASTEXITCODE -ne 0) { throw 'EDR Beta1 administrator acceptance failed' }
 
+    $script:CurrentStage = 'windows_acceptance'
     & $Py -m tools.windows_acceptance --benchmark-files 5000 --realtime-seconds 3 --service-live --output acceptance-v011-beta1-windows-live.json
     if ($LASTEXITCODE -ne 0) { throw 'Windows live acceptance failed' }
 
+    $script:CurrentStage = 'service_performance'
     Write-Host 'Service performance gates: idle <= 25% one core, IPC >= 10 req/s, benign storm <= 250% one core.' -ForegroundColor Cyan
     & $Py -m tools.service_hardening_benchmark --idle-seconds 5 --ipc-requests 200 --storm-files 500 --max-idle-cpu-percent 25 --min-ipc-rps 10 --max-storm-cpu-percent 250 --output benchmark-v011-beta1-service.json
     if ($LASTEXITCODE -ne 0) { throw 'Service hardening/performance benchmark failed' }
 
+    $script:CurrentStage = 'completed'
+    Write-AdminResult 'PASS' $script:CurrentStage 'Administrator phase completed successfully'
     Write-Host 'ADMIN PHASE PASS (native + upgrade + repair + regressions + performance; reboot excluded)' -ForegroundColor Green
     exit 0
 }
