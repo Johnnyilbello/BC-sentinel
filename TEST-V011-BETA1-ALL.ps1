@@ -66,7 +66,9 @@ try {
     $adminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA1-ADMIN-PHASE.ps1'
     if (-not (Test-Path -LiteralPath $adminScript)) { throw 'v0.11 Beta1 admin script missing' }
     $benchmarkPath = Join-Path $PSScriptRoot 'benchmark-v011-beta1-service.json'
+    $adminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-admin-phase-result.json'
     Remove-Item -LiteralPath $benchmarkPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $adminResultPath -Force -ErrorAction SilentlyContinue
 
     Write-Host 'Opening the UAC administrator phase automatically...' -ForegroundColor Yellow
     try {
@@ -77,6 +79,14 @@ try {
         throw ('UAC elevation cancelled or failed: ' + $_.Exception.Message)
     }
     if ($null -eq $proc) { throw 'Administrator process was not created' }
+
+    $adminResult = $null
+    if (Test-Path -LiteralPath $adminResultPath) {
+        try { $adminResult = Get-Content -Raw -LiteralPath $adminResultPath | ConvertFrom-Json } catch { $adminResult = $null }
+    }
+    if ($null -ne $adminResult) {
+        Write-Host (('ADMIN PHASE RESULT: status={0} | stage={1} | message={2}') -f $adminResult.status,$adminResult.stage,$adminResult.message) -ForegroundColor Cyan
+    }
 
     $benchmark = $null
     if (Test-Path -LiteralPath $benchmarkPath) {
@@ -92,7 +102,14 @@ try {
         }
     }
 
-    if ($proc.ExitCode -ne 0) { throw ('Automated administrator phase failed with exit code ' + $proc.ExitCode) }
+    if ($proc.ExitCode -ne 0) {
+        if ($null -ne $adminResult) {
+            throw ('Automated administrator phase failed at stage ' + $adminResult.stage + ': ' + $adminResult.message)
+        }
+        throw ('Automated administrator phase failed with exit code ' + $proc.ExitCode + '; diagnostic result missing')
+    }
+    if ($null -eq $adminResult) { throw 'Administrator phase result missing or unreadable' }
+    if ([string]$adminResult.status -ne 'PASS') { throw ('Administrator phase result was not PASS: ' + $adminResult.message) }
     if ($null -eq $benchmark) { throw 'Service performance benchmark result missing or unreadable' }
     if (-not [bool]$benchmark.passed) { throw 'Service performance benchmark did not satisfy the enforced thresholds' }
 
