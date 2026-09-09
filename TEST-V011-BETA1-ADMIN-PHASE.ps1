@@ -52,6 +52,20 @@ function Invoke-Maintenance([ValidateSet('Upgrade','Repair')][string]$Mode) {
     }
 }
 
+function Read-JsonSafe([string]$Path) {
+    try {
+        if (Test-Path -LiteralPath $Path) {
+            return (Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json)
+        }
+    }
+    catch { }
+    return $null
+}
+
+function Compact-Json($Value) {
+    try { return ($Value | ConvertTo-Json -Compress -Depth 8) } catch { return '' }
+}
+
 try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($id)
@@ -98,8 +112,7 @@ try {
     $upgradePlanPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-upgrade-plan.json'
     & $Py -m tools.update_acceptance --mode upgrade --output $upgradePlanPath
     $upgradeExit = $LASTEXITCODE
-    $upgradePlan = $null
-    try { $upgradePlan = Get-Content -Raw -LiteralPath $upgradePlanPath | ConvertFrom-Json } catch { $upgradePlan = $null }
+    $upgradePlan = Read-JsonSafe $upgradePlanPath
 
     if ($upgradeExit -eq 0) {
         Invoke-Maintenance -Mode Upgrade
@@ -120,15 +133,38 @@ try {
     Invoke-Maintenance -Mode Repair
     Write-Host 'REPAIR LIVE PASS' -ForegroundColor Green
 
-    $script:CurrentStage = 'live_regressions'
+    $script:CurrentStage = 'service_readiness'
+    $readinessPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-service-readiness.json'
+    & $Py -m tools.v011_service_readiness --timeout-seconds 12 --poll-seconds 0.5 --output $readinessPath
+    if ($LASTEXITCODE -ne 0) {
+        $ready = Read-JsonSafe $readinessPath
+        $detail = if ($null -ne $ready) { Compact-Json $ready } else { 'readiness JSON unavailable' }
+        throw ('Protection Service Web/DNS ETW readiness failed: ' + $detail)
+    }
+    Write-Host 'SERVICE WEB/DNS ETW READINESS PASS' -ForegroundColor Green
+
+    $script:CurrentStage = 'live_regression_deception'
     & $Py -m tools.v010_web_deception_acceptance --service-live --output acceptance-v011-regression-deception-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 Beta1 deception live regression failed' }
+
+    $script:CurrentStage = 'live_regression_response'
     & $Py -m tools.v010_web_response_acceptance --service-live --output acceptance-v011-regression-response-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 Beta2 response live regression failed' }
+
+    $script:CurrentStage = 'live_regression_clone_scam'
     & $Py -m tools.v010_clone_scam_acceptance --service-live --output acceptance-v011-regression-clone-scam-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 Beta3 clone/scam live regression failed' }
-    & $Py -m tools.web_threat_response_acceptance --service-live --output acceptance-v011-regression-legacy-response-live.json
-    if ($LASTEXITCODE -ne 0) { throw 'Legacy web response live regression failed' }
+
+    $script:CurrentStage = 'live_regression_legacy_web'
+    $legacyPath = Join-Path $PSScriptRoot 'acceptance-v011-regression-legacy-response-live.json'
+    & $Py -m tools.web_threat_response_acceptance --service-live --output $legacyPath
+    if ($LASTEXITCODE -ne 0) {
+        $legacy = Read-JsonSafe $legacyPath
+        $detail = if ($null -ne $legacy) { Compact-Json $legacy } else { 'legacy acceptance JSON unavailable' }
+        throw ('Legacy web response live regression failed: ' + $detail)
+    }
+
+    $script:CurrentStage = 'live_regression_rc1'
     & $Py -m tools.v010_rc1_acceptance --service-live --output acceptance-v011-regression-rc1-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 RC1 consolidation live regression failed' }
 
