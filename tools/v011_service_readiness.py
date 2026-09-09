@@ -23,20 +23,44 @@ def is_ready(status) -> bool:
     )
 
 
+def _etw_diagnostics(service_status) -> dict:
+    if not isinstance(service_status, dict):
+        return {}
+    etw = service_status.get("etw")
+    return dict(etw) if isinstance(etw, dict) else {}
+
+
 def run(*, timeout_seconds: float = 10.0, poll_seconds: float = 0.5) -> dict:
     deadline = time.monotonic() + max(0.5, float(timeout_seconds))
     attempts = 0
     last_status = None
+    last_service_status = None
+    last_etw_status = {}
     last_error = ""
     while True:
         attempts += 1
         client = ProtectionServiceClient(timeout=2.0)
+        cycle_error = ""
         try:
             last_status = client.web_status()
-            last_error = client.last_error or ""
+            cycle_error = client.last_error or ""
         except Exception as exc:
             last_status = None
-            last_error = str(exc)
+            cycle_error = str(exc)
+
+        try:
+            last_service_status = client.status()
+            if not last_service_status and client.last_error and not cycle_error:
+                cycle_error = client.last_error
+        except Exception as exc:
+            last_service_status = None
+            if not cycle_error:
+                cycle_error = str(exc)
+
+        last_etw_status = _etw_diagnostics(last_service_status)
+        etw_error = str(last_etw_status.get("error") or "")
+        last_error = etw_error or cycle_error
+
         if is_ready(last_status):
             return {
                 "product": "BC Sentinel",
@@ -44,6 +68,8 @@ def run(*, timeout_seconds: float = 10.0, poll_seconds: float = 0.5) -> dict:
                 "passed": True,
                 "attempts": attempts,
                 "status": last_status,
+                "service_health": last_service_status.get("health") if isinstance(last_service_status, dict) else None,
+                "etw_status": last_etw_status,
                 "last_error": last_error,
             }
         if time.monotonic() >= deadline:
@@ -53,6 +79,8 @@ def run(*, timeout_seconds: float = 10.0, poll_seconds: float = 0.5) -> dict:
                 "passed": False,
                 "attempts": attempts,
                 "status": last_status,
+                "service_health": last_service_status.get("health") if isinstance(last_service_status, dict) else None,
+                "etw_status": last_etw_status,
                 "last_error": last_error,
                 "reason": "Protection Service Web/DNS ETW readiness not reached before timeout",
             }
