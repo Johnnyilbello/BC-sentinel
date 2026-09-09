@@ -1,11 +1,17 @@
 import inspect
 
 from sentinel.etw_monitor import (
+    DNS_EVENT_IDS,
+    DNS_PROVIDER,
     ETWMonitor,
+    ETW_PROVIDER_FILTER_MODE,
     ETW_SESSION_MODE,
     FILE_EVENT_DEDUP_SECONDS,
     FILE_PROVIDER,
     KERNEL_FILE_PATH_EVENT_IDS,
+    PROCESS_EVENT_IDS,
+    PROCESS_PROVIDER,
+    _make_provider_with_event_id_filter,
     etw_provider_event_filters,
 )
 from tools.service_hardening_benchmark import _evaluate
@@ -26,12 +32,20 @@ class _Correlator:
     pass
 
 
-def test_kernel_file_filter_decodes_only_path_bearing_events_used_by_pipeline():
+def test_etw_filters_only_event_families_used_by_pipeline():
     filters = etw_provider_event_filters()
-    assert filters == {FILE_PROVIDER.upper(): [12, 26, 27, 30]}
+    assert filters == {
+        PROCESS_PROVIDER.upper(): [1, 2],
+        FILE_PROVIDER.upper(): [12, 26, 27, 30],
+        DNS_PROVIDER.upper(): [3006, 3008, 3018, 3020],
+    }
+    assert PROCESS_EVENT_IDS == {1, 2}
     assert KERNEL_FILE_PATH_EVENT_IDS == {12, 26, 27, 30}
-    assert 15 not in KERNEL_FILE_PATH_EVENT_IDS  # Read has no path in this provider schema
-    assert 16 not in KERNEL_FILE_PATH_EVENT_IDS  # Write has no path in this provider schema
+    assert DNS_EVENT_IDS == {3006, 3008, 3018, 3020}
+    assert 3 not in PROCESS_EVENT_IDS  # ThreadStart is not needed by the EDR process tree.
+    assert 5 not in PROCESS_EVENT_IDS  # ImageLoad is not consumed by this monitor.
+    assert 15 not in KERNEL_FILE_PATH_EVENT_IDS  # Read has no path in this provider schema.
+    assert 16 not in KERNEL_FILE_PATH_EVENT_IDS  # Write has no path in this provider schema.
 
 
 def test_file_event_microburst_dedup_is_bounded_and_time_scoped():
@@ -47,16 +61,27 @@ def test_dns_etw_startup_retry_budget_is_bounded():
     assert 0.0 < DNS_ETW_START_RETRY_DELAY_SECONDS <= 0.5
 
 
-def test_etw_uses_pywintrace_020_safe_split_sessions():
+def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions():
     assert ETW_DNS_SESSION_MODE == "dedicated"
     assert ETW_SESSION_MODE == "split_process_file_dns"
+    assert ETW_PROVIDER_FILTER_MODE == "provider_side_event_id_v2"
     monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
     assert monitor._capture is None
     assert monitor._file_capture is None
     assert monitor._dns_capture is None
+    assert monitor._provider_filter_keepalive == []
+
+    helper_source = inspect.getsource(_make_provider_with_event_id_filter)
+    assert "EVENT_FILTER_EVENT_ID(common.TRUE, ids).get()" in helper_source
+    assert "ProviderParameters(0, [descriptor])" in helper_source
+    assert "params=params.get()" in helper_source
+
     start_source = inspect.getsource(ETWMonitor.start)
     assert "providers_event_id_filters=" not in start_source
+    assert "event_id_filters=sorted(PROCESS_EVENT_IDS)" in start_source
     assert "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)" in start_source
+    assert "event_id_filters=sorted(DNS_EVENT_IDS)" in start_source
+    assert start_source.count("_make_provider_with_event_id_filter(") == 3
     assert start_source.count("etw.ETW(") == 3
 
 
