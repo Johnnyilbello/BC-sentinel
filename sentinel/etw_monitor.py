@@ -12,12 +12,12 @@ from .web_protection import DNSCorrelationCache, WebProtectionEngine, extract_ip
 PROCESS_PROVIDER = "{22FB2CD6-0E7B-422B-A0C7-2FAD1FD0E716}"
 FILE_PROVIDER = "{EDD08927-9CC4-4E65-B970-C2560FB5C289}"
 DNS_PROVIDER = "{1C95126E-7EEA-49A9-A3FE-A378B03DDB4D}"
-DNS_EVENT_IDS = {3006, 3008, 3018, 3020}
+PROCESS_EVENT_IDS = frozenset({1, 2})  # ProcessStart, ProcessStop
+DNS_EVENT_IDS = frozenset({3006, 3008, 3018, 3020})
 # Microsoft-Windows-Kernel-File emits a very high volume of events. Most of
 # them (Read/Write/Cleanup/QueryInfo/FSCTL...) do not carry a path that this
-# monitor can safely attribute. The File provider therefore runs in its own
-# ETW session where the pywintrace 0.2.0-compatible event_id_filters argument
-# can safely keep only the path-bearing event families used by this pipeline.
+# monitor can safely attribute. Keep only path-bearing event families used by
+# the current correlation pipeline.
 KERNEL_FILE_PATH_EVENT_IDS = frozenset({12, 26, 27, 30})  # Create, DeletePath, RenamePath, CreateNewFile
 FILE_EVENT_DEDUP_SECONDS = 0.35
 FILE_EVENT_DEDUP_MAX = 4096
@@ -25,15 +25,41 @@ DNS_ETW_START_ATTEMPTS = 4
 DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
 ETW_DNS_SESSION_MODE = "dedicated"
 ETW_SESSION_MODE = "split_process_file_dns"
+ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"
 FILE_WORDS = ("CREATE", "WRITE", "DELETE", "RENAME", "SETINFORMATION")
 
 
 def etw_provider_event_filters():
-    # Retained as a deterministic description for regression/acceptance tests.
-    # pywintrace 0.2.0 does not accept providers_event_id_filters on ETW(); the
-    # actual runtime filtering is applied as event_id_filters on the isolated
-    # Kernel-File session.
-    return {FILE_PROVIDER.upper(): sorted(KERNEL_FILE_PATH_EVENT_IDS)}
+    return {
+        PROCESS_PROVIDER.upper(): sorted(PROCESS_EVENT_IDS),
+        FILE_PROVIDER.upper(): sorted(KERNEL_FILE_PATH_EVENT_IDS),
+        DNS_PROVIDER.upper(): sorted(DNS_EVENT_IDS),
+    }
+
+
+def _make_provider_with_event_id_filter(etw_module, name, guid, event_ids):
+    """Create a pywintrace 0.2.0 provider with an ETW provider-side ID filter.
+
+    The filter is passed to EnableTraceEx2 through ProviderParameters, so
+    unwanted high-volume events are rejected by ETW before reaching the Python
+    consumer. The returned keepalive tuple must live as long as the capture.
+    """
+    from etw import common
+    from etw import evntprov as ep
+    from etw.etw import ProviderParameters
+
+    ids = sorted({int(value) for value in event_ids})
+    if not ids:
+        raise ValueError("ETW provider event filter requires at least one event id")
+    event_filter = ep.EVENT_FILTER_EVENT_ID(common.TRUE, ids).get()
+    descriptor = ep.EVENT_FILTER_DESCRIPTOR(
+        ctypes.addressof(event_filter.contents),
+        ctypes.sizeof(event_filter.contents) + ctypes.sizeof(wt.USHORT) * len(ids),
+        ep.EVENT_FILTER_TYPE_EVENT_ID,
+    )
+    params = ProviderParameters(0, [descriptor])
+    provider = etw_module.ProviderInfo(name, etw_module.GUID(guid), params=params.get())
+    return provider, (event_filter, descriptor, params)
 
 
 def _first(data, *names):
@@ -93,6 +119,7 @@ class ETWMonitor:
         self._capture = None
         self._file_capture = None
         self._dns_capture = None
+        self._provider_filter_keepalive = []
         self._log = logging.getLogger("bc_sentinel.etw")
         self._owns_identity = identity_resolver is None
         self.identity_resolver = identity_resolver or ProcessIdentityResolver()
@@ -109,6 +136,7 @@ class ETWMonitor:
             "error": self.error,
             "dns_tracking": bool(self.running and self.dns_tracking),
             "session_mode": ETW_SESSION_MODE,
+            "provider_filter_mode": ETW_PROVIDER_FILTER_MODE,
         }
 
     @staticmethod
@@ -129,16 +157,22 @@ class ETWMonitor:
             import etw
             self.error = ""
             self.dns_tracking = False
+            self._provider_filter_keepalive = []
 
-            # Process telemetry is intentionally isolated from the high-volume
-            # Kernel-File provider. This uses only pywintrace 0.2.0 constructor
-            # arguments that are available in the pinned dependency.
+            # Process telemetry is isolated and filtered at EnableTraceEx2 so
+            # thread/image/priority events never enter the Python consumer.
             try:
+                process_provider, process_keepalive = _make_provider_with_event_id_filter(
+                    etw,
+                    "Microsoft-Windows-Kernel-Process",
+                    PROCESS_PROVIDER,
+                    PROCESS_EVENT_IDS,
+                )
+                self._provider_filter_keepalive.append(process_keepalive)
                 self._capture = etw.ETW(
-                    providers=[
-                        etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER)),
-                    ],
+                    providers=[process_provider],
                     event_callback=self._on_event,
+                    event_id_filters=sorted(PROCESS_EVENT_IDS),
                     callback_wait_time=0.003,
                 )
                 self._capture.start()
@@ -147,14 +181,18 @@ class ETWMonitor:
                 self._capture = None
                 raise RuntimeError("Process ETW startup failed: " + str(exc))
 
-            # File telemetry has its own session so the legacy-compatible global
-            # event_id_filters can restrict only this provider without suppressing
-            # Process or DNS event IDs.
+            # Kernel-File is the highest-volume provider. Provider-side filtering
+            # is mandatory; the consumer-side filter remains defense in depth.
             try:
+                file_provider, file_keepalive = _make_provider_with_event_id_filter(
+                    etw,
+                    "Microsoft-Windows-Kernel-File",
+                    FILE_PROVIDER,
+                    KERNEL_FILE_PATH_EVENT_IDS,
+                )
+                self._provider_filter_keepalive.append(file_keepalive)
                 self._file_capture = etw.ETW(
-                    providers=[
-                        etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER)),
-                    ],
+                    providers=[file_provider],
                     event_callback=self._on_event,
                     event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS),
                     callback_wait_time=0.003,
@@ -172,11 +210,17 @@ class ETWMonitor:
             dns_error = ""
             for dns_attempt in range(DNS_ETW_START_ATTEMPTS):
                 try:
+                    dns_provider, dns_keepalive = _make_provider_with_event_id_filter(
+                        etw,
+                        "Microsoft-Windows-DNS-Client",
+                        DNS_PROVIDER,
+                        DNS_EVENT_IDS,
+                    )
+                    self._provider_filter_keepalive.append(dns_keepalive)
                     self._dns_capture = etw.ETW(
-                        providers=[
-                            etw.ProviderInfo("Microsoft-Windows-DNS-Client", etw.GUID(DNS_PROVIDER)),
-                        ],
+                        providers=[dns_provider],
                         event_callback=self._on_event,
+                        event_id_filters=sorted(DNS_EVENT_IDS),
                         callback_wait_time=0.003,
                     )
                     self._dns_capture.start()
@@ -200,6 +244,7 @@ class ETWMonitor:
             self._file_capture = None
             self._stop_capture(self._capture)
             self._capture = None
+            self._provider_filter_keepalive = []
             self.available = False
             self.running = False
             self.dns_tracking = False
@@ -216,6 +261,7 @@ class ETWMonitor:
         self._stop_capture(dns)
         self._stop_capture(file_capture)
         self._stop_capture(process_capture)
+        self._provider_filter_keepalive = []
         self.available = False
         self.running = False
         self.dns_tracking = False
