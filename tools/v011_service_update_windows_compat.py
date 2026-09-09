@@ -11,6 +11,7 @@ DNS_ETW_START_ATTEMPTS = 4
 DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
 ETW_DNS_SESSION_MODE = "dedicated"
 ETW_SESSION_MODE = "split_process_file_dns"
+ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"
 
 
 def apply_compat_patch(path: Path = TARGET) -> dict[str, object]:
@@ -80,13 +81,24 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
     required = (
         'ETW_DNS_SESSION_MODE = "dedicated"',
         'ETW_SESSION_MODE = "split_process_file_dns"',
+        'ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"',
+        "PROCESS_EVENT_IDS = frozenset({1, 2})",
+        "DNS_EVENT_IDS = frozenset({3006, 3008, 3018, 3020})",
+        "KERNEL_FILE_PATH_EVENT_IDS = frozenset({12, 26, 27, 30})",
+        "def _make_provider_with_event_id_filter(",
+        "EVENT_FILTER_EVENT_ID(common.TRUE, ids).get()",
+        "ProviderParameters(0, [descriptor])",
+        "params=params.get()",
+        "self._provider_filter_keepalive = []",
         "self._file_capture = None",
         "self._dns_capture = None",
         "for dns_attempt in range(DNS_ETW_START_ATTEMPTS):",
-        'etw.ProviderInfo("Microsoft-Windows-Kernel-Process", etw.GUID(PROCESS_PROVIDER))',
-        'etw.ProviderInfo("Microsoft-Windows-Kernel-File", etw.GUID(FILE_PROVIDER))',
-        'etw.ProviderInfo("Microsoft-Windows-DNS-Client", etw.GUID(DNS_PROVIDER))',
+        '"Microsoft-Windows-Kernel-Process"',
+        '"Microsoft-Windows-Kernel-File"',
+        '"Microsoft-Windows-DNS-Client"',
+        "event_id_filters=sorted(PROCESS_EVENT_IDS)",
         "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)",
+        "event_id_filters=sorted(DNS_EVENT_IDS)",
         "DNS ETW dedicated session unavailable after bounded retries:",
         "self._stop_capture(self._file_capture)",
         "self._stop_capture(self._dns_capture)",
@@ -94,7 +106,7 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
     missing = [marker for marker in required if marker not in text]
     if missing:
         raise RuntimeError(
-            "Split Process/File/DNS ETW architecture missing or incomplete: "
+            "Provider-filtered split Process/File/DNS ETW architecture missing or incomplete: "
             + "; ".join(missing)
         )
     if "providers_event_id_filters=" in text:
@@ -105,6 +117,7 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
         "path": str(path),
         "mode": ETW_SESSION_MODE,
         "dns_mode": ETW_DNS_SESSION_MODE,
+        "provider_filter_mode": ETW_PROVIDER_FILTER_MODE,
         "attempts": DNS_ETW_START_ATTEMPTS,
         "retry_delay_seconds": DNS_ETW_START_RETRY_DELAY_SECONDS,
     }
@@ -119,7 +132,7 @@ def main() -> int:
         print("v0.11 service-update Windows compatibility: already canonical")
     print(
         "v0.11 ETW Windows compatibility: split Process/File/DNS sessions verified; "
-        "pywintrace 0.2.0-safe File event filter active; "
+        "provider-side Event ID filters active; "
         f"DNS retry budget={etw_result['attempts']}"
     )
     return 0
