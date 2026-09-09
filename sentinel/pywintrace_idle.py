@@ -49,9 +49,10 @@ def _adaptive_reentry_backoff(streak: int, process_trace_elapsed: float) -> tupl
 
 def _run_low_cpu(trace_handle, end_capture):
     # Make the native consumer visible in service diagnostics/benchmarks instead
-    # of leaving it as the opaque default "Thread-N" name.
+    # of leaving it as the opaque default "Thread-N" name. Do not rename test
+    # runners or explicitly named application threads.
     current = threading.current_thread()
-    if not str(current.name or "").startswith("BCS-ETW-"):
+    if str(current.name or "").startswith("Thread-"):
         current.name = "BCS-ETW-ProcessTrace"
 
     reentry_streak = 0
