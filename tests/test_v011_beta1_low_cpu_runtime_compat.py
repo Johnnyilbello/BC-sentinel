@@ -3,10 +3,38 @@ from pathlib import Path
 from tools.v011_low_cpu_runtime_compat import (
     FILE_ETW_RUNTIME_MODE,
     PROCESS_ETW_RUNTIME_MODE,
+    PYWINTRACE_RUNTIME_PROFILE,
     apply_file_etw_idle_dormancy,
     apply_process_etw_idle_dormancy,
+    apply_pywintrace_runtime_install,
     apply_realtime_high_churn_root_patch,
 )
+
+
+def test_pywintrace_runtime_install_is_idempotent_and_runs_before_capture_start(tmp_path: Path):
+    target = tmp_path / "etw_monitor.py"
+    target.write_text(
+        'from .process_identity import ProcessIdentityResolver\n'
+        'class X:\n'
+        '    def start(self):\n'
+        '        try:\n'
+        '            import etw\n'
+        '            self._capture.start()\n'
+        '        except Exception as exc:\n'
+        '            raise RuntimeError(str(exc))\n',
+        encoding="utf-8",
+    )
+
+    first = apply_pywintrace_runtime_install(target)
+    second = apply_pywintrace_runtime_install(target)
+    text = target.read_text(encoding="utf-8")
+
+    assert first["patched"] is True
+    assert second["patched"] is False
+    assert first["profile"] == PYWINTRACE_RUNTIME_PROFILE == "adaptive_v3"
+    assert text.count("from .pywintrace_idle import install_pywintrace_idle_backoff") == 1
+    assert text.count("install_pywintrace_idle_backoff()") == 1
+    assert text.index("install_pywintrace_idle_backoff()") < text.index("self._capture.start()")
 
 
 def test_process_etw_dormancy_patch_is_idempotent_and_keeps_psutil_fallback_visible(tmp_path: Path):
