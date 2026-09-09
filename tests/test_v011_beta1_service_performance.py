@@ -6,6 +6,11 @@ from sentinel.etw_monitor import (
     etw_provider_event_filters,
 )
 from tools.service_hardening_benchmark import _evaluate
+from tools.v011_service_readiness import is_ready
+from tools.v011_service_update_windows_compat import (
+    DNS_ETW_START_ATTEMPTS,
+    DNS_ETW_START_RETRY_DELAY_SECONDS,
+)
 
 
 class _Tree:
@@ -31,6 +36,26 @@ def test_file_event_microburst_dedup_is_bounded_and_time_scoped():
     assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "CREATE", 12, now=10.1) is True
     assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "DELETE", 26, now=10.1) is False
     assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "CREATE", 12, now=10.1 + FILE_EVENT_DEDUP_SECONDS + 0.01) is False
+
+
+def test_dns_etw_startup_retry_budget_is_bounded():
+    assert DNS_ETW_START_ATTEMPTS == 4
+    assert 0.0 < DNS_ETW_START_RETRY_DELAY_SECONDS <= 0.5
+
+
+def test_service_readiness_requires_real_dns_etw_tracking():
+    healthy = {
+        "mode": "active_reversible",
+        "dns_etw": True,
+        "pid_scoped_dns": True,
+        "shared_ip_guard": True,
+        "mitm_https": False,
+        "auto_block": False,
+    }
+    assert is_ready(healthy) is True
+    degraded = dict(healthy)
+    degraded["dns_etw"] = False
+    assert is_ready(degraded) is False
 
 
 def test_service_benchmark_rejects_false_pass_when_idle_cpu_is_excessive():
