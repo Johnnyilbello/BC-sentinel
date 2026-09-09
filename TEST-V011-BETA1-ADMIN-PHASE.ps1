@@ -64,7 +64,7 @@ try {
     Write-Host 'BC Sentinel v0.11.0-beta.1 - AUTOMATED ADMIN PHASE (no reboot)' -ForegroundColor Cyan
 
     $script:CurrentStage = 'targeted_tests'
-    $targeted = @('tests\test_checkpoint4_authenticode_hardening_reconstructed.py','tests\test_v062_privileged_broker_update.py','tests\test_v010_beta1_web_reputation_primitives.py','tests\test_v010_beta1_web_deception_anti_scam.py','tests\test_v010_beta2_reversible_web_response.py','tests\test_v010_beta3_clone_scam_fraud.py','tests\test_v010_rc1_consolidation.py','tests\test_v072_beta2_active_web_response.py','tests\test_v072_beta3_domain_trust_provenance_browser.py','tests\test_v072_beta4_browser_download_incident_chain.py','tests\test_v011_beta1_edr_foundation.py','tests\test_v011_beta1_service_performance.py','tests\test_v011_beta1_threat_package_atomic_replace.py')
+    $targeted = @('tests\test_checkpoint4_authenticode_hardening_reconstructed.py','tests\test_v062_privileged_broker_update.py','tests\test_v010_beta1_web_reputation_primitives.py','tests\test_v010_beta1_web_deception_anti_scam.py','tests\test_v010_beta2_reversible_web_response.py','tests\test_v010_beta3_clone_scam_fraud.py','tests\test_v010_rc1_consolidation.py','tests\test_v072_beta2_active_web_response.py','tests\test_v072_beta3_domain_trust_provenance_browser.py','tests\test_v072_beta4_browser_download_incident_chain.py','tests\test_v011_beta1_edr_foundation.py','tests\test_v011_beta1_service_performance.py','tests\test_v011_beta1_threat_package_atomic_replace.py','tests\test_v011_beta1_service_update_directory_retry.py')
     foreach ($item in $targeted) {
         if (-not (Test-Path -LiteralPath $item)) {
             throw ('Incomplete FULL baseline. Missing targeted test: ' + $item)
@@ -72,7 +72,7 @@ try {
     }
 
     & $Py -m pytest -q $targeted
-    if ($LASTEXITCODE -ne 0) { throw 'Targeted native/Web/EDR/update/performance/threat-package tests failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Targeted native/Web/EDR/update/performance/threat-package/service-update tests failed' }
 
     $script:CurrentStage = 'build_preflight'
     $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
