@@ -105,7 +105,9 @@ try {
             if ($benchmark.idle.hottest_threads) {
                 Write-Host 'IDLE HOTTEST THREADS:' -ForegroundColor Yellow
                 foreach ($thread in $benchmark.idle.hottest_threads) {
-                    Write-Host (('  TID {0}: {1:N2}% one-core ({2:N4}s CPU)') -f [int]$thread.tid,[double]$thread.cpu_percent_of_one_core,[double]$thread.cpu_seconds) -ForegroundColor Yellow
+                    $role = [string]$thread.role
+                    if ([string]::IsNullOrWhiteSpace($role)) { $role = 'unattributed' }
+                    Write-Host (('  TID {0} [{1}]: {2:N2}% one-core ({3:N4}s CPU)') -f [int]$thread.tid,$role,[double]$thread.cpu_percent_of_one_core,[double]$thread.cpu_seconds) -ForegroundColor Yellow
                 }
             }
         }
