@@ -1,5 +1,8 @@
+import inspect
+
 from sentinel.etw_monitor import (
     ETWMonitor,
+    ETW_SESSION_MODE,
     FILE_EVENT_DEDUP_SECONDS,
     FILE_PROVIDER,
     KERNEL_FILE_PATH_EVENT_IDS,
@@ -44,11 +47,17 @@ def test_dns_etw_startup_retry_budget_is_bounded():
     assert 0.0 < DNS_ETW_START_RETRY_DELAY_SECONDS <= 0.5
 
 
-def test_dns_etw_uses_dedicated_session_architecture():
+def test_etw_uses_pywintrace_020_safe_split_sessions():
     assert ETW_DNS_SESSION_MODE == "dedicated"
+    assert ETW_SESSION_MODE == "split_process_file_dns"
     monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
-    assert hasattr(monitor, "_dns_capture")
+    assert monitor._capture is None
+    assert monitor._file_capture is None
     assert monitor._dns_capture is None
+    start_source = inspect.getsource(ETWMonitor.start)
+    assert "providers_event_id_filters=" not in start_source
+    assert "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)" in start_source
+    assert start_source.count("etw.ETW(") == 3
 
 
 def test_service_readiness_requires_real_dns_etw_tracking():
