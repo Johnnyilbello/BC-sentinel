@@ -6,7 +6,7 @@ import time
 import sentinel.pywintrace_idle as compat
 
 
-def test_immediate_success_process_trace_is_bounded(monkeypatch):
+def test_successful_process_trace_reentry_is_bounded(monkeypatch):
     done = threading.Event()
     calls = {"count": 0}
 
@@ -22,10 +22,10 @@ def test_immediate_success_process_trace_is_bounded(monkeypatch):
     elapsed = time.perf_counter() - started
 
     assert calls["count"] == 3
-    assert elapsed >= compat.PYWINTRACE_IDLE_BACKOFF_SECONDS
+    assert elapsed >= compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS
 
 
-def test_process_trace_error_stops_without_spin(monkeypatch):
+def test_process_trace_error_stops_without_reentry(monkeypatch):
     done = threading.Event()
     calls = {"count": 0}
 
@@ -40,6 +40,23 @@ def test_process_trace_error_stops_without_spin(monkeypatch):
     assert done.is_set() is True
 
 
-def test_idle_backoff_constants_are_low_latency_and_nonzero():
-    assert 0.0 < compat.PYWINTRACE_IMMEDIATE_RETURN_SECONDS <= 0.01
-    assert 0.0 < compat.PYWINTRACE_IDLE_BACKOFF_SECONDS <= 0.02
+def test_reentry_backoff_is_bounded_and_interruptible():
+    assert 0.02 <= compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS <= 0.10
+
+
+def test_pre_stopped_capture_does_not_wait_or_reenter(monkeypatch):
+    done = threading.Event()
+    calls = {"count": 0}
+
+    def fake_once(_trace_handle):
+        calls["count"] += 1
+        done.set()
+        return 0, 0
+
+    monkeypatch.setattr(compat, "_process_trace_once", fake_once)
+    started = time.perf_counter()
+    compat._run_low_cpu(object(), done)
+    elapsed = time.perf_counter() - started
+
+    assert calls["count"] == 1
+    assert elapsed < compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS
