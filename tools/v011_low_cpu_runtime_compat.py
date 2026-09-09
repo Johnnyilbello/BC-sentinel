@@ -6,8 +6,79 @@ ROOT = Path(__file__).resolve().parents[1]
 ETW_TARGET = ROOT / "sentinel" / "etw_monitor.py"
 REALTIME_TARGET = ROOT / "sentinel" / "realtime.py"
 
+PROCESS_ETW_RUNTIME_MODE = "dormant_idle_beta1"
+PROCESS_ETW_CONTINUOUS = False
 FILE_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 FILE_ETW_CONTINUOUS = False
+
+
+def apply_process_etw_idle_dormancy(path: Path = ETW_TARGET) -> dict[str, object]:
+    if not path.is_file():
+        raise FileNotFoundError(f"etw_monitor.py missing: {path}")
+
+    text = path.read_text(encoding="utf-8")
+    patched = False
+
+    if 'PROCESS_ETW_RUNTIME_MODE = "dormant_idle_beta1"' not in text:
+        anchor = 'ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"\n'
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected ETW constants shape; refusing low-CPU Process ETW patch")
+        text = text.replace(
+            anchor,
+            anchor
+            + 'PROCESS_ETW_RUNTIME_MODE = "dormant_idle_beta1"\n'
+            + 'PROCESS_ETW_CONTINUOUS = False\n',
+            1,
+        )
+        patched = True
+
+    dormancy_marker = "if not PROCESS_ETW_CONTINUOUS:\n                    self._stop_capture(self._capture)"
+    if dormancy_marker not in text:
+        anchor = "                self._capture.start()\n"
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected Process ETW startup shape; refusing low-CPU patch")
+        text = text.replace(
+            anchor,
+            anchor
+            + "                if not PROCESS_ETW_CONTINUOUS:\n"
+            + "                    self._stop_capture(self._capture)\n"
+            + "                    self._capture = None\n",
+            1,
+        )
+        patched = True
+
+    status_marker = '"process_runtime_mode": PROCESS_ETW_RUNTIME_MODE'
+    if status_marker not in text:
+        anchor = '            "provider_filter_mode": ETW_PROVIDER_FILTER_MODE,\n'
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected ETW status shape; refusing low-CPU Process ETW status patch")
+        text = text.replace(
+            anchor,
+            anchor
+            + '            "process_runtime_mode": PROCESS_ETW_RUNTIME_MODE,\n'
+            + '            "process_tracking": bool(self.running and self._capture is not None),\n'
+            + '            "process_fallback": "psutil_process_monitor",\n',
+            1,
+        )
+        patched = True
+
+    if patched:
+        path.write_text(text, encoding="utf-8")
+
+    verify = path.read_text(encoding="utf-8")
+    required = (
+        'PROCESS_ETW_RUNTIME_MODE = "dormant_idle_beta1"',
+        'PROCESS_ETW_CONTINUOUS = False',
+        dormancy_marker,
+        status_marker,
+        '"process_tracking": bool(self.running and self._capture is not None)',
+        '"process_fallback": "psutil_process_monitor"',
+    )
+    missing = [marker for marker in required if marker not in verify]
+    if missing:
+        raise RuntimeError("Process ETW low-CPU patch incomplete: " + "; ".join(missing))
+
+    return {"patched": patched, "path": str(path), "mode": PROCESS_ETW_RUNTIME_MODE}
 
 
 def apply_file_etw_idle_dormancy(path: Path = ETW_TARGET) -> dict[str, object]:
@@ -141,9 +212,14 @@ def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[s
 
 
 def main() -> int:
-    etw = apply_file_etw_idle_dormancy()
+    process_etw = apply_process_etw_idle_dormancy()
+    file_etw = apply_file_etw_idle_dormancy()
     realtime = apply_realtime_high_churn_root_patch()
-    if etw["patched"]:
+    if process_etw["patched"]:
+        print("v0.11 low-CPU runtime: continuous Process ETW moved to dormant-idle mode; psutil fallback remains active")
+    else:
+        print("v0.11 low-CPU runtime: Process ETW dormant-idle mode already canonical")
+    if file_etw["patched"]:
         print("v0.11 low-CPU runtime: continuous File ETW moved to dormant-idle mode")
     else:
         print("v0.11 low-CPU runtime: File ETW dormant-idle mode already canonical")
