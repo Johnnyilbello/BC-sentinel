@@ -15,7 +15,7 @@ from sentinel.etw_monitor import (
     etw_provider_event_filters,
 )
 from sentinel.pywintrace_idle import PYWINTRACE_REENTRY_BACKOFF_SECONDS
-from tools.service_hardening_benchmark import _evaluate
+from tools.service_hardening_benchmark import _evaluate, _thread_cpu_deltas, _thread_roles_from_status
 from tools.v011_service_readiness import _etw_diagnostics, is_ready
 from tools.v011_service_update_windows_compat import (
     DNS_ETW_START_ATTEMPTS,
@@ -86,6 +86,37 @@ def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions()
     assert "event_id_filters=sorted(DNS_EVENT_IDS)" in start_source
     assert start_source.count("_make_provider_with_event_id_filter(") == 3
     assert start_source.count("etw.ETW(") == 3
+
+
+def test_runtime_thread_role_attribution_prefers_explicit_etw_roles():
+    status = {
+        "python_threads": {
+            "100": "BCS-ProcessMonitor",
+            "200": "Thread-1 (_run)",
+        },
+        "etw": {
+            "consumer_threads": {
+                "process_etw": 200,
+                "file_etw": 201,
+                "dns_etw": 202,
+            }
+        },
+    }
+    roles = _thread_roles_from_status(status)
+    assert roles[100] == "BCS-ProcessMonitor"
+    assert roles[200] == "process_etw"
+    assert roles[201] == "file_etw"
+    assert roles[202] == "dns_etw"
+
+    rows = _thread_cpu_deltas(
+        {100: 0.0, 200: 0.0},
+        {100: 0.2, 200: 0.8},
+        1.0,
+        roles=roles,
+    )
+    assert rows[0]["tid"] == 200
+    assert rows[0]["role"] == "process_etw"
+    assert rows[1]["role"] == "BCS-ProcessMonitor"
 
 
 def test_service_readiness_requires_real_dns_etw_tracking():
