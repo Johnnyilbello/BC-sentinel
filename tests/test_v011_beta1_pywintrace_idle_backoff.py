@@ -42,6 +42,31 @@ def test_process_trace_error_stops_without_reentry(monkeypatch):
 
 def test_reentry_backoff_is_bounded_and_interruptible():
     assert 0.02 <= compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS <= 0.10
+    assert compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS <= 0.50
+    assert compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS >= compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS
+
+
+def test_adaptive_reentry_backoff_escalates_only_for_repeated_short_returns():
+    streak = 0
+    delays = []
+    for _ in range(5):
+        streak, delay = compat._adaptive_reentry_backoff(streak, 0.001)
+        delays.append(delay)
+
+    assert delays[0] == compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS
+    assert delays[1] == min(compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS * 2, compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS)
+    assert delays[2] == min(compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS * 4, compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS)
+    assert delays[3] == compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS
+    assert delays[4] == compat.PYWINTRACE_REENTRY_MAX_BACKOFF_SECONDS
+
+
+def test_healthy_process_trace_block_resets_escalation():
+    streak, delay = compat._adaptive_reentry_backoff(
+        8,
+        compat.PYWINTRACE_REENTRY_HEALTHY_BLOCK_SECONDS + 0.1,
+    )
+    assert streak == 1
+    assert delay == compat.PYWINTRACE_REENTRY_BACKOFF_SECONDS
 
 
 def test_pre_stopped_capture_does_not_wait_or_reenter(monkeypatch):
