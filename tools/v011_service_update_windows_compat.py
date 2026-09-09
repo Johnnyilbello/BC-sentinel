@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "sentinel" / "service_update.py"
 ETW_TARGET = ROOT / "sentinel" / "etw_monitor.py"
+IDLE_COMPAT_TARGET = ROOT / "sentinel" / "pywintrace_idle.py"
 MARKER = "def apply_update_transaction("
 EXPECTED_DIRECT_REPLACES = 9
 DNS_ETW_START_ATTEMPTS = 4
@@ -12,6 +13,8 @@ DNS_ETW_START_RETRY_DELAY_SECONDS = 0.25
 ETW_DNS_SESSION_MODE = "dedicated"
 ETW_SESSION_MODE = "split_process_file_dns"
 ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"
+PYWINTRACE_IDLE_IMPORT = "from .pywintrace_idle import install_pywintrace_idle_backoff"
+PYWINTRACE_IDLE_CALL = "install_pywintrace_idle_backoff()"
 
 
 def apply_compat_patch(path: Path = TARGET) -> dict[str, object]:
@@ -74,6 +77,49 @@ def apply_compat_patch(path: Path = TARGET) -> dict[str, object]:
     }
 
 
+def apply_pywintrace_idle_patch(path: Path = ETW_TARGET) -> dict[str, object]:
+    if not path.is_file():
+        raise FileNotFoundError(f"etw_monitor.py missing: {path}")
+    if not IDLE_COMPAT_TARGET.is_file():
+        raise FileNotFoundError(f"pywintrace idle compatibility module missing: {IDLE_COMPAT_TARGET}")
+
+    text = path.read_text(encoding="utf-8")
+    patched = False
+
+    if PYWINTRACE_IDLE_IMPORT not in text:
+        import_anchor = "from .web_protection import DNSCorrelationCache, WebProtectionEngine, extract_ip_addresses, normalize_domain\n"
+        if text.count(import_anchor) != 1:
+            raise RuntimeError("Unexpected etw_monitor import shape; refusing idle-spin compatibility injection")
+        text = text.replace(import_anchor, import_anchor + PYWINTRACE_IDLE_IMPORT + "\n", 1)
+        patched = True
+
+    if PYWINTRACE_IDLE_CALL not in text:
+        start_anchor = "            import etw\n            self.error = \"\"\n"
+        if text.count(start_anchor) != 1:
+            raise RuntimeError("Unexpected ETW start shape; refusing idle-spin compatibility injection")
+        text = text.replace(
+            start_anchor,
+            "            import etw\n            install_pywintrace_idle_backoff()\n            self.error = \"\"\n",
+            1,
+        )
+        patched = True
+
+    if patched:
+        path.write_text(text, encoding="utf-8")
+
+    verify = path.read_text(encoding="utf-8")
+    if verify.count(PYWINTRACE_IDLE_IMPORT) != 1:
+        raise RuntimeError("pywintrace idle compatibility import missing or duplicated")
+    if verify.count(PYWINTRACE_IDLE_CALL) != 1:
+        raise RuntimeError("pywintrace idle compatibility call missing or duplicated")
+
+    return {
+        "patched": patched,
+        "already_compatible": not patched,
+        "path": str(path),
+    }
+
+
 def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
     if not path.is_file():
         raise FileNotFoundError(f"etw_monitor.py missing: {path}")
@@ -99,6 +145,8 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
         "event_id_filters=sorted(PROCESS_EVENT_IDS)",
         "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)",
         "event_id_filters=sorted(DNS_EVENT_IDS)",
+        PYWINTRACE_IDLE_IMPORT,
+        PYWINTRACE_IDLE_CALL,
         "DNS ETW dedicated session unavailable after bounded retries:",
         "self._stop_capture(self._file_capture)",
         "self._stop_capture(self._dns_capture)",
@@ -120,19 +168,25 @@ def verify_etw_dns_architecture(path: Path = ETW_TARGET) -> dict[str, object]:
         "provider_filter_mode": ETW_PROVIDER_FILTER_MODE,
         "attempts": DNS_ETW_START_ATTEMPTS,
         "retry_delay_seconds": DNS_ETW_START_RETRY_DELAY_SECONDS,
+        "idle_backoff": True,
     }
 
 
 def main() -> int:
     update_result = apply_compat_patch()
+    idle_result = apply_pywintrace_idle_patch()
     etw_result = verify_etw_dns_architecture()
     if update_result["patched"]:
         print("v0.11 service-update Windows compatibility: bounded directory replace retry installed")
     else:
         print("v0.11 service-update Windows compatibility: already canonical")
+    if idle_result["patched"]:
+        print("v0.11 pywintrace idle compatibility: immediate-success ProcessTrace backoff installed")
+    else:
+        print("v0.11 pywintrace idle compatibility: already canonical")
     print(
         "v0.11 ETW Windows compatibility: split Process/File/DNS sessions verified; "
-        "provider-side Event ID filters active; "
+        "provider-side Event ID filters active; low-CPU consumer backoff active; "
         f"DNS retry budget={etw_result['attempts']}"
     )
     return 0
