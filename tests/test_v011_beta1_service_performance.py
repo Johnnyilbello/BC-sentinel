@@ -6,10 +6,11 @@ from sentinel.etw_monitor import (
     etw_provider_event_filters,
 )
 from tools.service_hardening_benchmark import _evaluate
-from tools.v011_service_readiness import is_ready
+from tools.v011_service_readiness import _etw_diagnostics, is_ready
 from tools.v011_service_update_windows_compat import (
     DNS_ETW_START_ATTEMPTS,
     DNS_ETW_START_RETRY_DELAY_SECONDS,
+    ETW_DNS_SESSION_MODE,
 )
 
 
@@ -43,6 +44,13 @@ def test_dns_etw_startup_retry_budget_is_bounded():
     assert 0.0 < DNS_ETW_START_RETRY_DELAY_SECONDS <= 0.5
 
 
+def test_dns_etw_uses_dedicated_session_architecture():
+    assert ETW_DNS_SESSION_MODE == "dedicated"
+    monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
+    assert hasattr(monitor, "_dns_capture")
+    assert monitor._dns_capture is None
+
+
 def test_service_readiness_requires_real_dns_etw_tracking():
     healthy = {
         "mode": "active_reversible",
@@ -56,6 +64,21 @@ def test_service_readiness_requires_real_dns_etw_tracking():
     degraded = dict(healthy)
     degraded["dns_etw"] = False
     assert is_ready(degraded) is False
+
+
+def test_service_readiness_surfaces_etw_provider_error():
+    service_status = {
+        "health": "HEALTHY",
+        "etw": {
+            "running": True,
+            "dns_tracking": False,
+            "error": "DNS ETW dedicated session unavailable: WinError 5",
+        },
+    }
+    diagnostics = _etw_diagnostics(service_status)
+    assert diagnostics["running"] is True
+    assert diagnostics["dns_tracking"] is False
+    assert "WinError 5" in diagnostics["error"]
 
 
 def test_service_benchmark_rejects_false_pass_when_idle_cpu_is_excessive():
