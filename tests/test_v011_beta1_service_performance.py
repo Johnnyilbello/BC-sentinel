@@ -14,10 +14,7 @@ from sentinel.etw_monitor import (
     _make_provider_with_event_id_filter,
     etw_provider_event_filters,
 )
-from sentinel.pywintrace_idle import (
-    PYWINTRACE_IDLE_BACKOFF_SECONDS,
-    PYWINTRACE_IMMEDIATE_RETURN_SECONDS,
-)
+from sentinel.pywintrace_idle import PYWINTRACE_REENTRY_BACKOFF_SECONDS
 from tools.service_hardening_benchmark import _evaluate
 from tools.v011_service_readiness import _etw_diagnostics, is_ready
 from tools.v011_service_update_windows_compat import (
@@ -69,8 +66,7 @@ def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions()
     assert ETW_DNS_SESSION_MODE == "dedicated"
     assert ETW_SESSION_MODE == "split_process_file_dns"
     assert ETW_PROVIDER_FILTER_MODE == "provider_side_event_id_v2"
-    assert 0.0 < PYWINTRACE_IMMEDIATE_RETURN_SECONDS <= 0.01
-    assert 0.0 < PYWINTRACE_IDLE_BACKOFF_SECONDS <= 0.02
+    assert 0.02 <= PYWINTRACE_REENTRY_BACKOFF_SECONDS <= 0.10
     monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
     assert monitor._capture is None
     assert monitor._file_capture is None
