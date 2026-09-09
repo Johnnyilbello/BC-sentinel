@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import ctypes as ct
-from time import perf_counter
 
-# pywintrace 0.2.0 EventConsumer._run() immediately re-enters ProcessTrace()
-# whenever the call returns SUCCESS. On some Windows builds a real-time
-# ProcessTrace call can return almost immediately while the session is still
-# active, producing a tight loop in each ETW consumer thread. BC Sentinel only
-# backs off in that immediate-return case; normally blocking ProcessTrace calls
-# are unchanged.
-PYWINTRACE_IMMEDIATE_RETURN_SECONDS = 0.005
-PYWINTRACE_IDLE_BACKOFF_SECONDS = 0.010
-PATCH_MARKER = "bc-sentinel-pywintrace-idle-backoff-v1"
+# pywintrace 0.2.0 EventConsumer._run() re-enters ProcessTrace() whenever the
+# call returns SUCCESS. For a real-time session ProcessTrace is expected to
+# remain blocked while the session is active. On some Windows builds it can
+# nevertheless return SUCCESS while the session is still active, causing the
+# consumer thread to re-enter immediately and spin.
+#
+# BC Sentinel therefore applies a bounded, interruptible delay after *every*
+# unexpected SUCCESS return while the capture is still active. Normal event
+# processing is not delayed: while ProcessTrace is correctly blocking, this
+# code is not executing at all.
+PYWINTRACE_REENTRY_BACKOFF_SECONDS = 0.050
+PATCH_MARKER = "bc-sentinel-pywintrace-idle-backoff-v2"
 
 
 def _process_trace_once(trace_handle):
@@ -23,9 +25,7 @@ def _process_trace_once(trace_handle):
 
 def _run_low_cpu(trace_handle, end_capture):
     while True:
-        started = perf_counter()
         status, success = _process_trace_once(trace_handle)
-        elapsed = perf_counter() - started
 
         if status != success:
             end_capture.set()
@@ -33,11 +33,10 @@ def _run_low_cpu(trace_handle, end_capture):
         if end_capture.is_set():
             break
 
-        # Back off only when ProcessTrace returned effectively immediately.
-        # Event.wait() keeps shutdown responsive and avoids an unconditional
-        # sleep on the normal blocking path.
-        if elapsed <= PYWINTRACE_IMMEDIATE_RETURN_SECONDS:
-            end_capture.wait(PYWINTRACE_IDLE_BACKOFF_SECONDS)
+        # A SUCCESS return while the real-time session is still active is an
+        # unexpected re-entry condition. Always back off before calling
+        # ProcessTrace again. Event.wait() keeps shutdown responsive.
+        end_capture.wait(PYWINTRACE_REENTRY_BACKOFF_SECONDS)
 
 
 def install_pywintrace_idle_backoff() -> bool:
