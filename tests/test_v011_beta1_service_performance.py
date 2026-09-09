@@ -14,6 +14,10 @@ from sentinel.etw_monitor import (
     _make_provider_with_event_id_filter,
     etw_provider_event_filters,
 )
+from sentinel.pywintrace_idle import (
+    PYWINTRACE_IDLE_BACKOFF_SECONDS,
+    PYWINTRACE_IMMEDIATE_RETURN_SECONDS,
+)
 from tools.service_hardening_benchmark import _evaluate
 from tools.v011_service_readiness import _etw_diagnostics, is_ready
 from tools.v011_service_update_windows_compat import (
@@ -42,10 +46,10 @@ def test_etw_filters_only_event_families_used_by_pipeline():
     assert PROCESS_EVENT_IDS == {1, 2}
     assert KERNEL_FILE_PATH_EVENT_IDS == {12, 26, 27, 30}
     assert DNS_EVENT_IDS == {3006, 3008, 3018, 3020}
-    assert 3 not in PROCESS_EVENT_IDS  # ThreadStart is not needed by the EDR process tree.
-    assert 5 not in PROCESS_EVENT_IDS  # ImageLoad is not consumed by this monitor.
-    assert 15 not in KERNEL_FILE_PATH_EVENT_IDS  # Read has no path in this provider schema.
-    assert 16 not in KERNEL_FILE_PATH_EVENT_IDS  # Write has no path in this provider schema.
+    assert 3 not in PROCESS_EVENT_IDS
+    assert 5 not in PROCESS_EVENT_IDS
+    assert 15 not in KERNEL_FILE_PATH_EVENT_IDS
+    assert 16 not in KERNEL_FILE_PATH_EVENT_IDS
 
 
 def test_file_event_microburst_dedup_is_bounded_and_time_scoped():
@@ -65,6 +69,8 @@ def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions()
     assert ETW_DNS_SESSION_MODE == "dedicated"
     assert ETW_SESSION_MODE == "split_process_file_dns"
     assert ETW_PROVIDER_FILTER_MODE == "provider_side_event_id_v2"
+    assert 0.0 < PYWINTRACE_IMMEDIATE_RETURN_SECONDS <= 0.01
+    assert 0.0 < PYWINTRACE_IDLE_BACKOFF_SECONDS <= 0.02
     monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
     assert monitor._capture is None
     assert monitor._file_capture is None
@@ -78,6 +84,7 @@ def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions()
 
     start_source = inspect.getsource(ETWMonitor.start)
     assert "providers_event_id_filters=" not in start_source
+    assert "install_pywintrace_idle_backoff()" in start_source
     assert "event_id_filters=sorted(PROCESS_EVENT_IDS)" in start_source
     assert "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)" in start_source
     assert "event_id_filters=sorted(DNS_EVENT_IDS)" in start_source
