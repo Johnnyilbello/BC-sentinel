@@ -18,7 +18,7 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.1 - AUTOMATED ADMIN PHASE (no reboot)' -ForegroundColor Cyan
 
-    $targeted = @('tests\test_checkpoint4_authenticode_hardening_reconstructed.py','tests\test_v062_privileged_broker_update.py','tests\test_v010_beta1_web_reputation_primitives.py','tests\test_v010_beta1_web_deception_anti_scam.py','tests\test_v010_beta2_reversible_web_response.py','tests\test_v010_beta3_clone_scam_fraud.py','tests\test_v010_rc1_consolidation.py','tests\test_v072_beta2_active_web_response.py','tests\test_v072_beta3_domain_trust_provenance_browser.py','tests\test_v072_beta4_browser_download_incident_chain.py','tests\test_v011_beta1_edr_foundation.py')
+    $targeted = @('tests\test_checkpoint4_authenticode_hardening_reconstructed.py','tests\test_v062_privileged_broker_update.py','tests\test_v010_beta1_web_reputation_primitives.py','tests\test_v010_beta1_web_deception_anti_scam.py','tests\test_v010_beta2_reversible_web_response.py','tests\test_v010_beta3_clone_scam_fraud.py','tests\test_v010_rc1_consolidation.py','tests\test_v072_beta2_active_web_response.py','tests\test_v072_beta3_domain_trust_provenance_browser.py','tests\test_v072_beta4_browser_download_incident_chain.py','tests\test_v011_beta1_edr_foundation.py','tests\test_v011_beta1_service_performance.py')
     foreach ($item in $targeted) {
         if (-not (Test-Path -LiteralPath $item)) {
             throw ('Incomplete FULL baseline. Missing targeted test: ' + $item)
@@ -26,7 +26,7 @@ try {
     }
 
     & $Py -m pytest -q $targeted
-    if ($LASTEXITCODE -ne 0) { throw 'Targeted native/Web/EDR/update tests failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Targeted native/Web/EDR/update/performance tests failed' }
 
     $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
     if (-not (Test-Path -LiteralPath $distService)) {
@@ -89,10 +89,11 @@ try {
     & $Py -m tools.windows_acceptance --benchmark-files 5000 --realtime-seconds 3 --service-live --output acceptance-v011-beta1-windows-live.json
     if ($LASTEXITCODE -ne 0) { throw 'Windows live acceptance failed' }
 
-    & $Py -m tools.service_hardening_benchmark --idle-seconds 5 --ipc-requests 200 --storm-files 500 --output benchmark-v011-beta1-service.json
-    if ($LASTEXITCODE -ne 0) { throw 'Service hardening benchmark failed' }
+    Write-Host 'Service performance gates: idle <= 25% one core, IPC >= 10 req/s, benign storm <= 250% one core.' -ForegroundColor Cyan
+    & $Py -m tools.service_hardening_benchmark --idle-seconds 5 --ipc-requests 200 --storm-files 500 --max-idle-cpu-percent 25 --min-ipc-rps 10 --max-storm-cpu-percent 250 --output benchmark-v011-beta1-service.json
+    if ($LASTEXITCODE -ne 0) { throw 'Service hardening/performance benchmark failed' }
 
-    Write-Host 'ADMIN PHASE PASS (native + upgrade + repair + regressions; reboot excluded)' -ForegroundColor Green
+    Write-Host 'ADMIN PHASE PASS (native + upgrade + repair + regressions + performance; reboot excluded)' -ForegroundColor Green
     exit 0
 }
 catch {
