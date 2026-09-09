@@ -10,6 +10,49 @@ PROCESS_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 PROCESS_ETW_CONTINUOUS = False
 FILE_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 FILE_ETW_CONTINUOUS = False
+PYWINTRACE_RUNTIME_PROFILE = "adaptive_v3"
+
+
+def apply_pywintrace_runtime_install(path: Path = ETW_TARGET) -> dict[str, object]:
+    """Guarantee the pywintrace low-CPU shim is active in the compiled service.
+
+    The previous compatibility layer shipped the replacement EventConsumer._run
+    implementation, but the runtime must also install it before any ETW capture
+    starts. Patching ETWMonitor.start keeps this deterministic for PyInstaller
+    builds and for the live Windows service.
+    """
+    if not path.is_file():
+        raise FileNotFoundError(f"etw_monitor.py missing: {path}")
+
+    text = path.read_text(encoding="utf-8")
+    patched = False
+
+    import_marker = "from .pywintrace_idle import install_pywintrace_idle_backoff\n"
+    if import_marker not in text:
+        anchor = "from .process_identity import ProcessIdentityResolver\n"
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected ETW import shape; refusing pywintrace runtime-install patch")
+        text = text.replace(anchor, anchor + import_marker, 1)
+        patched = True
+
+    install_marker = "            install_pywintrace_idle_backoff()\n"
+    if install_marker not in text:
+        anchor = "            import etw\n"
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected ETW startup import shape; refusing pywintrace runtime-install patch")
+        text = text.replace(anchor, anchor + install_marker, 1)
+        patched = True
+
+    if patched:
+        path.write_text(text, encoding="utf-8")
+
+    verify = path.read_text(encoding="utf-8")
+    required = (import_marker.strip(), install_marker.strip())
+    missing = [marker for marker in required if marker not in verify]
+    if missing:
+        raise RuntimeError("pywintrace runtime-install patch incomplete: " + "; ".join(missing))
+
+    return {"patched": patched, "path": str(path), "profile": PYWINTRACE_RUNTIME_PROFILE}
 
 
 def apply_process_etw_idle_dormancy(path: Path = ETW_TARGET) -> dict[str, object]:
@@ -212,9 +255,14 @@ def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[s
 
 
 def main() -> int:
+    pywintrace = apply_pywintrace_runtime_install()
     process_etw = apply_process_etw_idle_dormancy()
     file_etw = apply_file_etw_idle_dormancy()
     realtime = apply_realtime_high_churn_root_patch()
+    if pywintrace["patched"]:
+        print("v0.11 pywintrace low-CPU runtime: adaptive ProcessTrace shim installed in ETWMonitor.start")
+    else:
+        print("v0.11 pywintrace low-CPU runtime: adaptive ProcessTrace shim already canonical")
     if process_etw["patched"]:
         print("v0.11 low-CPU runtime: continuous Process ETW moved to dormant-idle mode; psutil fallback remains active")
     else:
