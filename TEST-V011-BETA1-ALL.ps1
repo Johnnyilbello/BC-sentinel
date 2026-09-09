@@ -33,6 +33,9 @@ try {
     & $Py -m pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) { throw 'requirements installation failed' }
 
+    & $Py -m tools.v011_legacy_test_compat
+    if ($LASTEXITCODE -ne 0) { throw 'Legacy regression compatibility migration failed' }
+
     $Temp = Join-Path $env:TEMP 'bc-sentinel-v011-beta1-all'
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
     & $Py -m pytest -q --basetemp $Temp
