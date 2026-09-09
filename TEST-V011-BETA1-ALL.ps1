@@ -36,6 +36,9 @@ try {
     & $Py -m tools.v011_legacy_test_compat
     if ($LASTEXITCODE -ne 0) { throw 'Legacy regression compatibility migration failed' }
 
+    & $Py -m tools.v011_threat_package_windows_compat
+    if ($LASTEXITCODE -ne 0) { throw 'Threat-package Windows compatibility migration failed' }
+
     $Temp = Join-Path $env:TEMP 'bc-sentinel-v011-beta1-all'
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
     & $Py -m pytest -q --basetemp $Temp
