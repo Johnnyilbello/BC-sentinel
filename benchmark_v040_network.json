@@ -1,0 +1,11 @@
+{
+  "events": 5000,
+  "unique_endpoints_requested": 250,
+  "processes": 25,
+  "elapsed_seconds": 4.686022,
+  "events_per_second": 1067.0,
+  "network_events_persisted": 5000,
+  "endpoint_process_pairs": 505,
+  "max_correlated_score": 84,
+  "privacy": "synthetic/local-only; no external network lookup"
+}

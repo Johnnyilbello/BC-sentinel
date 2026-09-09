@@ -164,6 +164,7 @@ def assess_page_context(
     title_claims = _brand_claims(page_title)
     body_claims = _brand_claims(visible_text[:16000])
     claimed = sorted(set(title_claims + body_claims + ([declared_key] if declared_key else [])))
+    canonical_claims = [key for key in claimed if _canonical_for(key, observed_host)]
     noncanonical_claims = [key for key in claimed if not _canonical_for(key, observed_host)]
 
     credential_fields = sorted(fields & _CREDENTIAL_FIELDS)
@@ -182,6 +183,9 @@ def assess_page_context(
     if len(links) >= 8 and observed_host and sum(1 for item in links if item != observed_host and not _same_or_subdomain(item, observed_host)) >= 6 and noncanonical_claims:
         signals.append(CloneScamSignal("clone_site", "brand_page_external_link_fanout", 5, "Pagina brandizzata non canonica con molti host esterni", str(len(links))))
 
+    # Scam/fraud vocabulary only contributes when structural/identity risk is
+    # already independently present. This avoids scoring normal commerce/support
+    # pages merely because they contain payment, urgency, or support language.
     structural_anchor = bool(int(local.score or 0) > 0 or noncanonical_claims or cross_origin_action)
     combined_text = f"{page_title}\n{visible_text}"[:20000]
     if structural_anchor:
@@ -216,6 +220,8 @@ def assess_page_context(
     else:
         assessment_class = "observe"
 
+    # Require more than one independent family before page context itself moves
+    # to review. URL-only Beta1 risk retains its own local suspicious status.
     review = bool((score >= 20 and evidence_families >= 2) or str(local.status) == "suspicious")
     fingerprint_payload = {
         "profile": CLONE_SCAM_PROFILE,

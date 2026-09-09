@@ -1,0 +1,99 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.10.0-beta.3",
+  "harmless_fixture": true,
+  "passed": true,
+  "local_foundation_passed": true,
+  "nonshared": {
+    "context": {
+      "pid": 4242,
+      "address": "192.0.2.55",
+      "domain": "malware.test",
+      "shared_ip": false,
+      "domain_count": 1,
+      "pid_count": 1,
+      "domains": [
+        "malware.test"
+      ],
+      "observed_at": 1788879686.0744832
+    },
+    "lease": {
+      "lease_id": "42f48196b414d8a0a0e0d0ac4d5e9c79",
+      "rule_id": "BCSF-400D5280D427889E",
+      "remote_address": "192.0.2.55",
+      "created_at": 1788879686.0799756,
+      "expires_at": 1788879746.0799756,
+      "ttl_seconds": 60,
+      "status": "active",
+      "qualification": "signed_domain_nonshared_ip",
+      "finding_id": "BCW-BBBBBBBBBBBBBBBBBBBB",
+      "response_profile": "v0.10.0-beta.2",
+      "qualification_policy": {
+        "eligible": true,
+        "qualification": "signed_domain_nonshared_ip",
+        "reason": "signed_domain_same_pid_network",
+        "signed_evidence": true,
+        "requires_same_pid_network": true,
+        "shared_ip_guard": true,
+        "heuristic_only_blocked": true
+      }
+    },
+    "rule_present": true,
+    "baseline_restored": true
+  },
+  "shared_guard": {
+    "context": {
+      "pid": 4242,
+      "address": "192.0.2.55",
+      "domain": "malware.test",
+      "shared_ip": true,
+      "domain_count": 2,
+      "pid_count": 2,
+      "domains": [
+        "malware.test",
+        "other.example.test"
+      ],
+      "observed_at": 1788879686.096538
+    },
+    "assessment": {
+      "indicator": "malware.test",
+      "kind": "connection",
+      "normalized_url": "",
+      "score": 90,
+      "level": "CRITICAL",
+      "status": "malicious",
+      "source": "signed_ioc_domain",
+      "reasons": [
+        "BC Sentinel harmless Beta2 web response IOC simulation",
+        "IP condiviso/CDN: 2 domini recenti su questo indirizzo",
+        "IP osservato da 2 processi distinti"
+      ],
+      "signed_ioc": true,
+      "block_recommended": false,
+      "decision": "review_shared_infrastructure",
+      "trusted_domain": false,
+      "trust_scope": "",
+      "provenance": [
+        {
+          "tier": "signed_ioc",
+          "bundle_id": "web-response-acceptance",
+          "severity": "critical",
+          "expires_at": 1788883286.095732,
+          "label": "BC Sentinel harmless Beta2 web response IOC simulation"
+        }
+      ],
+      "risk_families": [],
+      "signal_codes": [],
+      "heuristic_profile": "v0.10.0-beta.1",
+      "identity_context": {},
+      "heuristic_fingerprint": ""
+    },
+    "containment_denied": true
+  },
+  "safety": {
+    "auto_block": false,
+    "mitm_https": false,
+    "max_web_lease_seconds": 3600,
+    "shared_ip_guard": true
+  }
+}

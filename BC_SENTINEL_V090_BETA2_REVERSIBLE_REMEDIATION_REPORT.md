@@ -1,45 +1,37 @@
 # BC Sentinel v0.9.0-beta.2 — Reversible Remediation Report
 
-## Goal
+## Objective
 
-Introduce a persistence-response layer without converting antispyware heuristics into destructive automatic enforcement.
+Add a bounded response layer for suspicious persistence without converting heuristic antispyware findings into destructive automatic actions.
 
-## Architecture
+## Remediation model
 
-A suspicious antispyware finding can produce a `BCR-*` remediation plan. The plan stores an exact object snapshot and a machine-keyed HMAC. Apply/restore are separate privileged operations and require explicit approval.
+`finding -> authenticated plan -> explicit privileged approval -> exact-state verification -> disable -> verify -> optional restore`
 
-Supported reversible surfaces in Beta2:
+Supported Beta2 mutation surfaces:
 
-- registry Run/RunOnce;
-- selected browser-policy registry values;
-- Startup files through a managed vault;
-- Scheduled Task enabled state;
-- automatic-service start mode.
+- Registry Run / RunOnce values
+- selected browser-policy Registry values
+- Startup-folder files via managed vault
+- Scheduled Tasks via disable/enable
+- automatic services via startup-type change only
 
 Review-only surfaces:
 
-- WMI subscriptions;
-- proxy configuration;
-- DNS configuration.
+- WMI permanent subscriptions
+- DNS configuration
+- proxy configuration
 
-## Fail-closed behavior
+## Integrity and rollback
 
-Mutation is rejected if the protected object changed after the plan was created. Restore is rejected if the original destination/value has been occupied by different data. Plan HMAC failure blocks execution.
+Plans store the exact pre-action snapshot and are authenticated using the machine-private BC Sentinel integrity key with HMAC-SHA256. Before apply, the current object must still match the snapshot. Restore refuses to overwrite conflicting replacement state.
 
-The remediation layer never terminates a service process and does not provide a generic privileged shell.
+Startup files are moved, not deleted, into a managed remediation vault and verified by SHA-256. Reparse-point ancestry is rejected.
 
 ## PUP/adware
 
-PUP/adware indicators are bounded advisory signals. They can recommend a reversible plan but cannot independently qualify a destructive malware verdict.
+PUP/adware indicators are treated as advisory evidence. Non-standard forced browser-extension sources and bounded browser-helper/search-home patterns can recommend a reversible plan, but do not create an automatic malware verdict.
 
-## Verification
+## Safety
 
-Final extracted package:
-
-```text
-469 passed, 1 Windows-only skipped
-compileall PASS
-10/10 local acceptance suites PASS
-```
-
-Native Windows freeze remains pending.
+No automatic remediation, Registry deletion loop, task deletion, service deletion, WMI deletion or service process termination is enabled in this Beta.

@@ -1,0 +1,55 @@
+{
+  "files_requested": 5000,
+  "bytes_per_file": 256,
+  "cold_scan": {
+    "elapsed_seconds": 5.280444,
+    "cpu_seconds": 4.17,
+    "cpu_percent_of_one_core": 78.97,
+    "rss_start_bytes": 116080640,
+    "rss_end_bytes": 126242816,
+    "rss_peak_estimate_bytes": 126242816,
+    "read_bytes": 0,
+    "write_bytes": 10706944,
+    "files": 5000,
+    "files_per_second": 946.89,
+    "hash_cache_hits": 0
+  },
+  "warm_scan": {
+    "elapsed_seconds": 3.227445,
+    "cpu_seconds": 3.22,
+    "cpu_percent_of_one_core": 99.77,
+    "rss_start_bytes": 126242816,
+    "rss_end_bytes": 130461696,
+    "rss_peak_estimate_bytes": 130461696,
+    "read_bytes": 0,
+    "write_bytes": 507904,
+    "files": 5000,
+    "files_per_second": 1549.21,
+    "hash_cache_hits": 4950
+  },
+  "realtime": {
+    "elapsed_seconds": 1.634707,
+    "cpu_seconds": 0.06,
+    "cpu_percent_of_one_core": 3.67,
+    "rss_start_bytes": 132370432,
+    "rss_end_bytes": 132370432,
+    "rss_peak_estimate_bytes": 132370432,
+    "read_bytes": 0,
+    "write_bytes": 942080,
+    "started": false,
+    "mode": "direct_pipeline_fallback",
+    "files_exercised": 10,
+    "duration_requested": 1.0,
+    "unchanged_repeat": {
+      "elapsed_seconds": 1.619748,
+      "cpu_seconds": 0.06,
+      "cpu_percent_of_one_core": 3.7,
+      "rss_start_bytes": 132370432,
+      "rss_end_bytes": 132370432,
+      "rss_peak_estimate_bytes": 132370432,
+      "read_bytes": 0,
+      "write_bytes": 851968,
+      "files": 10
+    }
+  }
+}

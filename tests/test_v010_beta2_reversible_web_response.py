@@ -47,7 +47,7 @@ def _finding(runtime: ProtectionRuntime, fid: str, *, source="signed_ioc_domain"
 
 
 def test_version_and_response_profile():
-    assert APP_VERSION in {"0.10.0-beta.2", "0.10.0-beta.3"}
+    assert APP_VERSION in {"0.10.0-beta.2", "0.10.0-beta.3", "0.10.0-rc.1"}
     assert WEB_RESPONSE_PROFILE == "v0.10.0-beta.2"
 
 

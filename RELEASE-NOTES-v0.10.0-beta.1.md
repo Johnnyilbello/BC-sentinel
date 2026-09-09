@@ -2,7 +2,7 @@
 
 ## Release line
 
-Development beta. **Not accepted / not production-ready.**
+Development beta. **Local reconstructed-tree validation green / native Windows acceptance pending / not production-ready.**
 
 This milestone advances from the v0.9.0-rc.1 checkpoint-4 baseline while leaving the still-open v0.9 elevated/live/UAC/upgrade/repair/reboot gates explicitly deferred.
 
@@ -35,4 +35,22 @@ This milestone advances from the v0.9.0-rc.1 checkpoint-4 baseline while leaving
 
 ## Validation status
 
-The latest documented pre-delta baseline is checkpoint 4: **578 passed, zero skipped**. The connected repository does not contain the complete checkpoint-4 source tree, and the older v0.10 archive predates those fixes. Therefore this Beta1 is **not accepted** until the delta is rebased onto the complete checkpoint-4 tree and targeted tests, full regressions, compileall, acceptance, fresh builds and integrity checks pass.
+A complete v0.10 test candidate has now been reconstructed from the latest complete RC1 archive available to this workspace, with the documented checkpoint-3/checkpoint-4 hardening invariants re-applied before the v0.10 delta. This reconstruction is **not byte-identical** to the historical checkpoint-4 artifact, so the historical 578-test result is retained only as baseline evidence. Native Windows acceptance for this reconstructed candidate remains pending.
+
+## Reconstructed full-tree validation
+
+- full local regression: **516 passed, 2 Windows-native skips, 0 failed**;
+- v0.10 targeted tests: **25 passed**;
+- compileall: **PASS**;
+- v0.10 local acceptance: **PASS**.
+
+See `RECONSTRUCTION-NOTE-v0.10.0-beta.1.md`. Native Windows live/UAC/upgrade/repair/reboot gates remain open.
+
+### Validation FIX1 — native Authenticode portability
+
+After a Windows field run isolated one native Authenticode error, the signature-inspection subprocess was hardened to emit a fixed Base64 protocol instead of depending on Microsoft.PowerShell.Utility/ConvertTo-Json. The security properties from checkpoint 4 remain: filename is data, native PowerShell is pinned, Security module is loaded by literal OS path, failures are fail-closed, and execution policy is not relaxed.
+
+
+## Authenticode FIX2 — 2026-09-08
+
+Windows field testing exposed a second compatibility failure in the certificate-metadata PowerShell subprocess while verifying `kernel32.dll`. FIX2 moves authoritative signature validity to native Windows `WinVerifyTrust` and leaves PowerShell as best-effort metadata only. Native non-valid results remain fail-closed; metadata failure cannot upgrade trust or create publisher trust. Local reconstructed regression: 519 passed, 2 native-Windows skips, 0 failed; compileall and local v0.10 acceptance pass. Target-Windows FIX2 validation is still required.

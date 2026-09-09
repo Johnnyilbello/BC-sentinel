@@ -71,7 +71,7 @@ def run(*, service_live: bool = False) -> dict:
     }
     safety = result["safety"]
     result["local_passed"] = bool(
-        APP_VERSION == "0.10.0-beta.3" and all((
+        APP_VERSION in {"0.10.0-beta.3", "0.10.0-rc.1"} and all((
             safety["canonical_brand_green"], safety["generic_commerce_unscored"], safety["clone_detected"],
             safety["cross_origin_sensitive_form_detected"], safety["clone_and_scam_detected"],
             safety["support_scam_detected"], safety["investment_scam_detected"],

@@ -1,25 +1,19 @@
-# BC Sentinel Roadmap — v0.9.0-rc.1 status correction
+# BC Sentinel Roadmap — v0.9.0-rc.1
 
-Current authoritative status: **v0.9.0-rc.1 local regression green / native freeze deferred**.
+Current line: **v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening**.
 
-The earlier 482-test “completed/frozen” statement is superseded by the 8 September 2026 checkpoint-4 evidence.
+- v0.9.0-beta.1: Antispyware & persistence detection foundation.
+- v0.9.0-beta.2: Reversible persistence remediation & PUP/Adware response.
+- v0.9.0-beta.3: Advanced antimalware, PowerShell/script/LOLBin and fileless correlation.
+- v0.9.0-rc.1: regression freeze, false-positive hardening, native Windows aggregate acceptance and live-service release gate.
 
-## Current checkpoint-4 state
+## Exit criteria for v0.9
 
-- complete Python regression: **578 passed, zero skipped**;
-- local RC acceptance: PASS;
-- fresh service/broker builds: PASS;
-- native Authenticode sub-gate: PASS;
-- compileall and artifact integrity: PASS;
-- updater/quarantine/YARA/AuthentiCode regressions retained.
+- full Python regression suite green;
+- all cross-platform v0.8/v0.9 acceptance gates green;
+- benign dual-use/admin matrix stays below HIGH while strong malicious chains remain detectable;
+- native Windows aggregate acceptance passes with zero critical failures;
+- live Protection Service acceptance passes, including antispyware, remediation and advanced-antimalware surfaces;
+- upgrade/repair and reboot-persistence acceptance remain green on the protected Windows installation.
 
-## Still open
-
-- elevated current-build Windows foundation/ETW;
-- live Protection Service;
-- UAC path;
-- upgrade/repair on the current build;
-- reboot persistence;
-- aggregate native freeze/benchmark evidence.
-
-These gates are **DEFERRED**, not completed. Development has advanced to **v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation** without converting this technical debt into a false PASS.
+After v0.9 is frozen, the roadmap proceeds to **v0.10 — Web Protection, Anti-Phishing & Anti-Truffa mature expansion**, followed by EDR, sandbox, IDS/IPS, privacy and identity modules.

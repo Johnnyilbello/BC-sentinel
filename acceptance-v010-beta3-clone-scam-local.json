@@ -1,0 +1,330 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.10.0-beta.3",
+  "milestone": "v0.10.0-beta.3",
+  "profile": "v0.10.0-beta.3",
+  "service_live_requested": false,
+  "matrix": {
+    "canonical": {
+      "url": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "observed_host": "login.microsoftonline.com",
+      "declared_identity": "microsoft",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "assessment_class": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "login.microsoftonline.com",
+        "unicode_host": "login.microsoftonline.com",
+        "canonical_identity": "microsoft",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "url_score": 0,
+      "page_score": 0,
+      "independent_evidence_families": 0,
+      "fingerprint": "WCS-209c378351177f8194e9",
+      "profile": "v0.10.0-beta.3"
+    },
+    "clone": {
+      "url": "https://microsoft-login.example/verify",
+      "observed_host": "microsoft-login.example",
+      "declared_identity": "microsoft",
+      "score": 49,
+      "status": "suspicious",
+      "decision": "review",
+      "assessment_class": "clone_site_candidate",
+      "block_recommended": false,
+      "risk_families": [
+        "clone_site",
+        "credential_capture",
+        "form_destination",
+        "identity_deception",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "brand_token_untrusted_host",
+        "credential_form_on_noncanonical_brand",
+        "declared_brand_noncanonical",
+        "declared_identity_mismatch",
+        "lure_with_structural_risk",
+        "page_brand_noncanonical",
+        "sensitive_form_cross_origin"
+      ],
+      "signals": [
+        {
+          "family": "clone_site",
+          "code": "declared_brand_noncanonical",
+          "weight": 12,
+          "reason": "Identità dichiarata su dominio non canonico",
+          "evidence": "microsoft"
+        },
+        {
+          "family": "clone_site",
+          "code": "page_brand_noncanonical",
+          "weight": 10,
+          "reason": "Pagina dichiara un brand protetto fuori dai domini canonici",
+          "evidence": "microsoft"
+        },
+        {
+          "family": "credential_capture",
+          "code": "credential_form_on_noncanonical_brand",
+          "weight": 12,
+          "reason": "Form credenziali su pagina che imita un brand non canonico",
+          "evidence": "otp,password"
+        },
+        {
+          "family": "form_destination",
+          "code": "sensitive_form_cross_origin",
+          "weight": 12,
+          "reason": "Form sensibile invia dati a un host differente",
+          "evidence": "collector.example"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "microsoft-login.example",
+        "unicode_host": "microsoft-login.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "microsoft"
+        ]
+      },
+      "url_score": 32,
+      "page_score": 46,
+      "independent_evidence_families": 5,
+      "fingerprint": "WCS-c26c2ae31987226fdc4e",
+      "profile": "v0.10.0-beta.3"
+    },
+    "clone_scam": {
+      "url": "https://раypal.example/verify",
+      "observed_host": "раypal.example",
+      "declared_identity": "paypal",
+      "score": 49,
+      "status": "suspicious",
+      "decision": "review",
+      "assessment_class": "clone_and_scam_candidate",
+      "block_recommended": false,
+      "risk_families": [
+        "clone_site",
+        "credential_capture",
+        "form_destination",
+        "identity_deception",
+        "scam_fraud",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "credential_form_on_noncanonical_brand",
+        "declared_brand_noncanonical",
+        "declared_identity_mismatch",
+        "idn_punycode",
+        "irreversible_payment_request",
+        "lure_with_structural_risk",
+        "mixed_script_hostname",
+        "page_brand_noncanonical",
+        "sensitive_form_cross_origin",
+        "unicode_confusable_identity",
+        "urgent_payment_pressure"
+      ],
+      "signals": [
+        {
+          "family": "clone_site",
+          "code": "declared_brand_noncanonical",
+          "weight": 12,
+          "reason": "Identità dichiarata su dominio non canonico",
+          "evidence": "paypal"
+        },
+        {
+          "family": "clone_site",
+          "code": "page_brand_noncanonical",
+          "weight": 10,
+          "reason": "Pagina dichiara un brand protetto fuori dai domini canonici",
+          "evidence": "paypal"
+        },
+        {
+          "family": "credential_capture",
+          "code": "credential_form_on_noncanonical_brand",
+          "weight": 12,
+          "reason": "Form credenziali su pagina che imita un brand non canonico",
+          "evidence": "password"
+        },
+        {
+          "family": "form_destination",
+          "code": "sensitive_form_cross_origin",
+          "weight": 12,
+          "reason": "Form sensibile invia dati a un host differente",
+          "evidence": "capture.example"
+        },
+        {
+          "family": "scam_fraud",
+          "code": "irreversible_payment_request",
+          "weight": 12,
+          "reason": "Richiesta di pagamento difficilmente reversibile associata a rischio strutturale",
+          "evidence": "gift_card"
+        },
+        {
+          "family": "scam_fraud",
+          "code": "urgent_payment_pressure",
+          "weight": 8,
+          "reason": "Pressione/urgenza combinata con richiesta di pagamento e rischio strutturale",
+          "evidence": "urgency+payment"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "paypal",
+        "observed_host": "xn--ypal-43d9g.example",
+        "unicode_host": "раypal.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "paypal"
+        ]
+      },
+      "url_score": 49,
+      "page_score": 66,
+      "independent_evidence_families": 6,
+      "fingerprint": "WCS-766a43937aa911fc5f75",
+      "profile": "v0.10.0-beta.3"
+    },
+    "benign_commerce": {
+      "url": "https://shop.example/checkout",
+      "observed_host": "shop.example",
+      "declared_identity": "",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "assessment_class": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "shop.example",
+        "unicode_host": "shop.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "url_score": 0,
+      "page_score": 0,
+      "independent_evidence_families": 0,
+      "fingerprint": "WCS-e38bbc1e2490cdf980ba",
+      "profile": "v0.10.0-beta.3"
+    },
+    "support_scam": {
+      "url": "https://192.0.2.10/support",
+      "observed_host": "192.0.2.10",
+      "declared_identity": "",
+      "score": 42,
+      "status": "suspicious",
+      "decision": "review",
+      "assessment_class": "scam_fraud_candidate",
+      "block_recommended": false,
+      "risk_families": [
+        "host_structure",
+        "scam_fraud",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "lure_with_structural_risk",
+        "raw_ip_url",
+        "remote_support_sensitive_request"
+      ],
+      "signals": [
+        {
+          "family": "scam_fraud",
+          "code": "remote_support_sensitive_request",
+          "weight": 10,
+          "reason": "Contesto di assistenza remota combinato con richiesta sensibile",
+          "evidence": "remote_support"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "192.0.2.10",
+        "unicode_host": "192.0.2.10",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "url_score": 32,
+      "page_score": 10,
+      "independent_evidence_families": 3,
+      "fingerprint": "WCS-a0b59dba3931929e0331",
+      "profile": "v0.10.0-beta.3"
+    },
+    "investment_scam": {
+      "url": "https://192.0.2.20/invest",
+      "observed_host": "192.0.2.20",
+      "declared_identity": "",
+      "score": 48,
+      "status": "suspicious",
+      "decision": "review",
+      "assessment_class": "scam_fraud_candidate",
+      "block_recommended": false,
+      "risk_families": [
+        "host_structure",
+        "scam_fraud"
+      ],
+      "signal_codes": [
+        "investment_crypto_claim",
+        "irreversible_payment_request",
+        "raw_ip_url"
+      ],
+      "signals": [
+        {
+          "family": "scam_fraud",
+          "code": "irreversible_payment_request",
+          "weight": 12,
+          "reason": "Richiesta di pagamento difficilmente reversibile associata a rischio strutturale",
+          "evidence": "crypto"
+        },
+        {
+          "family": "scam_fraud",
+          "code": "investment_crypto_claim",
+          "weight": 12,
+          "reason": "Promessa/pressione d'investimento combinata con pagamento crypto",
+          "evidence": "investment+crypto"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "192.0.2.20",
+        "unicode_host": "192.0.2.20",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "url_score": 24,
+      "page_score": 24,
+      "independent_evidence_families": 2,
+      "fingerprint": "WCS-fb88caa218827df4e7df",
+      "profile": "v0.10.0-beta.3"
+    }
+  },
+  "safety": {
+    "heuristic_score_cap": 49,
+    "canonical_brand_green": true,
+    "generic_commerce_unscored": true,
+    "clone_detected": true,
+    "cross_origin_sensitive_form_detected": true,
+    "scam_requires_structural_anchor": true,
+    "clone_and_scam_detected": true,
+    "support_scam_detected": true,
+    "investment_scam_detected": true,
+    "heuristic_auto_block": false,
+    "mitm_https": false,
+    "cloud_dependency_required": false
+  },
+  "local_passed": true,
+  "service": null,
+  "service_live_passed": null,
+  "passed": true
+}

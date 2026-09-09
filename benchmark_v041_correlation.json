@@ -1,0 +1,9 @@
+{
+  "events": 10000,
+  "processes": 200,
+  "elapsed_seconds": 4.689197,
+  "events_per_second": 2132.56,
+  "correlated_events": 1840,
+  "max_score_delta": 8,
+  "window_seconds": 45.0
+}

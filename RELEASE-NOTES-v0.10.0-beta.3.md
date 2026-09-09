@@ -1,4 +1,4 @@
-# BC Sentinel v0.10.0-beta.3 — Clone Site & Scam/Fraud Detection Expansion
+﻿# BC Sentinel v0.10.0-beta.3 — Clone Site & Scam/Fraud Detection Expansion
 
 ## Scope
 Beta3 extends the local Web Protection foundation with explainable page-context analysis for clone-site and scam/fraud candidates while preserving the Beta1/Beta2 safety model.
@@ -23,11 +23,11 @@ Beta3 extends the local Web Protection foundation with explainable page-context 
 - signed IOC precedence and Beta2 reversible response policy are unchanged;
 - generic commerce/payment language without structural risk remains unscored.
 
-## Test orchestration policy
+## Test orchestration change
 From Beta3 onward, both one-command launchers include upgrade/repair and the standard-user -> UAC broker gate. Reboot is the only intentionally deferred gate and will be exercised at the end of the roadmap.
 
 - `TEST-V010-BETA3-ALL-NORMAL.bat`: full normal suite, local acceptances, auto-elevated admin phase, real upgrade/repair, live service gates, then standard-user -> UAC from the original non-elevated process.
-- `TEST-V010-BETA3-ALL-ADMIN.bat`: full suite + admin phase + real upgrade/repair, then a Scheduled Task helper running with `Interactive` + `RunLevel Limited` exercises the true standard-user -> UAC gate.
+- `TEST-V010-BETA3-ALL-ADMIN.bat`: full suite + admin phase + real upgrade/repair, then a de-elevated helper attempts the real standard-user -> UAC gate and fails closed if it cannot obtain a medium-integrity process.
 
 ## Local pre-delivery evidence
 - full pytest: 543 passed, 2 Windows-native skipped, 0 failed;
@@ -37,21 +37,11 @@ From Beta3 onward, both one-command launchers include upgrade/repair and the sta
 - legacy Web Response regression: PASS;
 - compileall: PASS.
 
-## Final Windows evidence — 2026-09-08
-- full Windows pytest: **545 passed, 0 failed**;
-- admin targeted phase: **115 passed, 0 failed**;
-- fresh Protection Service/UAC Broker builds: PASS;
-- anti-downgrade same-version rejection: PASS;
-- real same-version repair: PASS;
-- Beta1/Beta2/Beta3 service-live acceptance: PASS;
-- Windows native acceptance: PASS with zero critical failures;
-- service hardening benchmark: PASS;
-- standard-user -> UAC: **PASS** with `is_admin=false`;
-- broker accounting after the gate: issued=1, consumed=1, completed=1, rejected=0, pending=0;
-- final service health `HEALTHY` and hardening `ok=true`.
+Windows evidence now confirms the full regression suite, native/admin phase, build, repair, Beta1/Beta2/Beta3 live acceptance and hardening. The only remaining Beta3 acceptance item is the standard-user -> UAC launcher gate; reboot remains deferred by roadmap decision.
+
+
+## Harness FIX1
+The ADMIN one-command launcher now starts its standard-user helper from the filtered Explorer token using `CreateProcessWithTokenW`, instead of relying on `Shell.Application`. The helper independently requires `is_admin=false` before the UAC broker test can pass. This is a test-harness correction only; no protection or response policy was relaxed.
 
 ## Acceptance harness FIX2
-The earlier COM and Explorer-token launcher attempts were host-dependent. FIX2 delegates standard-user process creation to Windows Task Scheduler using a temporary task with `LogonType Interactive` and `RunLevel Limited`. The child still fails closed unless it observes `is_admin=false`, and the task is removed afterward. This changes only the test harness, not the product security policy.
-
-## Status
-**v0.10.0-beta.3 is closed as the accepted development baseline.** Reboot persistence/recovery remains intentionally deferred until the final roadmap acceptance.
+Sostituito il launcher Explorer-token/`CreateProcessWithTokenW` con un task temporaneo Windows `Interactive` + `RunLevel Limited`. Il child continua a verificare `is_admin=false` prima del broker, il task viene rimosso in `finally`, e il retest mirato crea autonomamente `.venv` quando necessario. Nessuna modifica al motore di protezione.

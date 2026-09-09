@@ -1,0 +1,738 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.10.0-beta.3",
+  "milestone": "v0.10.0-beta.1",
+  "profile": "v0.10.0-beta.1",
+  "service_live_requested": false,
+  "v090_rc1_local_regression": true,
+  "v090_native_freeze": false,
+  "v090_native_gates_deferred": true,
+  "matrix": {
+    "safe_login": {
+      "value": "https://example.com/login",
+      "observed_host": "example.com",
+      "unicode_host": "example.com",
+      "declared_identity": "",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "example.com",
+        "unicode_host": "example.com",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-bbb38f8c58630a7811e1",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "benign_idn": {
+      "value": "https://xn--bcher-kva.example/catalog",
+      "observed_host": "xn--bcher-kva.example",
+      "unicode_host": "bücher.example",
+      "declared_identity": "",
+      "score": 18,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [
+        "identity_deception"
+      ],
+      "signal_codes": [
+        "idn_punycode"
+      ],
+      "signals": [
+        {
+          "family": "identity_deception",
+          "code": "idn_punycode",
+          "weight": 18,
+          "reason": "Dominio IDN/Punycode: richiede verifica visiva",
+          "subject": "",
+          "evidence": "xn--bcher-kva.example"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "xn--bcher-kva.example",
+        "unicode_host": "bücher.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-08a35830f96a150b8c7a",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "mixed_script_deception": {
+      "value": "https://user:pass@раypal.example/verify-account",
+      "observed_host": "xn--ypal-43d9g.example",
+      "unicode_host": "раypal.example",
+      "declared_identity": "PayPal",
+      "score": 49,
+      "status": "suspicious",
+      "decision": "review",
+      "block_recommended": false,
+      "risk_families": [
+        "identity_deception",
+        "url_deception",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "idn_punycode",
+        "mixed_script_hostname",
+        "declared_identity_mismatch",
+        "unicode_confusable_identity",
+        "userinfo_before_host",
+        "lure_with_structural_risk"
+      ],
+      "signals": [
+        {
+          "family": "identity_deception",
+          "code": "idn_punycode",
+          "weight": 18,
+          "reason": "Dominio IDN/Punycode: richiede verifica visiva",
+          "subject": "",
+          "evidence": "xn--ypal-43d9g.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "mixed_script_hostname",
+          "weight": 12,
+          "reason": "Hostname Unicode con alfabeti misti: possibile imitazione visiva",
+          "subject": "",
+          "evidence": "раypal.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "declared_identity_mismatch",
+          "weight": 12,
+          "reason": "L'identità dichiarata non corrisponde al dominio osservato",
+          "subject": "paypal",
+          "evidence": "xn--ypal-43d9g.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "unicode_confusable_identity",
+          "weight": 22,
+          "reason": "Hostname Unicode visivamente confondibile con un'identità protetta",
+          "subject": "paypal",
+          "evidence": "раypal.example"
+        },
+        {
+          "family": "url_deception",
+          "code": "userinfo_before_host",
+          "weight": 15,
+          "reason": "URL contiene credenziali/userinfo prima dell'host",
+          "subject": "",
+          "evidence": "раypal.example"
+        },
+        {
+          "family": "scam_lure",
+          "code": "lure_with_structural_risk",
+          "weight": 8,
+          "reason": "Contesto tipico di phishing/truffa combinato con rischio strutturale indipendente",
+          "subject": "",
+          "evidence": "credential_lure"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "paypal",
+        "observed_host": "xn--ypal-43d9g.example",
+        "unicode_host": "раypal.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "paypal"
+        ]
+      },
+      "heuristic_fingerprint": "WDR-6f2cd2bdc7ade3ee21da",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "typosquat": {
+      "value": "https://micros0ft.example/login",
+      "observed_host": "micros0ft.example",
+      "unicode_host": "micros0ft.example",
+      "declared_identity": "Microsoft",
+      "score": 34,
+      "status": "suspicious",
+      "decision": "review",
+      "block_recommended": false,
+      "risk_families": [
+        "identity_deception",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "declared_identity_mismatch",
+        "typosquat_distance_one",
+        "lure_with_structural_risk"
+      ],
+      "signals": [
+        {
+          "family": "identity_deception",
+          "code": "declared_identity_mismatch",
+          "weight": 12,
+          "reason": "L'identità dichiarata non corrisponde al dominio osservato",
+          "subject": "microsoft",
+          "evidence": "micros0ft.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "typosquat_distance_one",
+          "weight": 14,
+          "reason": "Token del dominio a distanza di modifica uno da un'identità protetta",
+          "subject": "microsoft",
+          "evidence": "micros0ft.example"
+        },
+        {
+          "family": "scam_lure",
+          "code": "lure_with_structural_risk",
+          "weight": 8,
+          "reason": "Contesto tipico di phishing/truffa combinato con rischio strutturale indipendente",
+          "subject": "",
+          "evidence": "credential_lure"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "micros0ft.example",
+        "unicode_host": "micros0ft.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "microsoft"
+        ]
+      },
+      "heuristic_fingerprint": "WDR-ea53cbebdad4a6cd89dd",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "brand_subdomain_abuse": {
+      "value": "https://login.microsoft.com.evil.example/verify",
+      "observed_host": "login.microsoft.com.evil.example",
+      "unicode_host": "login.microsoft.com.evil.example",
+      "declared_identity": "Microsoft",
+      "score": 32,
+      "status": "suspicious",
+      "decision": "review",
+      "block_recommended": false,
+      "risk_families": [
+        "identity_deception",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "declared_identity_mismatch",
+        "brand_token_untrusted_host",
+        "lure_with_structural_risk"
+      ],
+      "signals": [
+        {
+          "family": "identity_deception",
+          "code": "declared_identity_mismatch",
+          "weight": 12,
+          "reason": "L'identità dichiarata non corrisponde al dominio osservato",
+          "subject": "microsoft",
+          "evidence": "login.microsoft.com.evil.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "brand_token_untrusted_host",
+          "weight": 12,
+          "reason": "Nome di un'identità protetta presente fuori dai relativi domini canonici",
+          "subject": "microsoft",
+          "evidence": "login.microsoft.com.evil.example"
+        },
+        {
+          "family": "scam_lure",
+          "code": "lure_with_structural_risk",
+          "weight": 8,
+          "reason": "Contesto tipico di phishing/truffa combinato con rischio strutturale indipendente",
+          "subject": "",
+          "evidence": "credential_lure"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "login.microsoft.com.evil.example",
+        "unicode_host": "login.microsoft.com.evil.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "microsoft"
+        ]
+      },
+      "heuristic_fingerprint": "WDR-00abef600db77ab556df",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "canonical_microsoft": {
+      "value": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "observed_host": "login.microsoftonline.com",
+      "unicode_host": "login.microsoftonline.com",
+      "declared_identity": "Microsoft",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "login.microsoftonline.com",
+        "unicode_host": "login.microsoftonline.com",
+        "canonical_identity": "microsoft",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-c10b7b832db1a12c00ba",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "raw_ip_lure": {
+      "value": "https://192.0.2.10/login?verify=account",
+      "observed_host": "192.0.2.10",
+      "unicode_host": "192.0.2.10",
+      "declared_identity": "",
+      "score": 32,
+      "status": "suspicious",
+      "decision": "review",
+      "block_recommended": false,
+      "risk_families": [
+        "host_structure",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "raw_ip_url",
+        "lure_with_structural_risk"
+      ],
+      "signals": [
+        {
+          "family": "host_structure",
+          "code": "raw_ip_url",
+          "weight": 24,
+          "reason": "URL usa un indirizzo IP al posto di un dominio",
+          "subject": "",
+          "evidence": "192.0.2.10"
+        },
+        {
+          "family": "scam_lure",
+          "code": "lure_with_structural_risk",
+          "weight": 8,
+          "reason": "Contesto tipico di phishing/truffa combinato con rischio strutturale indipendente",
+          "subject": "",
+          "evidence": "credential_lure"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "192.0.2.10",
+        "unicode_host": "192.0.2.10",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-74f2af4afafb3692e812",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "redirect_lookalike": {
+      "value": "https://paypa1.example/verify-account",
+      "observed_host": "paypa1.example",
+      "unicode_host": "paypa1.example",
+      "declared_identity": "PayPal",
+      "score": 44,
+      "status": "suspicious",
+      "decision": "review",
+      "block_recommended": false,
+      "risk_families": [
+        "identity_deception",
+        "redirect_context",
+        "scam_lure"
+      ],
+      "signal_codes": [
+        "declared_identity_mismatch",
+        "typosquat_distance_one",
+        "brand_redirect_to_lookalike",
+        "lure_with_structural_risk"
+      ],
+      "signals": [
+        {
+          "family": "identity_deception",
+          "code": "declared_identity_mismatch",
+          "weight": 12,
+          "reason": "L'identità dichiarata non corrisponde al dominio osservato",
+          "subject": "paypal",
+          "evidence": "paypa1.example"
+        },
+        {
+          "family": "identity_deception",
+          "code": "typosquat_distance_one",
+          "weight": 14,
+          "reason": "Token del dominio a distanza di modifica uno da un'identità protetta",
+          "subject": "paypal",
+          "evidence": "paypa1.example"
+        },
+        {
+          "family": "redirect_context",
+          "code": "brand_redirect_to_lookalike",
+          "weight": 10,
+          "reason": "Redirect da dominio canonico verso un host simile ma non canonico",
+          "subject": "paypal",
+          "evidence": "paypa1.example"
+        },
+        {
+          "family": "scam_lure",
+          "code": "lure_with_structural_risk",
+          "weight": 8,
+          "reason": "Contesto tipico di phishing/truffa combinato con rischio strutturale indipendente",
+          "subject": "",
+          "evidence": "credential_lure"
+        }
+      ],
+      "identity_context": {
+        "declared_identity": "paypal",
+        "observed_host": "paypa1.example",
+        "unicode_host": "paypa1.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": [
+          "paypal"
+        ]
+      },
+      "heuristic_fingerprint": "WDR-14e3693eee6a26570f10",
+      "heuristic_profile": "v0.10.0-beta.1"
+    }
+  },
+  "false_positive_matrix": {
+    "microsoft": {
+      "value": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "observed_host": "login.microsoftonline.com",
+      "unicode_host": "login.microsoftonline.com",
+      "declared_identity": "Microsoft",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "microsoft",
+        "observed_host": "login.microsoftonline.com",
+        "unicode_host": "login.microsoftonline.com",
+        "canonical_identity": "microsoft",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-c10b7b832db1a12c00ba",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "google": {
+      "value": "https://accounts.google.com/signin/v2",
+      "observed_host": "accounts.google.com",
+      "unicode_host": "accounts.google.com",
+      "declared_identity": "Google",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "google",
+        "observed_host": "accounts.google.com",
+        "unicode_host": "accounts.google.com",
+        "canonical_identity": "google",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-b31886f9824af27e98b2",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "github": {
+      "value": "https://github.com/login",
+      "observed_host": "github.com",
+      "unicode_host": "github.com",
+      "declared_identity": "GitHub",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "github",
+        "observed_host": "github.com",
+        "unicode_host": "github.com",
+        "canonical_identity": "github",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-6731637f586a864a3a78",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "github_cdn": {
+      "value": "https://objects.githubusercontent.com/assets/app.js",
+      "observed_host": "objects.githubusercontent.com",
+      "unicode_host": "objects.githubusercontent.com",
+      "declared_identity": "",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "objects.githubusercontent.com",
+        "unicode_host": "objects.githubusercontent.com",
+        "canonical_identity": "github",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-790d78cd1f9c5f9621e4",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "jsdelivr": {
+      "value": "https://cdn.jsdelivr.net/npm/example/index.js",
+      "observed_host": "cdn.jsdelivr.net",
+      "unicode_host": "cdn.jsdelivr.net",
+      "declared_identity": "",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "cdn.jsdelivr.net",
+        "unicode_host": "cdn.jsdelivr.net",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-d07f3b7dd77c65089e45",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "cloudflare": {
+      "value": "https://static.cloudflareinsights.com/beacon.min.js",
+      "observed_host": "static.cloudflareinsights.com",
+      "unicode_host": "static.cloudflareinsights.com",
+      "declared_identity": "Cloudflare",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "cloudflare",
+        "observed_host": "static.cloudflareinsights.com",
+        "unicode_host": "static.cloudflareinsights.com",
+        "canonical_identity": "cloudflare",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-023df5a85ac700cf4c85",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "salesforce": {
+      "value": "https://login.salesforce.com/",
+      "observed_host": "login.salesforce.com",
+      "unicode_host": "login.salesforce.com",
+      "declared_identity": "Salesforce",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "salesforce",
+        "observed_host": "login.salesforce.com",
+        "unicode_host": "login.salesforce.com",
+        "canonical_identity": "salesforce",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-d14a942e85f65614bfcc",
+      "heuristic_profile": "v0.10.0-beta.1"
+    },
+    "atlassian": {
+      "value": "https://id.atlassian.com/login",
+      "observed_host": "id.atlassian.com",
+      "unicode_host": "id.atlassian.com",
+      "declared_identity": "Atlassian",
+      "score": 0,
+      "status": "unknown",
+      "decision": "observe",
+      "block_recommended": false,
+      "risk_families": [],
+      "signal_codes": [],
+      "signals": [],
+      "identity_context": {
+        "declared_identity": "atlassian",
+        "observed_host": "id.atlassian.com",
+        "unicode_host": "id.atlassian.com",
+        "canonical_identity": "atlassian",
+        "declared_matches_observed": true,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-42bb7b52735980f928f9",
+      "heuristic_profile": "v0.10.0-beta.1"
+    }
+  },
+  "precedence": {
+    "signed_ioc": {
+      "indicator": "malware.test",
+      "kind": "url",
+      "normalized_url": "https://malware.test/login",
+      "score": 90,
+      "level": "CRITICAL",
+      "status": "malicious",
+      "source": "signed_ioc",
+      "reasons": [
+        "v0.10 harmless signed-domain fixture"
+      ],
+      "signed_ioc": true,
+      "block_recommended": true,
+      "decision": "containment_recommended",
+      "trusted_domain": false,
+      "trust_scope": "",
+      "provenance": [
+        {
+          "tier": "signed_ioc",
+          "bundle_id": "v010-beta1-fixture",
+          "severity": "critical",
+          "expires_at": 1788883283.6520102,
+          "label": "v0.10 harmless signed-domain fixture"
+        }
+      ],
+      "risk_families": [],
+      "signal_codes": [],
+      "heuristic_profile": "v0.10.0-beta.1",
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "malware.test",
+        "unicode_host": "malware.test",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-ed542dfe22c1bb8d3f55"
+    },
+    "trusted_domain": {
+      "indicator": "trusted.example",
+      "kind": "url",
+      "normalized_url": "https://trusted.example/verify-payment",
+      "score": 0,
+      "level": "SAFE",
+      "status": "trusted",
+      "source": "local_domain_trust",
+      "reasons": [
+        "v0.10 exact-domain safe fixture"
+      ],
+      "signed_ioc": false,
+      "block_recommended": false,
+      "decision": "allow_trusted",
+      "trusted_domain": true,
+      "trust_scope": "exact",
+      "provenance": [
+        {
+          "tier": "local_domain_trust",
+          "scope": "exact",
+          "created_at": 1788879683.654405,
+          "reason": "v0.10 exact-domain safe fixture",
+          "source_finding_id": ""
+        }
+      ],
+      "risk_families": [],
+      "signal_codes": [],
+      "heuristic_profile": "v0.10.0-beta.1",
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "trusted.example",
+        "unicode_host": "trusted.example",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-e52ac916fc102d182a35"
+    },
+    "signed_ioc_overrides_trust": {
+      "indicator": "override.test",
+      "kind": "url",
+      "normalized_url": "https://override.test/login",
+      "score": 90,
+      "level": "CRITICAL",
+      "status": "malicious",
+      "source": "signed_ioc",
+      "reasons": [
+        "v0.10 harmless signed-domain fixture",
+        "La fiducia locale esistente è ignorata perché un IOC firmato ha precedenza"
+      ],
+      "signed_ioc": true,
+      "block_recommended": true,
+      "decision": "containment_recommended",
+      "trusted_domain": true,
+      "trust_scope": "exact",
+      "provenance": [
+        {
+          "tier": "signed_ioc",
+          "bundle_id": "v010-beta1-fixture",
+          "severity": "critical",
+          "expires_at": 1788883283.6588333,
+          "label": "v0.10 harmless signed-domain fixture"
+        },
+        {
+          "tier": "local_domain_trust",
+          "state": "overridden_by_signed_ioc",
+          "scope": "exact",
+          "created_at": 1788879683.6574624,
+          "reason": "older local trust fixture"
+        }
+      ],
+      "risk_families": [],
+      "signal_codes": [],
+      "heuristic_profile": "v0.10.0-beta.1",
+      "identity_context": {
+        "declared_identity": "",
+        "observed_host": "override.test",
+        "unicode_host": "override.test",
+        "canonical_identity": "",
+        "declared_matches_observed": false,
+        "impersonation_candidates": []
+      },
+      "heuristic_fingerprint": "WDR-b542c5cfc7583bfbf610"
+    }
+  },
+  "safety": {
+    "heuristic_score_cap": 49,
+    "all_heuristics_below_high": true,
+    "safe_lure_words_unscored": true,
+    "benign_idn_bounded": true,
+    "deception_detected": true,
+    "typosquat_detected": true,
+    "declared_identity_separated": true,
+    "redirect_context_detected": true,
+    "enterprise_false_positive_matrix_green": true,
+    "signed_ioc_precedence": true,
+    "exact_trust_precedence": true,
+    "signed_ioc_overrides_exact_trust": true,
+    "mitm_https": false,
+    "heuristic_auto_block": false,
+    "heuristic_destructive_action": false,
+    "cloud_dependency_required": false
+  },
+  "local_passed": true,
+  "service": null,
+  "service_live_passed": null,
+  "passed": true
+}

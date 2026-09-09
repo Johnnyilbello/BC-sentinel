@@ -7,6 +7,7 @@ if (-not (Test-Path ".\.venv\Scripts\python.exe")) { throw "Esegui prima il laun
 $Py=".\.venv\Scripts\python.exe"
 Write-Host "BC Sentinel v0.10.0-beta.3 - ADMIN PHASE (no reboot)" -ForegroundColor Cyan
 
+# Native/security + Beta1/Beta2/Beta3 targeted regressions.
 & $Py -m pytest -q `
   tests\test_checkpoint4_authenticode_hardening_reconstructed.py `
   tests\test_v062_privileged_broker_update.py `
@@ -28,6 +29,8 @@ if (-not (Test-Path $ServiceExe)) {
     throw "Upgrade live richiede una precedente installazione BC Sentinel. Il reboot resta escluso, ma upgrade/repair non viene saltato."
 }
 
+# UPGRADE gate: always run the transactional regression suite above; perform
+# the real machine upgrade when the installed version is older than Beta3.
 $upgradePlanPath = Join-Path $PSScriptRoot "acceptance-v010-beta3-upgrade-plan.json"
 & $Py -m tools.update_acceptance --mode upgrade --output $upgradePlanPath
 $upgradeExit = $LASTEXITCODE
@@ -45,6 +48,7 @@ else {
     throw "Upgrade acceptance fallita"
 }
 
+# REPAIR gate: must always be real and same-version after upgrade/current Beta3.
 $repairPlanPath = Join-Path $PSScriptRoot "acceptance-v010-beta3-repair-plan.json"
 & $Py -m tools.update_acceptance --mode repair --output $repairPlanPath
 if ($LASTEXITCODE -ne 0) { throw "Repair plan acceptance fallita" }
@@ -52,6 +56,7 @@ if ($LASTEXITCODE -ne 0) { throw "Repair plan acceptance fallita" }
 if ($LASTEXITCODE -ne 0) { throw "Repair reale fallito" }
 Write-Host "REPAIR LIVE PASS" -ForegroundColor Green
 
+# Live service acceptance after upgrade + repair.
 & $Py -m tools.v010_web_deception_acceptance --service-live --output acceptance-v010-beta3-deception-live.json
 if ($LASTEXITCODE -ne 0) { throw "Beta1 deception live fallita" }
 & $Py -m tools.v010_web_response_acceptance --service-live --output acceptance-v010-beta3-response-live.json

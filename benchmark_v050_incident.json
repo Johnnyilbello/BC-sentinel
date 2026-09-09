@@ -1,0 +1,17 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.5.0-beta",
+  "benchmark": "incident-correlation-user-space",
+  "events": 5000,
+  "subjects": 250,
+  "persisted_ingest_results": 5000,
+  "final_incident_rows": 250,
+  "elapsed_seconds": 10.963572,
+  "events_per_second": 456.06,
+  "cpu_seconds": 10.942763,
+  "cpu_percent_of_one_core": 99.81,
+  "rss_start_bytes": 97460224,
+  "rss_end_bytes": 101089280,
+  "rss_delta_bytes": 3629056,
+  "note": "Synthetic local benchmark with SQLite incident persistence; not a native Windows ETW benchmark."
+}

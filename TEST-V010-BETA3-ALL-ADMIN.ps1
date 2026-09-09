@@ -1,4 +1,4 @@
-param()
+﻿param()
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $principal=New-Object Security.Principal.WindowsPrincipal($id)

@@ -1,4 +1,4 @@
-# BC Sentinel v0.10.0-beta.3 — test rapido
+﻿# BC Sentinel v0.10.0-beta.3 — test rapido
 
 ## Un solo comando da PowerShell normale
 
@@ -18,6 +18,7 @@ Il launcher esegue la suite completa, upgrade/repair e tutti i gate live, quindi
 
 ## Unico gate escluso
 Il reboot è deliberatamente rinviato alla chiusura finale della roadmap. Nessun launcher Beta3 deve marcarlo PASS.
+
 
 ## FIX1 — admin standard-user UAC launcher
 Su alcune build di Windows 11 `Shell.Application` può ereditare il token elevato. FIX1 usa invece il token filtrato dell'Explorer della sessione corrente; il child deve confermare `is_admin=false` prima di poter eseguire la broker acceptance.

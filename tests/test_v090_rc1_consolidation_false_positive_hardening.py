@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v090_rc1_version_order_and_artifacts():
-    assert APP_VERSION == "0.9.0-rc.1"
-    assert version_key("0.9.0-beta.3") < version_key(APP_VERSION) < version_key("0.9.0")
+    assert version_key(APP_VERSION) >= version_key("0.9.0-rc.1")
+    assert version_key(APP_VERSION) >= version_key("0.9.0-rc.1")
     assert (ROOT / "RELEASE-NOTES-v0.9.0-beta.3.md").is_file()
     assert (ROOT / "RELEASE-NOTES-v0.9.0-rc.1.md").is_file()
     assert (ROOT / "BC_SENTINEL_V090_RC1_CONSOLIDATION_REPORT.md").is_file()

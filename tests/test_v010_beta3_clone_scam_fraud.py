@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 
 from sentinel.config import APP_VERSION
-from sentinel.protection_protocol import decode_request
-from sentinel.protection_service_core import ProtectionRuntime
+from sentinel.protection_protocol import ClientContext, decode_request
+from sentinel.protection_service_core import ProtectionRuntime, ProtectionServiceCore
 from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 
 
 def test_beta3_version_and_profile():
-    assert APP_VERSION == "0.10.0-beta.3"
+    assert APP_VERSION in {"0.10.0-beta.3", "0.10.0-rc.1"}
     assert CLONE_SCAM_PROFILE == "v0.10.0-beta.3"
 
 
@@ -154,7 +154,9 @@ def test_protocol_accepts_bounded_clone_scam_payload():
     assert request.payload["form_fields"] == ["password"]
 
 
-def test_runtime_exposes_beta3_assessment():
+def test_runtime_and_service_status_expose_beta3_features(tmp_path, monkeypatch):
+    # Runtime constructor has machine paths in production; use the existing
+    # service-core test style by bypassing full start and calling the pure method.
     runtime = object.__new__(ProtectionRuntime)
     result = ProtectionRuntime.web_clone_scam_assess(runtime, {
         "url": "https://paypa1.example/login",

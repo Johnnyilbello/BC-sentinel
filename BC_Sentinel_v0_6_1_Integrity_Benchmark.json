@@ -1,0 +1,11 @@
+{
+  "synthetic_files": 1000,
+  "bytes_each": 256,
+  "manifest_build_seconds": 0.058007,
+  "seal_seconds": 0.115107,
+  "cached_verify_seconds": 0.05171,
+  "cached_rehashed_files": 0,
+  "full_verify_seconds": 0.057478,
+  "full_rehashed_files": 1000,
+  "passed": true
+}

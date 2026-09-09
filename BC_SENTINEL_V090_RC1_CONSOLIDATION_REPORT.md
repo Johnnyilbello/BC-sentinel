@@ -15,9 +15,9 @@ Close the v0.9 Antispyware & Advanced Antimalware macro-phase without adding a n
 - advanced antimalware remains advisory and never automatically terminates processes, deletes files or quarantines content;
 - core local protection remains independent of cloud availability.
 
-## RC gates
+## New RC gates
 
-The dedicated `tools.v090_release_candidate_acceptance` gate exercises:
+The dedicated `tools.v090_release_candidate_acceptance` gate runs:
 
 1. the frozen v0.8 release-candidate regression baseline;
 2. v0.9 Beta1 antispyware acceptance;
@@ -27,8 +27,6 @@ The dedicated `tools.v090_release_candidate_acceptance` gate exercises:
 6. strong multi-signal and deterministic detection-retention checks;
 7. optional live Protection Service validation.
 
-## Native validation result
+## Native release requirement
 
-The target Windows machine completed the release matrix successfully on 2026-09-07: 482/482 Python tests, aggregate foundation, native build, upgrade, live-service aggregate acceptance, repair, service-hardening benchmark and post-reboot live acceptance all passed.
-
-The v0.9 line is therefore frozen as an accepted regression baseline for subsequent development.
+The RC is not frozen until `tools.windows_acceptance` passes on Windows with the new critical gates `release-v090-rc1-foundation` and `release-v090-rc1-live`, alongside all historical critical checks. Upgrade/repair and reboot persistence remain Windows-native acceptance requirements rather than cross-platform simulation targets.

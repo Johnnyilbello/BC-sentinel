@@ -68,6 +68,9 @@
          row = self.db.web_finding(finding_id)
          if row is None:
              raise KeyError("web finding not found")
++
++        # Idempotent retry: a repeated operator/UI request must never create a
++        # second Windows Firewall rule for the same finding.
 +        if str(row["status"] or "") == "contained" and str(row["lease_id"] or ""):
 +            existing = self.db.containment_lease(str(row["lease_id"]))
 +            if existing is not None and str(existing["status"] or "") == "active":
@@ -117,6 +120,8 @@
 +            }
 +            raise PermissionError(legacy_messages.get(qualified.reason, f"web containment denied: {qualified.reason}"))
 +
++        # Address-level dedupe across separate findings. Reuse the exact active
++        # lease and bind this finding to it instead of creating another rule.
 +        existing_remote = self.db.active_containment_lease_for_remote(remote_address)
 +        if existing_remote is not None:
 +            lease_id = str(existing_remote["lease_id"] or "")
@@ -167,6 +172,7 @@
          return lease
  
 +    def recover_web_containment_state(self) -> dict[str, Any]:
++        """Conservative restart recovery for Beta2 managed temporary rules."""
 +        now = time.time()
 +        expired: list[str] = []
 +        stale: list[str] = []
@@ -180,6 +186,8 @@
 +                expired.append(lease_id)
 +                continue
 +            if rule_id not in observed:
++                # Never recreate an address block merely because protected state
++                # says one used to exist. Clear stale desired state and release.
 +                self.db.delete_firewall_expected_rule(rule_id)
 +                self.db.mark_containment_lease_released(lease_id, reason="startup_missing_rule", released_at=now)
 +                try:
@@ -193,6 +201,9 @@
 +            active.append(lease_id)
 +        return {"active": active, "expired": expired, "stale": stale, "ok": True}
 +
+     def _release_containment_lease(self, lease_id: str, *, reason: str) -> dict[str, Any]:
+         row = self.db.containment_lease(lease_id)
+         if row is None:
 --- a/sentinel/config.py
 +++ b/sentinel/config.py
 @@ -5,7 +5,7 @@
@@ -201,6 +212,9 @@
  APP_NAME = "BC Sentinel"
 -APP_VERSION = "0.10.0-beta.1"
 +APP_VERSION = "0.10.0-beta.2"
+ 
+ DATA_DIR = Path(os.getenv("LOCALAPPDATA", Path.home() / ".bc_sentinel")) / "BCSentinel"
+ DB_PATH = DATA_DIR / "sentinel.db"
 --- a/sentinel/__init__.py
 +++ b/sentinel/__init__.py
 @@ -1 +1 @@
@@ -213,3 +227,6 @@
  name = "bc-sentinel"
 -version = "0.10.0b1"
 +version = "0.10.0b2"
+ description = "BC Sentinel - Intelligent Windows Protection MVP"
+ requires-python = ">=3.12"
+ dependencies = [

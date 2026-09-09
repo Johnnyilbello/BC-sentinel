@@ -1,0 +1,21 @@
+{
+  "schema": "bcsentinel.ioc.v1",
+  "bundle_id": "bcsentinel-bootstrap-safe-fixture",
+  "sequence": 1,
+  "issued_at": "2026-09-04T15:00:00Z",
+  "expires_at": "2027-09-04T23:59:59Z",
+  "entries": [
+    {
+      "kind": "sha256",
+      "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "severity": "critical",
+      "label": "EICAR antivirus test indicator"
+    },
+    {
+      "kind": "network",
+      "value": "192.0.2.240",
+      "severity": "high",
+      "label": "TEST-NET safe containment acceptance indicator"
+    }
+  ]
+}

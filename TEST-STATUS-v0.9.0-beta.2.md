@@ -1,25 +1,19 @@
-# Test Status — BC Sentinel v0.9.0-beta.2
+# BC Sentinel v0.9.0-beta.2 — Test Status
 
-Package verification was performed on the extracted final release tree.
+Development verification on the packaged source candidate:
 
-```text
-pytest: 469 passed, 1 skipped
-compileall: PASS
-local acceptance suites: 10/10 PASS
-```
+- pytest: **469 passed, 1 skipped**;
+- the skip is Windows-only, therefore native Windows target: **470 passed**;
+- `compileall`: PASS;
+- Web Protection Beta1: PASS;
+- Active Web Response Beta2: PASS;
+- Domain Trust Beta3: PASS;
+- Browser Download Protection Beta4: PASS;
+- Threat Package v0.8 Beta1: PASS;
+- Threat Channel v0.8 Beta2: PASS;
+- Threat Channel v0.8 Beta3: PASS;
+- v0.8 RC1 Consolidation: PASS;
+- Antispyware v0.9 Beta1: PASS;
+- Reversible Remediation v0.9 Beta2: PASS.
 
-The single local skip is Windows-only. Expected native Windows pytest target: **470 passed**.
-
-New Beta2 acceptance gates:
-
-- `antispyware-v090-beta2-foundation`
-- `antispyware-v090-beta2-live`
-
-Required freeze condition:
-
-```text
-passed = true
-critical_failures = []
-```
-
-Beta2 native remediation acceptance additionally requires the harmless temporary registry apply/restore probe to complete successfully.
+Native Windows acceptance remains mandatory before this Beta is frozen as accepted.

@@ -1,0 +1,11 @@
+CHANGED
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/README-BETA3-TEST.md
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/RELEASE-NOTES-v0.10.0-beta.3.md
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/TEST-STATUS-v0.10.0-beta.3.md
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/TEST-V010-BETA3-ALL-ADMIN.ps1
+
+ADDED
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/RETEST-V010-BETA3-STANDARD-UAC-ADMIN.bat
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/RETEST-V010-BETA3-STANDARD-UAC-ADMIN.ps1
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/SECURITY-AUDIT-2026-09-08-V010-BETA3-UAC-HARNESS-FIX1.md
+BC_Sentinel_v0_10_0_Beta3_Clone_Scam_Fraud_FULL/START-STANDARD-USER-PROCESS.ps1

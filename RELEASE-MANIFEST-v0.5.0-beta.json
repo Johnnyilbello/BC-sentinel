@@ -1,0 +1,34 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.5.0-beta",
+  "package_version": "0.5.0b1",
+  "development_validation": {
+    "pytest": "176/176 PASS",
+    "compileall": "PASS",
+    "behavioral_correlation_probe": "PASS",
+    "incident_response_foundation_probe": "PASS",
+    "native_windows_acceptance": "PENDING"
+  },
+  "safety": {
+    "autonomous_termination": false,
+    "automatic_firewall_rules": false,
+    "manual_response_requires_confirmation": true,
+    "pid_generation_required_for_termination": true
+  },
+  "files": {
+    "sentinel/incident_engine.py": "de2e882fb42d1b862162ddcb94dae4d150c9721be0a0ce544f612f00c3a7a4de",
+    "sentinel/response_engine.py": "145df0250eada342749c72b854891e8e4380c5097b6c8f97f016ce39dc508c78",
+    "sentinel/database.py": "5e97edbec726e43716e80c99387be1665773ae8f17c17ee9916fa5a72fc28e26",
+    "sentinel/correlation_engine.py": "ff04b51f9ad8658e6abeb4025c0399281cb2feb33085d15471291ba65bccc284",
+    "app/ui/main_window.py": "8d4f25e63cb4177ca230c4e50dbbbe88c61c9c44846769f0fbf592306ec16964",
+    "tools/windows_acceptance.py": "2c66bceeebe3747d4a0d0c89586a9921f450e3a46a48b8d9cc2789d00dde0c50",
+    "tests/test_v050_incident_response_engine.py": "32fc6e50fa1b1da1083de8f6f1bc6dc892c2edc516b4eeab5bfa58301db42d6f",
+    "requirements.txt": "ef1799d04808cce47eb53aab08edf6d192d05fdd1d5a8a0928f92a6bfc3f4135",
+    "pyproject.toml": "96286de6f0d57676fd76bb884364cd8a9b662e86d30657093673982297fe6c84",
+    "README.md": "669afb951920f19555785985e8da6de1bebd0fdad99db4316a90ba50f490701d",
+    "ROADMAP.md": "9e667497d192bcbf7c6771e59d6bd60f9d9a3f6940055206e8b5a8954562b39f",
+    "RELEASE-NOTES-v0.5.0-beta.md": "eb604b29b577e3d944d7077178eede4e43921fd13caef22dd30cf15ac06a06fd",
+    "V0.5-DEVELOPMENT-REPORT.md": "c51834005ca2239b9d1d7431ddc3ac279dd69b84927086391ce74cd34111ad42",
+    "benchmark_v050_incident.json": "01a23de336fd9ffceae75f430711276841fea8ffc9a031ea1bc77e0611b95e67"
+  }
+}

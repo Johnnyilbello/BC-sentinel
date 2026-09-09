@@ -449,6 +449,7 @@ def url_deception_signals(
         ))
     except ValueError:
         pass
+
     if parsed.username is not None or parsed.password is not None:
         signals.append(WebHeuristicSignal(
             "url_deception", "userinfo_before_host", 15,

@@ -1,0 +1,7 @@
+PySide6>=6.8,<7
+psutil>=6.0,<8
+watchdog>=5.0,<7
+pefile>=2024.8.26
+cryptography>=43,<47
+pytest>=8,<10
+pyinstaller>=6.10,<8

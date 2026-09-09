@@ -23,10 +23,13 @@ if ($LASTEXITCODE -ne 0) { throw "Legacy response regression fallita" }
 & $Py -m compileall -q app sentinel tools tests
 if ($LASTEXITCODE -ne 0) { throw "Compileall fallito" }
 
+# One command includes the real elevated upgrade/repair/native/live phase.
 $adminScript = Join-Path $PSScriptRoot "TEST-V010-BETA3-ADMIN-PHASE.ps1"
 $proc = Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",("`""+$adminScript+"`""))
 if ($proc.ExitCode -ne 0) { throw "Fase amministratore automatica fallita (exit $($proc.ExitCode))" }
 
+# Back in the original non-elevated process: this is the real standard-user ->
+# UAC one-action broker gate against the just-upgraded/repaired Beta3 service.
 & $Py -m tools.broker_acceptance --output acceptance-v010-beta3-standard-user-uac.json
 if ($LASTEXITCODE -ne 0) { throw "Standard-user -> UAC broker acceptance fallita" }
 

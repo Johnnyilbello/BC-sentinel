@@ -1,57 +1,21 @@
-# TEST STATUS — BC Sentinel v0.10.0-beta.1
+# BC Sentinel v0.10.0-beta.1 — Test Status
 
-Status: **PENDING COMPLETE CHECKPOINT-4 REBASE / NOT ACCEPTED**.
+Status: **LOCAL RECONSTRUCTED REGRESSION GREEN; WINDOWS NATIVE FIX2 VALIDATION PENDING**.
 
-## Source-of-record baseline before v0.10 delta
+Current FIX2 development evidence:
 
-Checkpoint 4 on 8 September 2026:
+- complete reconstructed regression: **519 passed, 2 skipped, 0 failed**;
+- skipped tests are Windows-native gates in the non-Windows development environment;
+- targeted Authenticode + v0.10 regression: **32 passed, 1 native-Windows skip**;
+- Python `compileall`: **PASS**;
+- `tools.v010_web_deception_acceptance`: **PASS (`passed=true`)**;
+- WinVerifyTrust is authoritative for Authenticode trust validity;
+- PowerShell is best-effort certificate metadata only and cannot upgrade native trust.
 
-- complete regression: **578 passed, zero skipped**;
-- native Authenticode foundation sub-gate: PASS;
-- local v0.9 RC acceptance: PASS;
-- fresh Protection Service / UAC Broker builds: PASS;
-- isolated pipe self-test: PASS;
-- compileall: PASS;
-- artifact integrity: 169 files verified.
+The earlier Windows runs are superseded for FIX2 validation:
 
-These are pre-delta results and MUST NOT be presented as v0.10 test results.
+- initial package: 517 passed / 1 Authenticode native failure;
+- FIX1: 518 passed / 1 Authenticode native failure;
+- FIX2 requires a fresh target-Windows run before this native gate is closed.
 
-## v0.10 tests added/expanded in the delta
-
-- `tests/test_v010_beta1_web_reputation_primitives.py`
-  - benign lure words;
-  - benign IDN;
-  - mixed-script/confusable identity;
-  - typosquatting;
-  - brand/subdomain abuse;
-  - declared identity vs observed host;
-  - raw-IP/userinfo cap;
-  - redirect look-alike/raw-IP context;
-  - enterprise false-positive matrix;
-  - deterministic `WDR-*` fingerprint;
-  - cap/profile invariants.
-
-- `tests/test_v010_beta1_web_deception_anti_scam.py`
-  - existing WebProtectionEngine integration;
-  - deterministic signed IOC precedence;
-  - exact-domain trust;
-  - signed IOC overriding older exact-domain trust;
-  - v0.10 service safety posture;
-  - download-origin/file-verdict separation;
-  - deferred v0.9 native-gate metadata;
-  - v0.10 Windows acceptance gate registration.
-
-## Required green gate
-
-After applying the delta to the exact checkpoint-4 full source tree:
-
-1. targeted v0.10 tests PASS;
-2. full regression PASS with **no loss of any of the existing 578 tests** and no skips introduced to hide failures;
-3. compileall PASS;
-4. `python -m tools.v010_web_deception_acceptance` PASS;
-5. fresh service/broker builds PASS;
-6. artifact integrity PASS;
-7. `web-reputation-v010-beta1-foundation` PASS;
-8. live gate only when native Windows validation is resumed.
-
-Until those results exist, no Beta1 acceptance count or release checksum is claimed.
+The historical checkpoint-4 source was reconstructed from the last complete RC1 plus preserved checkpoint-3/4 hardening evidence; this package is not claimed to be byte-identical to the unavailable original checkpoint-4 source tree.

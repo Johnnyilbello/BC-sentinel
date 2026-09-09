@@ -1,5 +1,7 @@
-# Suggested GitHub repository description
+# Repository description
 
-Windows endpoint security under active development: antivirus, antispyware, reversible persistence response, behavioral protection, managed firewall, Web Protection, incident response and signed threat intelligence.
+Suggested GitHub About text:
 
-The connected GitHub integration currently does not expose a repository-metadata write action for the GitHub About/Description field. The same description is therefore used prominently in `README.md`.
+> Windows endpoint security under active development: antivirus, antispyware, reversible persistence response, behavioral protection, managed firewall, Web Protection, incident response and signed threat intelligence.
+
+Current development line: **v0.9.0-beta.2 — Reversible Persistence Remediation & PUP/Adware Response**.

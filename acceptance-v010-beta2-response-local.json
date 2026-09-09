@@ -1,0 +1,67 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.10.0-beta.2",
+  "milestone": "v0.10.0-beta.2",
+  "response_profile": "v0.10.0-beta.2",
+  "acceptance": {
+    "signed_ioc_block": true,
+    "duplicate_rule_prevention": true,
+    "manual_rollback": true,
+    "signed_ioc_overrides_trust": true,
+    "heuristic_only_no_block": true,
+    "shared_cdn_no_global_block": true,
+    "same_pid_dns_connection_required": true,
+    "ttl_expiry": true,
+    "restart_recovery": true,
+    "stale_rule_cleanup": true,
+    "heuristic_policy_fail_closed": true
+  },
+  "detail": {
+    "lease": {
+      "lease_id": "9020912eb1b948fc5764eba65b776e23",
+      "rule_id": "BCSF-7498B91F803FD3F2",
+      "remote_address": "192.0.2.55",
+      "created_at": 1788877702.7616918,
+      "expires_at": 1788877762.7616918,
+      "ttl_seconds": 60,
+      "status": "active",
+      "qualification": "signed_domain_nonshared_ip",
+      "finding_id": "BCW-AAAAAAAAAAAAAAAAAAAA",
+      "response_profile": "v0.10.0-beta.2",
+      "qualification_policy": {
+        "eligible": true,
+        "qualification": "signed_domain_nonshared_ip",
+        "reason": "signed_domain_same_pid_network",
+        "signed_evidence": true,
+        "requires_same_pid_network": true,
+        "shared_ip_guard": true,
+        "heuristic_only_blocked": true
+      }
+    },
+    "recovery": {
+      "active": [
+        "d24f6caf7f8c06443c000f5ebaa0fce1"
+      ],
+      "expired": [],
+      "stale": [],
+      "ok": true
+    },
+    "recovery_after_missing": {
+      "active": [],
+      "expired": [],
+      "stale": [
+        "d24f6caf7f8c06443c000f5ebaa0fce1"
+      ],
+      "ok": true
+    }
+  },
+  "service": null,
+  "passed": true,
+  "safety": {
+    "mitm_https": false,
+    "heuristic_auto_block": false,
+    "cloud_required": false,
+    "shared_ip_guard": true,
+    "reversible_only": true
+  }
+}

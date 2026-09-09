@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from sentinel.config import APP_VERSION
+from sentinel.service_update import version_key
 from sentinel.database import Database
 from sentinel.protection_client import ProtectionServiceClient
 from sentinel.web_deception import HEURISTIC_PROFILE, HEURISTIC_SCORE_CAP, assess_local_url
@@ -159,7 +160,7 @@ def run(*, service_live: bool = False) -> dict:
     )
 
     local_passed = bool(
-        APP_VERSION == "0.10.0-beta.1"
+        version_key(APP_VERSION) >= version_key("0.10.0-beta.1")
         and v090_local.get("passed")
         and all_heuristics_below_high
         and safe_lure_words_unscored

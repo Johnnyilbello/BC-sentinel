@@ -5,7 +5,7 @@ import os
 import sys
 
 APP_NAME = "BC Sentinel"
-APP_VERSION = "0.10.0-beta.3"
+APP_VERSION = "0.10.0-rc.1"
 
 DATA_DIR = Path(os.getenv("LOCALAPPDATA", Path.home() / ".bc_sentinel")) / "BCSentinel"
 DB_PATH = DATA_DIR / "sentinel.db"
@@ -74,6 +74,9 @@ class Settings:
 def ensure_dirs() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
+    # Best-effort least-privilege permissions. Windows ACL hardening belongs to
+    # the future privileged service/tamper-protection phase; these modes still
+    # protect correctly on POSIX and avoid overly broad permissions elsewhere.
     for directory in (DATA_DIR, QUARANTINE_DIR):
         try:
             os.chmod(directory, 0o700)

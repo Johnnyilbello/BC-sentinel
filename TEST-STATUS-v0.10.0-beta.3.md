@@ -1,6 +1,6 @@
-# Test Status — v0.10.0-beta.3
+﻿# Test Status — v0.10.0-beta.3
 
-Status: **ACCEPTED DEVELOPMENT BASELINE on Windows; reboot intentionally deferred**.
+Status: **candidate ready for Windows acceptance; not final-accepted yet**.
 
 ## Local pre-delivery
 - 543 passed
@@ -25,28 +25,19 @@ Both supported master launchers include all gates except reboot:
 
 Reboot persistence/recovery is intentionally deferred to the final roadmap acceptance and must not be marked PASS before then.
 
-## Final Windows acceptance evidence — 2026-09-08
+
+## Windows acceptance evidence — 2026-09-08 before UAC harness FIX1
 - full Windows pytest: **545 passed, 0 failed**;
 - admin targeted phase: **115 passed, 0 failed**;
 - Protection Service + UAC Broker fresh builds: PASS;
-- same-version upgrade attempt correctly rejected as `same_version_upgrade_rejected` (anti-downgrade invariant): PASS;
+- same-version upgrade attempt: correctly rejected as `same_version_upgrade_rejected` (anti-downgrade invariant);
 - real same-version repair: PASS;
 - Beta1/Beta2/Beta3 service-live acceptance: PASS;
 - Windows native acceptance: PASS with zero critical failures;
 - service hardening benchmark: PASS;
-- final standard-user -> UAC retest with FIX2: **PASS**;
-- helper identity: `is_admin=false`;
-- direct privileged request from standard user: `admin_required` as expected;
-- one-action UAC broker: issued=1, consumed=1, completed=1, rejected=0, pending=0;
-- post-broker service health: `HEALTHY`;
-- post-broker hardening: `ok=true`, sealed, HMAC/ACL/SCM/audit checks green.
+- standard-user -> UAC from ADMIN launcher: harness failure because COM launch remained elevated (`is_admin=true`).
 
-## UAC harness closure
-The original COM path remained elevated on this host. FIX1 using `CreateProcessWithTokenW` was not reliable. FIX2 uses a temporary Windows Scheduled Task with `LogonType Interactive` and `RunLevel Limited`; the child independently verifies `is_admin=false` before the UAC broker acceptance can pass, and the temporary task is removed afterward.
+FIX1 changes only this de-elevation harness. The product engine and already-green acceptance results are unchanged. The final UAC gate remains pending until `RETEST-V010-BETA3-STANDARD-UAC-ADMIN.bat` returns PASS.
 
-This is a test-harness correction only. No protection policy was weakened.
-
-## Remaining deferred gate
-- reboot persistence/recovery: **DEFERRED by roadmap decision until final roadmap acceptance**.
-
-No other Beta3 acceptance gate remains open.
+## Windows evidence / FIX2
+Il core Windows è già verde con 545/545 regression e 115/115 admin/security tests, build native, repair, live acceptance e hardening PASS. FIX1 ha fallito esclusivamente nel launcher di de-elevazione (`CreateProcessWithTokenW`). FIX2 usa un Scheduled Task temporaneo `Interactive + RunLevel Limited`; il gate resta pending finché il retest mirato non produce `STANDARD-USER -> UAC PASS`.

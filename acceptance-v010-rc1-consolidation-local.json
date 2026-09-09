@@ -1,0 +1,46 @@
+{
+  "product": "BC Sentinel",
+  "version": "0.10.0-rc.1",
+  "milestone": "v0.10.0-rc.1",
+  "profiles": {
+    "beta1_deception": "v0.10.0-beta.1",
+    "beta2_response": "v0.10.0-beta.2",
+    "beta3_clone_scam": "v0.10.0-beta.3",
+    "rc1_consolidation": "v0.10.0-rc.1"
+  },
+  "compatibility": {
+    "checked": 323,
+    "failures": [],
+    "failure_count": 0,
+    "passed": true
+  },
+  "performance": {
+    "local_page_assessment": {
+      "iterations": 1200,
+      "elapsed_seconds": 0.458519,
+      "throughput_per_second": 2617.12,
+      "median_ms": 0.2556,
+      "p95_ms": 1.088,
+      "thresholds": {
+        "min_throughput_per_second": 100.0,
+        "max_p95_ms": 25.0
+      },
+      "passed": true
+    },
+    "service_ipc": null
+  },
+  "safety": {
+    "heuristic_score_cap": 49,
+    "heuristic_only_below_high": true,
+    "clone_detection_preserved": true,
+    "mitm_https": false,
+    "heuristic_auto_block": false,
+    "cloud_required": false,
+    "reboot_gate_deferred": true
+  },
+  "service_live_requested": false,
+  "service": null,
+  "local_passed": true,
+  "service_live_passed": null,
+  "passed": true
+}

@@ -1,6 +1,6 @@
 # BC Sentinel — Product & Security Roadmap
 
-Current development line: **v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation**.
+Current development line: **v0.10.0-rc.1 — Web Protection Consolidation**.
 
 2026-09-08 source-of-record baseline: v0.9.0-rc.1 checkpoint 4 completed **578 tests, zero skipped**, fresh service/broker builds, artifact integrity, local RC acceptance and the native Authenticode sub-gate. The elevated current-build/live/UAC/upgrade/repair/reboot gates remain **DEFERRED / OPEN**. Development is advancing to v0.10 by explicit decision, but v0.9 is **not** retroactively frozen or production accepted.
 
@@ -89,7 +89,18 @@ Still OPEN/DEFERRED: elevated current-build foundation, live Protection Service,
 
 ## v0.10 — Web Protection, Anti-Phishing & Anti-Truffa — Mature Expansion
 
-### v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation — **current**
+### v0.10.0-beta.2 — Reversible Web Response / Blocking — **accepted development baseline**
+
+- deterministic fail-closed response qualification separate from phishing heuristics;
+- signed IOC only for automatic eligibility; local heuristics alone can never create an address block;
+- same-PID DNS + observed network requirement for signed-domain containment;
+- shared-IP/CDN guard rejects address containment;
+- BC-owned temporary firewall containment with bounded TTL and explicit operator approval;
+- idempotent repeated actions and same-address active-lease deduplication;
+- manual rollback, TTL expiry, restart recovery and conservative stale-rule cleanup;
+- no MITM, root CA, hosts-file mutation, global firewall-default change or origin-only file quarantine.
+
+### v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation — **baseline accepted on Windows**
 Goal: mature the existing v0.7.2 web stack without weakening its safety boundaries.
 
 Implementation delta:
@@ -137,25 +148,33 @@ Acceptance gates:
 - `web-reputation-v010-beta1-foundation`;
 - `web-reputation-v010-beta1-live`.
 
-**Current acceptance status:** NOT ACCEPTED. The connected GitHub repository contains the security delta, while the complete checkpoint-4 source tree is not present. The older v0.10 ZIP predates checkpoint 4 and must not be used to overwrite later hardening. Apply/rebase this delta onto the checkpoint-4 full tree, then run targeted tests + the complete regression suite (floor 578 existing tests, plus new v0.10 tests), compileall, local acceptance, fresh builds and artifact integrity. Native v0.9 debt remains deferred/open rather than falsified as PASS.
+**Acceptance status:** accepted as a regression baseline through the later Beta2/Beta3 Windows validation. Its safety invariants remain frozen into RC1.
 
-### Planned v0.10.0-beta.2 — Reversible Web Response
-- explicit, reversible DNS/network-layer containment only when existing qualification gates are satisfied;
+### v0.10.0-beta.2 — Reversible Web Response
+- explicit, reversible DNS/network-layer containment only when signed qualification gates are satisfied;
 - no heuristic-only address blocking;
-- preserve shared-IP/CDN safeguards and UAC approval;
-- bounded TTL, audit and exact finding revalidation.
+- shared-IP/CDN safeguards and UAC approval retained;
+- bounded TTL, audit, exact finding revalidation, deduplication, rollback and restart recovery.
 
-### Planned v0.10.0-beta.3 — Anti-Scam / Clone-Site Expansion
-- richer impersonation evidence from locally available context;
-- bounded fraud/scam patterns;
-- stronger redirect and download-risk correlation;
-- false-positive stress matrix before RC.
+### v0.10.0-beta.3 — Anti-Scam / Clone-Site Expansion — **current candidate**
+- protected-brand claims on non-canonical domains;
+- credential/payment form and cross-origin sensitive-form destination analysis;
+- bounded scam/fraud patterns requiring independent structural risk;
+- remote-support, investment/crypto and delivery/payment multi-signal detection;
+- heuristic cap remains 49 and page context cannot auto-block;
+- both master test launchers now include upgrade/repair and true standard-user -> UAC; reboot alone remains deferred until final roadmap closure.
 
-### Planned v0.10.0-rc.1 — Consolidation
+### v0.10.0-rc.1 — Consolidation — **current**
 - Beta1→Beta3 regression freeze;
 - high-volume benign-site/enterprise compatibility matrix;
 - performance/latency checks;
-- native Windows/live evidence for advertised v0.10 behavior.
+- native Windows/live evidence for advertised v0.10 behavior;
+- master NORMAL and ADMIN launchers always include upgrade, repair and true standard-user -> UAC;
+- reboot remains the only intentionally deferred gate until final roadmap acceptance.
+
+Beta3 Windows baseline entering RC1 (2026-09-08): 545/545 full regression, 115/115 admin/security, build, anti-downgrade, real repair, Beta1/Beta2/Beta3 service-live, Windows native acceptance, hardening benchmark and standard-user -> UAC all PASS.
+
+RC1 local pre-delivery: 547 passed + 2 Windows-native skips, 323-case benign compatibility matrix with zero failures, compileall and RC1 local acceptance PASS.
 
 ## v0.11 — EDR Core
 - durable endpoint activity timeline;
@@ -216,3 +235,42 @@ Signed Windows GUI/service/broker binaries, installer upgrade/repair/uninstall, 
 
 ### v1.0 — Production Endpoint Protection Suite
 Production only after protected service, secure updates, false-positive/compatibility testing, rollback/runbooks and every advertised capability has native acceptance evidence.
+
+## Historical accepted response details retained
+
+#### Threat Decision Center — end-to-end service boundary
+Qualified HIGH/CRITICAL detections present the explicit decision card requested by the product design:
+- **Quarantena · consigliato** — preferred reversible action;
+- **Elimina definitivamente** — destructive action only after explicit confirmation and immediate path/snapshot/SHA-256 revalidation;
+- **Mantieni questa volta** — handles only the current occurrence and never creates persistent trust;
+- **Consenti hash** — trusts only the exact SHA-256; a changed file is analyzed again;
+- when the Protection Service owns protection, quarantine and permanent deletion now execute through the privileged service/UAC boundary rather than directly in the standard-user GUI;
+- the service receives the expected detection SHA-256 and refuses quarantine/delete when the file identity changed after detection;
+- the privileged threat-file endpoint is restricted to qualified HIGH/CRITICAL detections with score >=70 and cannot act as a generic privileged file remover;
+- BC Sentinel-managed paths and the protected Windows system tree fail closed for quarantine/permanent-delete response actions;
+- local fallback keeps the same identity-safe checks when the service is unavailable;
+- every completed user decision is recorded with action, status, path, SHA-256, score, level and `explicit_user_decision=true`;
+- permanent destruction remains manual-only; no detection engine may silently delete a file in v0.7.1;
+- publisher-wide trust remains a separate future high-friction action and may only be offered after locally verified `Authenticode=Valid`.
+
+#### Harmless Threat Decision acceptance
+`tools.threat_decision_acceptance` uses only temporary harmless fixtures and proves:
+1. deterministic simulated EICAR-class detection reaches CRITICAL;
+2. quarantine accepts only the exact expected SHA-256;
+3. encrypted quarantine restore reproduces the exact fixture;
+4. permanent delete revalidates the detected identity before unlink;
+5. `Mantieni questa volta` leaves the allowlist unchanged;
+6. `Consenti hash` trusts the original digest but not changed bytes.
+
+### v0.7.1-beta.1 — Firewall Drift Detection & Reconciliation (native Windows accepted)
+- persistent desired state for every BC Sentinel-managed firewall rule;
+- semantic drift detection for missing, disabled and modified owned rules;
+- `untracked_owned` and exact managed-group collision observation;
+- periodic service-side drift inspection integrated into the hardening cycle;
+- standard-user read-only drift posture;
+- privileged, explicitly approved reconciliation of desired BLOCK rules only;
+- no reconciliation of collisions, untracked rules, third-party rules or global Windows Firewall policy;
+- native Windows acceptance proved external disable detection, exact owned-rule restoration, cleanup and baseline restoration.
+
+#### Response Policy Engine — later v0.7.x
+Planned policy tiers remain explainable and reversible: LOW → log/notify; SUSPICIOUS → review; HIGH → ask user; CRITICAL → policy may quarantine automatically only after dedicated acceptance. Permanent destruction remains manual-only unless a future release earns a separate safety gate.

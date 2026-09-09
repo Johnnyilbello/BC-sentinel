@@ -1,117 +1,102 @@
-# BC Sentinel
+# BC Sentinel v0.10.0-rc.1
 
-> **Windows endpoint security under active development:** antivirus, antispyware, reversible persistence response, advanced antimalware correlation, behavioral protection, managed firewall, Web Protection, incident response and signed threat intelligence.
+**Current line: Web Protection Consolidation**
 
-## Development status
+RC1 freezes the v0.10 Beta1→Beta3 Web Reputation, Reversible Web Response and Clone Site / Scam-Fraud stack. It adds high-volume benign compatibility and performance acceptance while preserving the existing safety boundaries.
 
-**Frozen line:** `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`
+## One-command Windows validation
 
-BC Sentinel remains a development preview. It is **not production-ready** and should not replace Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
-
-The v0.9 line has completed its release-candidate freeze on the target Windows machine. The RC1 baseline passed the complete Python suite, native foundation acceptance, native build, upgrade, live-service acceptance, repair, service-hardening benchmark and post-reboot live acceptance.
-
-### v0.9 Beta1 — Antispyware foundation
-
-Beta1 introduced spyware/persistence discovery and conservative multi-signal scoring across Run/RunOnce, Startup, Scheduled Tasks, automatic services, WMI permanent persistence, browser policy/forced-extension surfaces, proxy/DNS configuration and executable provenance.
-
-### v0.9 Beta2 — Reversible persistence response
-
-Beta2 added HMAC-authenticated remediation plans with exact pre-mutation revalidation, explicit approval, reversible restoration and one-action UAC integration for selected persistence surfaces. WMI, proxy and DNS remain review-only where equivalent restore guarantees are not yet available.
-
-Safety remains strict:
-
-```text
-automatic_remediation          = false
-automatic_destructive_action   = false
-service_process_termination    = false
+PowerShell normale:
+```powershell
+.\TEST-V010-RC1-ALL-NORMAL.bat
 ```
 
-### v0.9 Beta3 — Advanced Antimalware & Fileless Correlation
-
-Beta3 added the `AdvancedAntimalwareEngine` for explainable correlation of PowerShell/script-host command context, bounded encoded/dynamic and in-memory indicators, Windows LOLBins, Office/browser/script-host parent-child relationships, short-lived same-PID process → network chains and deterministic file/IOC evidence that may strengthen an existing behavioral chain.
-
-A single dual-use Windows tool is **not malware by identity**. One evidence family cannot qualify HIGH on its own. Stronger outcomes require converging independent evidence or qualified deterministic evidence.
-
-### v0.9 RC1 — Consolidation & Native Hardening
-
-RC1 freezes the v0.9 Beta1→Beta3 model and adds explicit false-positive hardening for administrative/script-heavy workloads. It preserves the existing protected response boundaries and introduces no automatic process termination, file deletion, quarantine or persistence mutation from the Advanced Antimalware layer.
-
-## Existing protection stack
-
-BC Sentinel currently includes:
-
-- realtime and on-demand malware scanning;
-- SHA-256 identity, YARA and PE-aware inspection;
-- ransomware and behavior shields;
-- encrypted quarantine and Threat Decision workflows;
-- hardened Windows Protection Service;
-- authenticated Named Pipe IPC and one-action UAC broker;
-- ETW process/file/network attribution;
-- persistent incident timelines and behavioral correlation;
-- BC Sentinel-owned Windows Firewall BLOCK-only controls;
-- firewall drift/reconciliation and conflict analysis;
-- Ed25519-signed IOC and threat-content packages;
-- key rotation/revocation and anti-rollback state;
-- signed reputation as advisory evidence;
-- DNS/process-correlated Web Protection without HTTPS MITM;
-- browser/download provenance and Web Incident Chain;
-- signed remote threat index and content-addressed threat cache;
-- crash-consistent staged threat-content activation;
-- antispyware/persistence discovery and reversible remediation;
-- advisory advanced-antimalware/fileless correlation.
-
-## Core security principles
-
-- deterministic protection does not depend on AI or cloud availability;
-- AI remains advisory/explanatory rather than the sole enforcement authority;
-- private signing keys are never distributed with release artifacts;
-- no HTTPS MITM or injected root CA in the current Web Protection architecture;
-- heuristic-only evidence cannot perform destructive response;
-- firewall management is BC-owned and BLOCK-only;
-- signed IOC evidence has precedence over local trust;
-- remote retrieval does not imply staging or activation;
-- all privileged mutations remain behind authenticated service/UAC boundaries;
-- dual-use administration tools are not classified as malware by executable name alone.
-
-## v0.9 RC1 verification
-
-Target Windows validation completed on 2026-09-07:
-
-```text
-pytest                         482 / 482 PASS
-RC1 acceptance                 PASS
-Windows foundation             PASS
-native build                   PASS
-upgrade                        PASS
-live-service acceptance        PASS
-repair                         PASS
-service-hardening benchmark    PASS
-post-reboot live acceptance    PASS
+PowerShell amministratore:
+```powershell
+.\TEST-V010-RC1-ALL-ADMIN.bat
 ```
 
-Release SHA-256:
+Both master launchers include full regression, real upgrade, real same-version repair and true standard-user -> UAC. **Reboot is the only intentionally deferred gate** until final roadmap acceptance.
 
-```text
-8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350
-```
+Local pre-delivery: **547 passed, 2 Windows-native skipped, 0 failed**; 323 benign compatibility fixtures with zero failures; compileall and RC1 local acceptance PASS.
+
+See `README-RC1-TEST.md`, `TEST-STATUS-v0.10.0-rc.1.md`, `RELEASE-NOTES-v0.10.0-rc.1.md` and `ROADMAP.md`.
+
+BC Sentinel is a **Windows endpoint-security platform under active development**. It combines local-first malware scanning, behavioral monitoring, a hardened Protection Service, managed Windows Firewall controls, Web Protection, incident response, signed threat intelligence, antispyware/persistence analysis and the new Web Reputation / Phishing Detection foundation in one explainable pipeline.
+
+> **Development preview:** BC Sentinel is not production-ready and is not a replacement for Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
+
+## Historical reconstruction baseline
+
+**v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation**
+
+This complete test candidate was reconstructed from the latest complete v0.9.0-rc.1 archive available to the workspace, brought forward with the documented checkpoint-3 updater and checkpoint-4 Authenticode hardening invariants, then advanced with the v0.10 Beta1 delta.
+
+It is **not claimed to be byte-identical** to the historical checkpoint-4 artifact. The reconstructed tree has its own validation evidence:
+
+- full local regression: **516 passed, 2 Windows-native skips, 0 failed**;
+- v0.10 targeted tests: **25 passed**;
+- reconstructed checkpoint-3 updater tests: **6 passed**;
+- reconstructed checkpoint-4 Authenticode tests: **4 passed + 1 Windows-native skip**;
+- Python `compileall`: **PASS**;
+- v0.10 local acceptance: **PASS**.
+
+The two local skips require native Windows and are intentionally left for the user's machine. Elevated/live/UAC/upgrade/repair/reboot evidence remains open until the corresponding Windows runs are completed.
 
 See:
 
-- `RELEASE-NOTES-v0.9.0-rc.1.md`
-- `BC_SENTINEL_V090_RC1_CONSOLIDATION_REPORT.md`
-- `BC_Sentinel_Roadmap_v0_9_0_RC1_Updated.md`
-- `TEST-STATUS-v0.9.0-rc.1.md`
-- `WINDOWS-ACCEPTANCE-v0.9.0-rc.1.md`
-- `RELEASE-SHA256-v0.9.0-rc.1.txt`
-- `DEVELOPMENT_STATUS.md`
+- `RECONSTRUCTION-NOTE-v0.10.0-beta.1.md`
+- `TEST-STATUS-v0.10.0-beta.1.md`
+- `RELEASE-NOTES-v0.10.0-beta.1.md`
 - `ROADMAP.md`
+- `SECURITY-AUDIT-2026-09-08-V010-BETA1-RECONSTRUCTED-CHECKPOINT2.md`
 
-## Next milestone
+## Test this package
 
-**`v0.10.0-beta.1` — Web Protection / Anti-Phishing / Anti-Scam Mature Expansion Foundation**
+### 1. PowerShell normale
 
-The v0.10 line builds on the existing v0.7 DNS/process-correlated Web Protection instead of replacing it. New heuristic/deception signals remain explainable and bounded below destructive-response thresholds unless stronger deterministic evidence exists.
+From the extracted project root:
 
-## Responsible testing
+```powershell
+.\TEST-V010-NORMAL.ps1
+```
 
-Use harmless fixtures, TEST-NET addresses and disposable VMs. Do not expose an everyday workstation to live malware solely to test a development build.
+This creates the virtual environment when needed, installs the pinned project requirements without upgrading pip, runs the complete local test suite, v0.10 acceptance and `compileall`.
+
+### 2. PowerShell come amministratore
+
+Only after the normal test is green:
+
+```powershell
+.\TEST-V010-ADMIN.ps1
+```
+
+This runs the Windows-native acceptance path, fresh Protection Service build/install, live v0.10 checks and service hardening benchmark.
+
+Do not mark the remaining standard-user UAC / upgrade / repair / reboot gates as passed until their dedicated evidence is collected.
+
+## v0.10 Beta1 security model
+
+- local/offline URL and domain reputation primitives;
+- IDN/Punycode and mixed-script analysis;
+- Unicode look-alike/confusable identity evidence;
+- edit-distance-one typosquat detection;
+- declared identity kept separate from observed/canonical domain evidence;
+- raw-IP, URL userinfo, deep-subdomain and redirect-chain context;
+- conservative phishing/scam lure heuristics gated by independent structural risk;
+- stable `WDR-*` heuristic fingerprints for deterministic deduplication;
+- signed IOC precedence over local exact-domain trust and heuristics;
+- heuristic score hard-cap at 49;
+- no heuristic-only HIGH/CRITICAL;
+- no heuristic auto-block;
+- no HTTPS MITM, root CA, TLS interception or mandatory cloud dependency.
+
+## Preserved security lineage
+
+The source tree retains the previously developed v0.3.1→v0.9 architecture: path/reparse hardening, reputation and behavioral correlation, incidents and guarded response, authenticated Protection Service IPC, service hardening, UAC broker, firewall/web/download protection, Threat Decision Center, signed threat packages, secure update/recovery, antispyware/persistence remediation and fileless/advanced antimalware correlation.
+
+The reconstructed checkpoint-3 updater additionally preserves disjoint transaction roots, approved source/manifest binding, pinned source reads, process locking, sibling promotion/restoration, authenticated schema-2 journals, verified rollback identity and idempotent recovery. The reconstructed checkpoint-4 Authenticode path treats filenames only as data, pins native PowerShell/module selection, disables module autoload and fails closed on inspection errors.
+
+## Source synchronization
+
+The connected GitHub branch `v0.10.0-beta.1` is a development delta and does **not** contain this full reconstructed tree. This ZIP is the complete candidate intended for the next native Windows validation. After that evidence is green, the full tree can be synchronized to GitHub before proceeding with the roadmap.
