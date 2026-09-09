@@ -102,6 +102,12 @@ try {
             if ($benchmark.failure_reasons) {
                 foreach ($reason in $benchmark.failure_reasons) { Write-Host ('  - ' + $reason) -ForegroundColor Red }
             }
+            if ($benchmark.idle.hottest_threads) {
+                Write-Host 'IDLE HOTTEST THREADS:' -ForegroundColor Yellow
+                foreach ($thread in $benchmark.idle.hottest_threads) {
+                    Write-Host (('  TID {0}: {1:N2}% one-core ({2:N4}s CPU)') -f [int]$thread.tid,[double]$thread.cpu_percent_of_one_core,[double]$thread.cpu_seconds) -ForegroundColor Yellow
+                }
+            }
         }
     }
 
