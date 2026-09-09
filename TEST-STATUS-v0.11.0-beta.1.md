@@ -1,59 +1,66 @@
 # TEST STATUS — BC Sentinel v0.11.0-beta.1
 
 ## Current state
-**FUNCTIONAL/NATIVE GATES REACH SERVICE PERFORMANCE / IDLE CPU BLOCKER REMAINS / PROVIDER-SIDE ETW FIX IMPLEMENTED**
+**FUNCTIONAL/NATIVE GATES GREEN THROUGH SERVICE PERFORMANCE / IDLE CPU BLOCKER REMAINS / PYWINTRACE IDLE-SPIN FIX IMPLEMENTED**
 
 ### Latest Windows evidence — 2026-09-09
-The newest one-command Windows run reached the enforced service-performance gate:
+The newest one-command Windows run confirms:
 
 - dependency preparation: PASS;
 - legacy regression compatibility: canonical;
 - threat-package Windows compatibility: canonical;
 - service-update Windows compatibility: canonical;
-- split Process/File/DNS ETW compatibility: PASS;
+- split Process/File/DNS ETW compatibility with provider-side Event ID filters: PASS;
 - **577 pytest passed, 0 failed**;
 - v0.11 EDR local acceptance: PASS;
-- EDR throughput: `84.88 events/s` vs `50/s` minimum;
 - v0.10 Beta1/Beta2/Beta3/RC1 local regressions: PASS;
-- compatibility matrix: `323/323`, 0 failures;
 - Protection Service + UAC Broker + firewall build: PASS;
 - named-pipe self-test: PASS;
 - automatic UAC/admin phase progressed through functional/live gates and reached `service_performance`.
 
-The enforced benchmark then correctly failed:
+The enforced benchmark correctly failed only on idle CPU:
 
 ```text
 ADMIN PHASE RESULT: status=FAIL | stage=service_performance | message=Service hardening/performance benchmark failed
-SERVICE PERFORMANCE: idle=152.18% one-core | IPC=33.49/s | storm=172.01% one-core | passed=False
-idle CPU 152.18% exceeds 25.00% of one core
+SERVICE PERFORMANCE: idle=149.68% one-core | IPC=27.76/s | storm=158.46% one-core | passed=False
+idle CPU 149.68% exceeds 25.00% of one core
 BC SENTINEL v0.11.0-beta.1 - ALL GATES FAIL
 ```
 
-This is a valid fail-closed result. IPC and benign-storm metrics are within their limits; **idle CPU is the only current performance blocker**.
+IPC and benign-storm metrics are healthy. Idle CPU remains the only current performance blocker.
 
-## Root cause and performance fix now implemented
-The previous `event_id_filters` optimization was consumer-side in `pywintrace`: unwanted events were still delivered by ETW to the Python process and only discarded inside the consumer callback path. This preserved correctness but did not remove the dominant idle event-processing cost.
+## What the latest result disproved
+Moving Event ID filtering from the Python consumer to the ETW provider changed idle CPU only marginally (`152.18% -> 149.68%`). Therefore high idle CPU is not primarily caused by excess event volume.
 
-The branch now uses **provider-side ETW Event ID filters** through `ProviderParameters` / `EVENT_FILTER_EVENT_ID`, passed to `EnableTraceEx2` before events reach the Python consumer.
+The next dominant suspect is the `pywintrace 0.2.0` consumer loop. Its `EventConsumer._run()` repeatedly calls `ProcessTrace()` in a `while True`; if a real-time `ProcessTrace()` call returns `SUCCESS` almost immediately on this Windows build, the consumer immediately re-enters it with no wait. Three active ETW sessions can therefore produce sustained idle spin even when event filtering is correct.
 
-The three independent sessions are preserved and narrowed to the telemetry actually consumed by BC Sentinel:
+## Low-CPU consumer compatibility fix implemented
+The branch now includes `sentinel/pywintrace_idle.py` and injects it before ETW sessions are created.
 
-- Process provider: event IDs `1, 2` only — ProcessStart / ProcessStop;
-- Kernel-File provider: event IDs `12, 26, 27, 30` only — path-bearing file families used by correlation;
-- DNS provider: event IDs `3006, 3008, 3018, 3020` only — query/response/cache telemetry used by Web/EDR correlation.
+Behavior:
 
-Consumer-side `event_id_filters` remain as defense in depth. Provider-filter ctypes objects are explicitly kept alive for the full capture lifetime. No new dependency or cloud service is introduced; pinned `pywintrace==0.2.0` remains supported.
+- normal blocking `ProcessTrace()` behavior is unchanged;
+- if `ProcessTrace()` returns successfully in <= 5 ms while capture is still active, the consumer performs a bounded interruptible 10 ms `Event.wait()` before re-entering;
+- errors remain fail-closed and terminate that consumer loop;
+- shutdown remains responsive because the backoff waits on the existing stop event rather than using an unconditional sleep;
+- no dependency upgrade, cloud service, telemetry removal, or lowered security gate is introduced.
 
-The compatibility verifier and regression suite now require:
+The normal compatibility migrator installs/verifies the hook before pytest/build and the regression suite requires it.
 
-- `ETW_PROVIDER_FILTER_MODE = "provider_side_event_id_v2"`;
-- `EVENT_FILTER_EVENT_ID` + `ProviderParameters` provider filtering;
-- all three session-specific Event ID sets;
-- no unsupported `providers_event_id_filters` constructor argument;
-- split Process/File/DNS architecture and bounded DNS retry.
+## Additional benchmark diagnostics
+`tools/service_hardening_benchmark.py` now records per-thread idle CPU deltas (`idle.hottest_threads`) and service thread count. If total idle CPU remains excessive after the backoff, the same benchmark JSON will identify the hottest Windows thread IDs instead of requiring another blind diagnostic round.
+
+## ETW architecture retained
+The three independent sessions and provider-side filters remain:
+
+- Process: event IDs `1, 2`;
+- Kernel-File: `12, 26, 27, 30`;
+- DNS: `3006, 3008, 3018, 3020`.
+
+Consumer-side filters remain as defense in depth and DNS startup retry remains bounded.
 
 ## Performance acceptance thresholds
-The benchmark remains unchanged and fail-closed:
+The benchmark remains fail-closed and unchanged:
 
 ```text
 idle <= 25.00% of one core
@@ -62,26 +69,28 @@ storm <= 250.00% of one core
 hardening healthy
 ```
 
-The threshold is **not** being relaxed to accommodate the current result.
+The idle threshold is not relaxed.
 
 ## Required Beta1 retest
-Synchronize the latest `v0.11.0-beta.1` overlay onto the authoritative FULL Windows tree and run only:
+Synchronize latest `v0.11.0-beta.1` over the authoritative FULL Windows tree and run only:
 
 ```powershell
 .\TEST-V011-BETA1-ALL.bat
 ```
 
-Required final parent-console evidence:
+Required final evidence:
 
 ```text
 full pytest = PASS
-ADMIN PHASE RESULT: status=PASS | stage=completed | message=Administrator phase completed successfully
+ADMIN PHASE RESULT: status=PASS | stage=completed
 SERVICE PERFORMANCE: idle<=25% one-core | IPC>=10/s | storm<=250% one-core | passed=True
 REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION
 BC SENTINEL v0.11.0-beta.1 - ALL GATES PASS
 ```
 
-v0.11.0-beta.1 remains **not frozen / not merge-ready** until that native performance result is green.
+If idle remains above threshold, inspect `benchmark-v011-beta1-service.json -> idle.hottest_threads` and fix the identified hot path before Beta1 freeze.
+
+v0.11.0-beta.1 remains **not frozen / not merge-ready** until the native performance gate is green.
 
 ### Deferred
 `REBOOT PERSISTENCE GATE: DEFERRED TO FINAL ROADMAP VALIDATION`
