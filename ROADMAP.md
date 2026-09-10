@@ -1,10 +1,10 @@
 # BC Sentinel — Product & Security Roadmap
 
-Current development line: **v0.11.0-beta.1 — EDR Core Foundation**.
+Current development line: **v0.11.0-beta.2 — EDR Service Integration, Retrospective Hunting & Root Cause**.
 
-2026-09-08 source-of-record: v0.10.0-rc.1 Web Protection consolidation has passed its normal-orchestrated regression path, including full suite, v0.10 Beta1/Beta2/Beta3/RC1 compatibility, native/admin phase, upgrade, repair and standard-user -> UAC. Reboot persistence remains intentionally deferred to the final roadmap validation rather than being silently marked PASS.
+2026-09-10 source-of-record: `v0.11.0-beta.1` EDR Core Foundation has passed its complete one-command Windows gate with 609 pytest tests green, native/admin regression coverage, upgrade/repair, enforced service-performance thresholds and standard-user -> UAC flow. Reboot persistence remains intentionally deferred to final-roadmap validation rather than being silently marked PASS.
 
-BC Sentinel is evolving from an antivirus MVP into an integrated endpoint-security suite. Antivirus, firewall, anti-phishing, EDR, sandbox, IDS/IPS, privacy and identity controls feed the same explainable event/correlation/incident pipeline. AI remains advisory/explanatory: deterministic protection must work without a model or mandatory cloud dependency.
+BC Sentinel is evolving from an antivirus MVP into an integrated endpoint-security suite. Antivirus, firewall, anti-phishing, EDR, sandbox, IDS/IPS, privacy, identity controls and Rescue & Recovery feed the same explainable event/correlation/incident model. AI remains advisory/explanatory: deterministic protection and recovery must work without a model or mandatory cloud dependency.
 
 ## Frozen / accepted foundation
 
@@ -147,7 +147,7 @@ Historical profile IDs remain frozen even on v0.11+:
 
 ## v0.11 — EDR Core
 
-### v0.11.0-beta.1 — EDR Core Foundation — **current**
+### v0.11.0-beta.1 — EDR Core Foundation — accepted baseline
 Goal: add a durable endpoint telemetry and incident-correlation layer without weakening the deterministic safety boundaries already accepted in v0.10.
 
 Implemented Beta1 foundation:
@@ -184,12 +184,17 @@ Beta1 acceptance:
 - standard-user → one-action UAC broker acceptance;
 - reboot persistence deferred to final roadmap validation.
 
-### Planned v0.11.0-beta.2 — Retrospective Hunt & Root Cause
+### v0.11.0-beta.2 — Service Integration, Retrospective Hunt & Root Cause — **current**
 - indexed IOC hunting over durable telemetry;
 - process ancestry/descendant root-cause views;
 - time-window and indicator search;
 - incident-to-telemetry evidence navigation;
-- bounded retention/compaction tests and false-positive stress matrices.
+- bounded retention/compaction tests and false-positive stress matrices;
+- Protection Service ownership of the EDR telemetry lifecycle;
+- continuous native process/file/network/DNS/download/persistence ingestion;
+- authenticated Named Pipe query endpoints for timeline, process tree, incidents and hunts;
+- Security Center Inbox integration for qualified EDR incidents;
+- no autonomous destructive response.
 
 ### Planned v0.11.0-beta.3 — Reversible EDR Response Foundation
 - explicitly approved reversible endpoint/network response only;
@@ -242,6 +247,103 @@ Beta1 acceptance:
 - untrusted Wi-Fi protection;
 - per-application routing/policy where supported;
 - VPN state integrated with firewall and incident engine.
+
+## BC Sentinel Rescue & Recovery — cross-product recovery track
+
+Goal: recover severely infected Windows PCs even when the installed operating system is too slow, unstable or compromised to install or normally execute BC Sentinel. The objective is to make formatting/reimaging the **last resort**, never to claim recovery when system integrity cannot be demonstrated.
+
+This track may reuse accepted Antivirus, Antimalware, Threat Intelligence, EDR and integrity primitives, but must remain operationally separable from the installed product. Every milestone requires automatic tests, compromised-PC scenarios, measurable acceptance criteria and preservation of all existing protection invariants.
+
+### RR-0 — Rescue Architecture & Recovery Safety Model
+**Codex reasoning: Extra High.**
+- define trust boundaries for running from compromised Windows versus independent boot media;
+- define read-only-first acquisition, evidence preservation and rollback model;
+- define supported Windows/UEFI/Secure Boot/storage/encryption scenarios without bypassing platform security controls;
+- define signed rescue artifacts, update provenance and offline threat-package trust chain;
+- define a recovery-state model: `recoverable`, `recovered_with_warnings`, `integrity_unproven`, `reimage_required`;
+- define resource budgets and benchmark methodology before implementation.
+
+Acceptance: architecture/threat-model review complete; destructive operations impossible without an explicit repair plan; every repair action has precondition, evidence, audit and rollback/backup strategy; unsupported encrypted/locked volumes fail closed.
+
+### RR-1 — BC Sentinel Portable
+**Codex reasoning: High for implementation; Extra High for security boundary changes.**
+- portable launcher from USB/removable storage with no MSI/service installation requirement;
+- minimal-resources mode focused on triage, scan, threat intelligence and evidence collection;
+- optional elevation only for capabilities that genuinely require it;
+- no dependency on the health of the installed BC Sentinel service;
+- signed/offline threat package support and local report export.
+
+Acceptance: launches from removable media on supported Windows without installation; leaves no persistent service/startup entry after exit; idle CPU target <=5% of one core and working-set target <=250 MB in minimal mode on the reference test machine; scan results match the same deterministic engine/rules used by the installed product for the same fixture set.
+
+### RR-2 — BC Sentinel Rescue USB
+**Codex reasoning: Extra High for architecture/security; High for ordinary implementation.**
+- bootable recovery environment independent from the installed Windows instance;
+- signed and integrity-verified rescue image/build pipeline;
+- safe storage discovery and explicit system-volume selection;
+- read-only mount by default; write access only when entering an explicit repair workflow;
+- offline threat intelligence update import from trusted removable/network source when available.
+
+Acceptance: boots independently on the defined UEFI/Secure Boot compatibility matrix; can identify supported Windows installations without executing code from them; verifies its own image/rules before scan; refuses repair if rescue-image integrity is invalid or target-volume state is ambiguous.
+
+### RR-3 — Offline Threat Scanner
+**Codex reasoning: Extra High for parser/security architecture; High for implementation.**
+- scan files and alternate persistence-relevant locations without executing target binaries;
+- inspect offline registry hives, services, drivers, startup entries, scheduled tasks and persistence points;
+- inspect browser configuration/artifacts and offline network/proxy/DNS/firewall configuration where safely parseable;
+- inspect boot configuration and boot-critical drivers/components;
+- correlate findings with signed IOC/YARA/file verdicts and the existing explainable incident model;
+- read-only by default and bounded against malformed/corrupt offline data.
+
+Acceptance: deterministic synthetic compromised images cover each advertised persistence family; malformed hives/configuration cannot crash the scanner or trigger writes; benign Windows compatibility matrix remains within the defined false-positive budget; every HIGH/CRITICAL offline finding contains reproducible evidence.
+
+### RR-4 — Repair Engine
+**Codex reasoning: Extra High for architecture/security and any boot/registry/system repair primitive; High for ordinary implementation.**
+- generate an explicit repair plan before any mutation;
+- remove/disable qualified malicious persistence while preserving unrelated configuration;
+- restore selected Windows security/network/service/startup configuration altered by malware;
+- support system-component verification/repair using trusted local or Microsoft-supported sources where available;
+- repair boot configuration only through narrowly scoped, validated operations;
+- transaction journal, backup, audit and rollback for every reversible action;
+- never use broad destructive cleanup merely to make a test pass.
+
+Acceptance: every supported repair has before/after evidence and rollback/backup; power-loss/interrupted-repair simulations recover to a known state; unrelated services/tasks/registry values remain unchanged in compatibility fixtures; ambiguous/high-risk repairs require operator confirmation or remain report-only.
+
+### RR-5 — Safe Data Rescue
+**Codex reasoning: Extra High for trust/integrity model; High for implementation.**
+- copy user-selected data before invasive recovery operations;
+- source volume treated read-only whenever possible;
+- exclude or quarantine known malicious executables/scripts according to an explicit policy rather than silently copying them into clean systems;
+- preserve metadata where safe and calculate hashes/manifests for copied data;
+- resumable copy with error accounting and destination-capacity checks;
+- clear separation between rescued user data and executable/system artifacts.
+
+Acceptance: byte/hash verification for successfully copied files; interrupted copies resume without silently corrupting prior output; malicious fixture files are flagged according to policy; source data is never deleted or modified by Data Rescue; final manifest lists copied, skipped, suspicious and unreadable items.
+
+### RR-6 — Integrity Verification & Recovery Certification
+**Codex reasoning: Extra High.**
+- rescan after repair using independent/offline evidence where possible;
+- verify Windows system/security configuration, services, drivers, startup, scheduled tasks, persistence, browser/network configuration and boot state;
+- verify repaired files/components against trusted hashes/signatures/sources where available;
+- compare pre-repair and post-repair state and explain every residual warning;
+- produce a signed/tamper-evident final report with recovery decision.
+
+Acceptance: the system may be marked `recoverable/recovered` only when all mandatory integrity checks pass; unresolved boot/system-component ambiguity must produce `integrity_unproven` or `reimage_required`; no “clean” verdict from scan results alone; final report contains evidence, actions, rollback records, unresolved findings and recommended next step.
+
+### Rescue & Recovery integrated validation
+Before this macro-area can be advertised as production recovery capability:
+- validate representative lightly, moderately and severely compromised Windows images/VMs;
+- include broken/disabled antivirus, high CPU/low-memory, damaged startup/services, offline persistence, malicious driver/boot fixtures and corrupt configuration scenarios;
+- prove Portable and Rescue USB operate independently of a broken installed service;
+- prove Safe Data Rescue before invasive operations;
+- prove repair does not weaken existing BC Sentinel safeguards;
+- run cross-version regression, fuzz/malformed-input tests, resource benchmarks and interrupted-repair/restart scenarios;
+- keep reimage/formatting as an explicit last-resort outcome when trustworthy recovery cannot be established.
+
+### Codex execution policy for Rescue & Recovery
+- **Reasoning: Extra High** for architecture, threat modeling, trust boundaries, boot/offline parsing, repair primitives, integrity certification and security reviews.
+- **Reasoning: High** for ordinary implementation, tests, tooling and incremental integration once the security design is frozen.
+- Implement one milestone/checkpoint at a time; do not advance when acceptance criteria are red.
+- Do not weaken existing antivirus, EDR, firewall, web, update, UAC, integrity or performance gates to make Rescue tests pass.
 
 ## Later platform/product milestones
 
