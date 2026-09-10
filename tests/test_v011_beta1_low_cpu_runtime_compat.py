@@ -127,7 +127,7 @@ def test_realtime_high_churn_patch_keeps_watchdog_and_wraps_handler_with_coalesc
 
     assert first["patched"] is True
     assert second["patched"] is False
-    assert first["profile"] == WATCHDOG_RUNTIME_PROFILE == "coalesced_v1"
+    assert first["profile"] == WATCHDOG_RUNTIME_PROFILE == "heap_debounce_v3"
     assert "import os" in text
     assert "from .watchdog_coalescing import CoalescingEventHandlerProxy" in text
     assert "def _watchdog_recursive_for_root(path: Path) -> bool:" in text
