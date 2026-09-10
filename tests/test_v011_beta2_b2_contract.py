@@ -76,3 +76,24 @@ def test_b2_reapplies_frozen_beta1_compatibility_migrations_before_pytest():
         assert source.index(migration) < pytest_index
     assert "Compatibility migration failed before B2 pytest" in source
     assert "Enforced 25/10/250 service-performance result missing or failed in B2" in source
+
+
+def test_b2_admin_harness_preserves_beta1_detail_and_isolates_pytest_temp():
+    source = Path("TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "PYTEST_ADDOPTS" in source
+    assert "bc-sentinel-v011-beta2-b2-admin-" in source
+    assert "acceptance-v011-beta2-b2-beta1-admin.log" in source
+    assert "Frozen Beta1 administrator gate failed at stage" in source
+    assert "Read-LogTail" in source
+    assert "--max-idle-cpu-percent 25" not in source  # thresholds stay owned by frozen Beta1 gate
+
+
+def test_b2_resume_requires_pre_admin_evidence_and_finishes_standard_user_gates():
+    source = Path("RETEST-V011-BETA2-B2-FROM-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "acceptance-v011-beta2-b2-edr-local.json" in source
+    assert "acceptance-v011-beta2-b2-rc1-local.json" in source
+    assert "v011_beta2_b1b_patch --verify-only" in source
+    assert "tools.broker_acceptance" in source
+    assert "--mode standard-user" in source
+    assert "benchmark-v011-beta1-service.json" in source
+    assert "does not replace the preceding 656-test/build evidence" in source
