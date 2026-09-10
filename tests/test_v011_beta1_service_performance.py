@@ -1,0 +1,214 @@
+import inspect
+from pathlib import Path
+
+from sentinel.etw_monitor import (
+    DNS_EVENT_IDS,
+    DNS_PROVIDER,
+    ETWMonitor,
+    ETW_PROVIDER_FILTER_MODE,
+    ETW_SESSION_MODE,
+    FILE_EVENT_DEDUP_SECONDS,
+    FILE_PROVIDER,
+    KERNEL_FILE_PATH_EVENT_IDS,
+    PROCESS_EVENT_IDS,
+    PROCESS_PROVIDER,
+    _make_provider_with_event_id_filter,
+    etw_provider_event_filters,
+)
+from sentinel.pywintrace_idle import PYWINTRACE_REENTRY_BACKOFF_SECONDS
+from tools.service_hardening_benchmark import _evaluate, _thread_cpu_deltas, _thread_roles_from_status
+from tools.v011_service_readiness import _etw_diagnostics, is_ready
+from tools.v011_service_update_windows_compat import (
+    DNS_ETW_START_ATTEMPTS,
+    DNS_ETW_START_RETRY_DELAY_SECONDS,
+    ETW_DNS_SESSION_MODE,
+)
+
+
+class _Tree:
+    def get(self, _pid):
+        return None
+
+
+class _Correlator:
+    pass
+
+
+def test_etw_filters_only_event_families_used_by_pipeline():
+    filters = etw_provider_event_filters()
+    assert filters == {
+        PROCESS_PROVIDER.upper(): [1, 2],
+        FILE_PROVIDER.upper(): [12, 26, 27, 30],
+        DNS_PROVIDER.upper(): [3006, 3008, 3018, 3020],
+    }
+    assert PROCESS_EVENT_IDS == {1, 2}
+    assert KERNEL_FILE_PATH_EVENT_IDS == {12, 26, 27, 30}
+    assert DNS_EVENT_IDS == {3006, 3008, 3018, 3020}
+    assert 3 not in PROCESS_EVENT_IDS
+    assert 5 not in PROCESS_EVENT_IDS
+    assert 15 not in KERNEL_FILE_PATH_EVENT_IDS
+    assert 16 not in KERNEL_FILE_PATH_EVENT_IDS
+
+
+def test_file_event_microburst_dedup_is_bounded_and_time_scoped():
+    monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
+    assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "CREATE", 12, now=10.0) is False
+    assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "CREATE", 12, now=10.1) is True
+    assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "DELETE", 26, now=10.1) is False
+    assert monitor._is_duplicate_file_event(42, r"C:\Temp\a.exe", "CREATE", 12, now=10.1 + FILE_EVENT_DEDUP_SECONDS + 0.01) is False
+
+
+def test_dns_etw_startup_retry_budget_is_bounded():
+    assert DNS_ETW_START_ATTEMPTS == 4
+    assert 0.0 < DNS_ETW_START_RETRY_DELAY_SECONDS <= 0.5
+
+
+def test_etw_uses_provider_side_filters_and_pywintrace_020_safe_split_sessions():
+    assert ETW_DNS_SESSION_MODE == "dedicated"
+    assert ETW_SESSION_MODE == "split_process_file_dns"
+    assert ETW_PROVIDER_FILTER_MODE == "provider_side_event_id_v2"
+    assert 0.02 <= PYWINTRACE_REENTRY_BACKOFF_SECONDS <= 0.10
+    monitor = ETWMonitor(_Tree(), _Correlator(), identity_resolver=object())
+    assert monitor._capture is None
+    assert monitor._file_capture is None
+    assert monitor._dns_capture is None
+    assert monitor._provider_filter_keepalive == []
+
+    helper_source = inspect.getsource(_make_provider_with_event_id_filter)
+    assert "EVENT_FILTER_EVENT_ID(common.TRUE, ids).get()" in helper_source
+    assert "ProviderParameters(0, [descriptor])" in helper_source
+    assert "params=params.get()" in helper_source
+
+    start_source = inspect.getsource(ETWMonitor.start)
+    assert "providers_event_id_filters=" not in start_source
+    assert "install_pywintrace_idle_backoff()" in start_source
+    assert "event_id_filters=sorted(PROCESS_EVENT_IDS)" in start_source
+    assert "event_id_filters=sorted(KERNEL_FILE_PATH_EVENT_IDS)" in start_source
+    assert "event_id_filters=sorted(DNS_EVENT_IDS)" in start_source
+    assert start_source.count("_make_provider_with_event_id_filter(") == 3
+    assert start_source.count("etw.ETW(") == 3
+
+
+def test_runtime_thread_role_attribution_prefers_explicit_etw_roles():
+    status = {
+        "python_threads": {
+            "100": "BCS-ProcessMonitor",
+            "200": "Thread-1 (_run)",
+        },
+        "etw": {
+            "consumer_threads": {
+                "process_etw": 200,
+                "file_etw": 201,
+                "dns_etw": 202,
+            }
+        },
+    }
+    roles = _thread_roles_from_status(status)
+    assert roles[100] == "BCS-ProcessMonitor"
+    assert roles[200] == "process_etw"
+    assert roles[201] == "file_etw"
+    assert roles[202] == "dns_etw"
+
+    rows = _thread_cpu_deltas(
+        {100: 0.0, 200: 0.0},
+        {100: 0.2, 200: 0.8},
+        1.0,
+        roles=roles,
+    )
+    assert rows[0]["tid"] == 200
+    assert rows[0]["role"] == "process_etw"
+    assert rows[1]["role"] == "BCS-ProcessMonitor"
+
+
+def test_service_readiness_requires_real_dns_etw_tracking():
+    healthy = {
+        "mode": "active_reversible",
+        "dns_etw": True,
+        "pid_scoped_dns": True,
+        "shared_ip_guard": True,
+        "mitm_https": False,
+        "auto_block": False,
+    }
+    assert is_ready(healthy) is True
+    degraded = dict(healthy)
+    degraded["dns_etw"] = False
+    assert is_ready(degraded) is False
+
+
+def test_service_readiness_surfaces_etw_provider_error():
+    service_status = {
+        "health": "HEALTHY",
+        "etw": {
+            "running": True,
+            "dns_tracking": False,
+            "error": "DNS ETW dedicated session unavailable: WinError 5",
+        },
+    }
+    diagnostics = _etw_diagnostics(service_status)
+    assert diagnostics["running"] is True
+    assert diagnostics["dns_tracking"] is False
+    assert "WinError 5" in diagnostics["error"]
+
+
+def test_service_benchmark_rejects_false_pass_when_idle_cpu_is_excessive():
+    passed, checks, reasons = _evaluate(
+        idle_cpu_percent=116.55,
+        ipc_successful=200,
+        ipc_requests=200,
+        ipc_rps=31.1,
+        storm_cpu_percent=154.68,
+        hardening_ok=True,
+        max_idle_cpu_percent=25.0,
+        min_ipc_rps=10.0,
+        max_storm_cpu_percent=250.0,
+    )
+    assert passed is False
+    assert checks["idle_cpu_within_limit"] is False
+    assert any("idle CPU" in reason for reason in reasons)
+
+
+def test_service_benchmark_accepts_healthy_idle_and_workload_metrics():
+    passed, checks, reasons = _evaluate(
+        idle_cpu_percent=8.0,
+        ipc_successful=200,
+        ipc_requests=200,
+        ipc_rps=30.0,
+        storm_cpu_percent=170.0,
+        hardening_ok=True,
+        max_idle_cpu_percent=25.0,
+        min_ipc_rps=10.0,
+        max_storm_cpu_percent=250.0,
+    )
+    assert passed is True
+    assert all(checks.values())
+    assert reasons == []
+
+
+def test_targeted_retest_measures_idle_before_windows_acceptance_synthetic_file_load():
+    script = Path(__file__).resolve().parents[1] / "RETEST-V011-BETA1-WINDOWS-PERF.ps1"
+    text = script.read_text(encoding="utf-8")
+    performance_call = "tools.service_hardening_benchmark --idle-seconds 5"
+    acceptance_call = "tools.windows_acceptance --benchmark-files 5000"
+
+    assert performance_call in text
+    assert acceptance_call in text
+    assert text.index(performance_call) < text.index(acceptance_call)
+    assert "Always run Windows Acceptance even if the performance gate failed" in text
+
+
+def test_full_admin_phase_measures_idle_before_live_synthetic_workloads():
+    script = Path(__file__).resolve().parents[1] / "TEST-V011-BETA1-ADMIN-PHASE.ps1"
+    text = script.read_text(encoding="utf-8")
+    performance_call = "tools.service_hardening_benchmark --idle-seconds 5"
+    first_live_regression = "tools.v010_web_deception_acceptance --service-live"
+    acceptance_call = "tools.windows_acceptance --benchmark-files 5000"
+
+    assert performance_call in text
+    assert first_live_regression in text
+    assert acceptance_call in text
+    assert text.index(performance_call) < text.index(first_live_regression)
+    assert text.index(performance_call) < text.index(acceptance_call)
+    assert "continuing live regressions so the full run reports all independent gates" in text
+    assert "--max-idle-cpu-percent 25" in text
+    assert "--min-ipc-rps 10" in text
+    assert "--max-storm-cpu-percent 250" in text

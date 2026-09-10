@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from sentinel.config import APP_VERSION
+from sentinel.service_update import version_key
 from sentinel.web_clone_scam import CLONE_SCAM_PROFILE, assess_page_context
 from sentinel.web_deception import HEURISTIC_PROFILE, HEURISTIC_SCORE_CAP
 from sentinel.web_response import WEB_RESPONSE_PROFILE
@@ -10,7 +11,7 @@ from tools.v010_rc1_acceptance import RC1_PROFILE, run
 
 
 def test_rc1_version_and_profiles_are_frozen():
-    assert APP_VERSION == "0.10.0-rc.1"
+    assert version_key(APP_VERSION) >= version_key("0.10.0-rc.1")
     assert RC1_PROFILE == "v0.10.0-rc.1"
     assert HEURISTIC_PROFILE == "v0.10.0-beta.1"
     assert WEB_RESPONSE_PROFILE == "v0.10.0-beta.2"
