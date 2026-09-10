@@ -129,12 +129,17 @@ def run(
     if pid <= 0:
         return {"passed": False, "error": "invalid service pid"}
     proc = psutil.Process(pid)
-    thread_roles = _thread_roles_from_status(status)
 
     rss_start = proc.memory_info().rss
     idle_threads_before = _thread_cpu_snapshot(proc)
     idle_cpu_seconds, idle_cpu_one_core, idle_elapsed = _cpu_delta(proc, idle_seconds)
     idle_threads_after = _thread_cpu_snapshot(proc)
+
+    # Re-read service status after the idle window so dynamic diagnostic thread
+    # names (for example the dominant realtime root/event bucket) describe the
+    # workload that actually occurred during this sample rather than startup.
+    status_after_idle = client.status() or status
+    thread_roles = _thread_roles_from_status(status_after_idle)
     idle_hot_threads = _thread_cpu_deltas(
         idle_threads_before,
         idle_threads_after,
@@ -196,8 +201,8 @@ def run(
         },
         "service": {
             "pid": pid,
-            "health": status.get("health"),
-            "transport": status.get("transport"),
+            "health": status_after_idle.get("health"),
+            "transport": status_after_idle.get("transport"),
             "rss_start_bytes": rss_start,
             "rss_idle_bytes": rss_idle,
             "thread_count": len(idle_threads_after),
