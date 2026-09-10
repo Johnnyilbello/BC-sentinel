@@ -6,7 +6,8 @@ $ResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-admin-result.jso
 $PreRestartPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-live-pre-restart.json'
 $PostRestartPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-live-post-restart.json'
 $Beta1ResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-admin-phase-result.json'
-$Beta1LogPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-beta1-admin.log'
+$Beta1StdoutPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-beta1-admin.stdout.log'
+$Beta1StderrPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-beta1-admin.stderr.log'
 $script:CurrentStage = 'initialization'
 Remove-Item -LiteralPath $ResultPath -Force -ErrorAction SilentlyContinue
 
@@ -39,7 +40,7 @@ function Read-JsonSafe([string]$Path) {
     return $null
 }
 
-function Read-LogTail([string]$Path, [int]$Lines = 40) {
+function Read-LogTail([string]$Path, [int]$Lines = 60) {
     try {
         if (Test-Path -LiteralPath $Path) {
             return ((Get-Content -LiteralPath $Path -Tail $Lines) -join ' | ')
@@ -47,6 +48,16 @@ function Read-LogTail([string]$Path, [int]$Lines = 40) {
     }
     catch { }
     return ''
+}
+
+function Write-LogTail([string]$Label, [string]$Path, [int]$Lines = 30) {
+    try {
+        if (Test-Path -LiteralPath $Path) {
+            Write-Host ($Label + ':') -ForegroundColor DarkCyan
+            Get-Content -LiteralPath $Path -Tail $Lines | ForEach-Object { Write-Host $_ }
+        }
+    }
+    catch { }
 }
 
 try {
@@ -60,21 +71,24 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - CHECKPOINT B2 ADMIN LIVE GATE' -ForegroundColor Cyan
 
-    # Reuse the already certified Beta1 Windows hardening gate. Isolate pytest
-    # temp state so transient pytest-current cleanup locks cannot create a false
-    # administrator regression failure. No tests or thresholds are weakened.
+    # Reuse the certified Beta1 Windows hardening gate. Pytest temp is isolated,
+    # and the child process is intentionally NOT invoked through a PowerShell
+    # stderr-merging pipeline: with ErrorActionPreference=Stop, native stderr
+    # can otherwise terminate the wrapper at the first traceback line and hide
+    # the actual Beta1 stage/result. Capture both streams independently instead.
     $script:CurrentStage = 'beta1_admin_regression'
-    Remove-Item -LiteralPath $Beta1LogPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $Beta1StdoutPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $Beta1StderrPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Beta1ResultPath -Force -ErrorAction SilentlyContinue
     $AdminPytestTemp = Join-Path $env:TEMP ('bc-sentinel-v011-beta2-b2-admin-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $AdminPytestTemp -Force | Out-Null
     $PreviousPytestAddopts = $env:PYTEST_ADDOPTS
     try {
         $env:PYTEST_ADDOPTS = ('--basetemp="' + $AdminPytestTemp + '"')
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\TEST-V011-BETA1-ADMIN-PHASE.ps1' *>&1 |
-            Tee-Object -FilePath $Beta1LogPath |
-            ForEach-Object { Write-Host $_ }
-        $beta1Exit = $LASTEXITCODE
+        $childArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"' + (Join-Path $PSScriptRoot 'TEST-V011-BETA1-ADMIN-PHASE.ps1') + '"'))
+        $child = Start-Process -FilePath 'powershell.exe' -ArgumentList $childArgs -WorkingDirectory $PSScriptRoot -Wait -PassThru -NoNewWindow -RedirectStandardOutput $Beta1StdoutPath -RedirectStandardError $Beta1StderrPath
+        if ($null -eq $child) { throw 'Beta1 administrator child process was not created' }
+        $beta1Exit = [int]$child.ExitCode
     }
     finally {
         if ($null -eq $PreviousPytestAddopts) { Remove-Item Env:PYTEST_ADDOPTS -ErrorAction SilentlyContinue }
@@ -82,13 +96,23 @@ try {
         Remove-Item -LiteralPath $AdminPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    Write-LogTail 'Beta1 admin stdout tail' $Beta1StdoutPath 25
+    $stderrTail = Read-LogTail $Beta1StderrPath 40
+    if ($stderrTail) { Write-LogTail 'Beta1 admin stderr tail' $Beta1StderrPath 25 }
+
     $beta1Result = Read-JsonSafe $Beta1ResultPath
     if ($beta1Exit -ne 0) {
-        $tail = Read-LogTail $Beta1LogPath 40
+        $stdoutTail = Read-LogTail $Beta1StdoutPath 60
         if ($null -ne $beta1Result) {
-            throw (('Frozen Beta1 administrator gate failed at stage {0}: {1}' -f [string]$beta1Result.stage,[string]$beta1Result.message) + $(if ($tail) { ' | log tail: ' + $tail } else { '' }))
+            $detail = ('Frozen Beta1 administrator gate failed at stage {0}: {1}' -f [string]$beta1Result.stage,[string]$beta1Result.message)
+            if ($stderrTail) { $detail += ' | stderr tail: ' + $stderrTail }
+            if ($stdoutTail) { $detail += ' | stdout tail: ' + $stdoutTail }
+            throw $detail
         }
-        throw ('Frozen Beta1 administrator gate failed without readable result JSON' + $(if ($tail) { ' | log tail: ' + $tail } else { '' }))
+        $detail = 'Frozen Beta1 administrator gate failed without readable result JSON'
+        if ($stderrTail) { $detail += ' | stderr tail: ' + $stderrTail }
+        if ($stdoutTail) { $detail += ' | stdout tail: ' + $stdoutTail }
+        throw $detail
     }
     if ($null -eq $beta1Result) { throw 'Beta1 administrator result JSON is missing after successful child exit' }
     if ([string]$beta1Result.status -ne 'PASS') {
@@ -110,8 +134,6 @@ try {
         throw 'B2 pre-restart persistence anchors are missing'
     }
 
-    # Identify the installed Protection Service by executable path rather than
-    # hard-coding a service name, then perform a real SCM restart.
     $script:CurrentStage = 'service_restart'
     $services = @(Get-CimInstance Win32_Service | Where-Object {
         $p = [string]$_.PathName
