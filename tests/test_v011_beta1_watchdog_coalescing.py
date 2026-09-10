@@ -138,7 +138,7 @@ def test_close_flushes_a_pending_modified_event_once():
     assert status["worker_alive"] is False
 
 
-def test_heap_scheduler_preserves_one_final_event_for_many_unique_modified_paths():
+def test_ordered_scheduler_preserves_one_final_event_for_many_unique_modified_paths():
     inner = _Inner()
     proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=60.0)
     events = [_event("modified", rf"C:\\watched\\unique-{i:04d}.bin") for i in range(300)]
@@ -148,7 +148,8 @@ def test_heap_scheduler_preserves_one_final_event_for_many_unique_modified_paths
 
     before_close = proxy.status()
     assert before_close["modified_pending"] == len(events)
-    assert before_close["scheduler_heap_entries"] >= len(events)
+    assert before_close["scheduler_order_entries"] == len(events)
+    assert before_close["scheduler_heap_entries"] == 0
     assert inner.events == []
 
     proxy.close(timeout=3.0)
@@ -161,21 +162,41 @@ def test_heap_scheduler_preserves_one_final_event_for_many_unique_modified_paths
     assert status["worker_alive"] is False
 
 
-def test_heap_scheduler_compacts_stale_deadlines_for_repeated_same_path():
+def test_ordered_scheduler_keeps_single_entry_for_extremely_chatty_same_path():
     inner = _Inner()
     proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=60.0)
     path = r"C:\\watched\\very-chatty.tmp"
 
-    for _ in range(1500):
+    for _ in range(5000):
         assert proxy.dispatch(_event("modified", path)) is None
 
     status = proxy.status()
     assert status["modified_pending"] == 1
-    assert status["coalesced"] == 1499
-    assert status["scheduler_heap_pushes"] == 1500
-    assert status["scheduler_compactions"] >= 1
-    assert status["scheduler_heap_entries"] < 1024
+    assert status["scheduler_order_entries"] == 1
+    assert status["coalesced"] == 4999
+    assert status["scheduler_deadline_updates"] == 5000
+    assert status["scheduler_reorders"] == 4999
+    assert status["scheduler_heap_entries"] == 0
+    assert status["scheduler_stale_pops"] == 0
 
     proxy.close(timeout=2.0)
     assert len(inner.events) == 1
     assert inner.events[0].src_path == path
+
+
+def test_ordered_scheduler_moves_extended_path_behind_earlier_deadline():
+    inner = _Inner()
+    proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=0.08)
+    try:
+        first = _event("modified", r"C:\\watched\\first.bin")
+        second = _event("modified", r"C:\\watched\\second.bin")
+        assert proxy.dispatch(first) is None
+        time.sleep(0.01)
+        assert proxy.dispatch(second) is None
+        time.sleep(0.01)
+        assert proxy.dispatch(first) is None
+
+        _wait_count(inner, 2)
+        assert [event.src_path for event in inner.events] == [second.src_path, first.src_path]
+    finally:
+        proxy.close()
