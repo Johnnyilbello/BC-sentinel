@@ -49,29 +49,31 @@ Windows evidence:
 
 B1a does not claim authenticated EDR IPC, Inbox merge, native-live ingestion, restart persistence or performance acceptance.
 
-### Checkpoint B1b-preflight — Authenticated IPC structure discovery — current
-Because `protection_protocol.py` and the production IPC client are FULL-only, B1b starts with a non-mutating protocol preflight.
+### Checkpoint B1b-preflight — Authenticated IPC structure discovery — accepted
+The authoritative FULL IPC surface was captured without mutation before B1b implementation.
 
-Required discovery:
-- exact `protection_protocol.py` SHA;
-- `validate_request` structure;
-- `PRIVILEGED_OPERATIONS` and operation/schema constants;
-- `ProtectionServiceCore._authorize` and `dispatch_validated` branches/calls;
-- production client IPC surface when present;
-- accepted B1a service-core SHA must still match before any protocol mutation.
+Windows evidence:
+- 13 targeted pytest tests PASS;
+- B1b preflight PASS;
+- accepted protocol SHA-256 `cffcdaaea7850f2e0d995a75e14f18471bef9e920b57860b7ad68ce01e43090d`;
+- accepted B1a service-core SHA-256 `9b3af57236b68de1ed5f7e23808d3d409ad2a64499a484696819467b9d5f0ca3`;
+- accepted production client SHA-256 `6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595effa66cc9d1`;
+- `validate_request`, `PRIVILEGED_OPERATIONS`, `_authorize` and `dispatch_validated` all discovered;
+- no protocol, dispatcher, authorization or client source was modified by the preflight.
 
-This preflight may not modify protocol, dispatcher, authorization or client source.
+### Checkpoint B1b — Authenticated EDR IPC + Security Center integration — current
+Implementation candidate is prepared but is not accepted until its Windows gate is green.
 
-### Checkpoint B1b — Authenticated EDR IPC + Security Center integration
-Starts only after B1b-preflight is green.
+Required/implemented scope:
+- authenticated Named Pipe read operations for EDR status, timeline, process tree, incidents, incident evidence, root cause and IOC hunts;
+- bounded server-side query payloads with strict per-operation field allowlists and unknown-field rejection;
+- `edr_update_retention` classified as privileged and forced through the existing `_authorize`/UAC-admin path;
+- qualified persistent HIGH EDR incidents projected into the existing `pending_threats` Security Center source as review-only records;
+- existing production client source remains unchanged and SHA-guarded;
+- transactional FULL patch with exact SHA guards, backups, post-write verification and protocol rollback if service promotion fails;
+- no arbitrary RPC, generic runtime method dispatch, pickle/object deserialization, shell execution or autonomous remediation added.
 
-Required scope:
-- authenticated Named Pipe read endpoints for timeline, process tree, incidents, incident evidence, root cause and IOC hunts;
-- bounded query pagination enforced server-side;
-- strict per-operation payload schemas and unknown-field rejection;
-- `edr_update_retention` classified as privileged and routed through the existing UAC/admin authorization path;
-- qualified HIGH EDR incidents surfaced in the existing Security Center Inbox without autonomous remediation;
-- no arbitrary RPC, generic method dispatch, pickle/object deserialization or shell execution surface.
+B1b acceptance must prove all targeted Beta1/Beta2 regressions, patcher tests, strict bridge payload tests, B1a preservation, compile/import gates and `tools.v011_beta2_b1b_acceptance`.
 
 ### Checkpoint B2 — Service-native live/restart/performance acceptance
 - fresh Protection Service and UAC Broker build;
