@@ -198,3 +198,14 @@ def test_retention_administration_is_bounded_and_non_destructive(tmp_path: Path)
         hunting.update_retention(retention_seconds=1, prune=False)
     with pytest.raises(EdrHuntQueryError, match="max_events"):
         hunting.update_retention(max_events=10_000_000, prune=False)
+
+
+def test_checkpoint_a_uses_isolated_per_run_pytest_basetemp():
+    script = Path(__file__).resolve().parents[1] / "TEST-V011-BETA2-CHECKPOINT-A.ps1"
+    text = script.read_text(encoding="utf-8")
+
+    assert "bc-sentinel-v011-beta2-checkpoint-a-" in text
+    assert "[guid]::NewGuid().ToString('N')" in text
+    assert "-m pytest -q --basetemp $PytestTemp" in text
+    assert "pytest-current" in text
+    assert "-ErrorAction SilentlyContinue" in text
