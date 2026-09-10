@@ -80,7 +80,7 @@ class EdrHuntingService:
     @staticmethod
     def _encode_cursor(ts: float, event_id: str) -> str:
         payload = json.dumps(
-            {"ts": round(float(ts), 6), "event_id": str(event_id)},
+            {"ts": float(ts), "event_id": str(event_id)},
             sort_keys=True,
             separators=(",", ":"),
         ).encode("utf-8")
