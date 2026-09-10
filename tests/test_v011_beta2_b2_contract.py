@@ -168,7 +168,12 @@ def test_b2_live_only_resume_reuses_only_verified_prior_evidence():
     assert "B2 LIVE-ONLY RESUME - PASS" in source
     assert "UPDATE-TEST-V011-BETA2-CHECKPOINT-B2" not in source
     assert "$ContractTest = Join-Path $PSScriptRoot 'tests\\test_v011_beta2_b2_contract.py'" in source
+    assert "$FullAdminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'" in source
+    assert "$FromAdminResume = Join-Path $PSScriptRoot 'RETEST-V011-BETA2-B2-FROM-ADMIN.ps1'" in source
     assert "-OutFile $ContractTest" in source
+    assert "--basetemp $ContractPytestTemp" in source
+    assert "bc-sentinel-v011-beta2-b2-live-contract-" in source
+    assert "Remove-Item -LiteralPath $ContractPytestTemp -Recurse -Force" in source
 
 
 def test_b2_live_only_admin_synchronizes_runtime_then_tests_persistence_restart():
