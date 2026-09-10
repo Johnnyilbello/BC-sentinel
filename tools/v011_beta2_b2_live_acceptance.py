@@ -27,13 +27,16 @@ def _source_guards(root: Path) -> dict[str, Any]:
     protocol = root / "sentinel" / "protection_protocol.py"
     service = root / "sentinel" / "protection_service_core.py"
     client = root / "sentinel" / "protection_client.py"
+    protocol_sha = _sha(protocol)
+    service_sha = _sha(service)
+    client_sha = _sha(client)
     return {
-        "protocol_sha256": _sha(protocol),
-        "service_sha256": _sha(service),
-        "client_sha256": _sha(client),
-        "protocol_matches_b1b": _sha(protocol) == EXPECTED_PROTOCOL_SHA256,
-        "service_matches_b1b": _sha(service) == EXPECTED_SERVICE_SHA256,
-        "client_matches_b1b": _sha(client) == EXPECTED_CLIENT_SHA256,
+        "protocol_sha256": protocol_sha,
+        "service_sha256": service_sha,
+        "client_sha256": client_sha,
+        "protocol_matches_b1b": protocol_sha == EXPECTED_PROTOCOL_SHA256,
+        "service_matches_b1b": service_sha == EXPECTED_SERVICE_SHA256,
+        "client_matches_b1b": client_sha == EXPECTED_CLIENT_SHA256,
     }
 
 
@@ -85,21 +88,20 @@ def _generic_methods(obj: Any) -> list[tuple[int, str, Callable[..., Any]]]:
 
 def _call_generic(fn: Callable[..., Any], operation: str, payload: dict[str, Any]) -> Any:
     sig = inspect.signature(fn)
-    params = list(sig.parameters.values())
     kwargs: dict[str, Any] = {}
     positional: list[Any] = []
     op_bound = False
     payload_bound = False
-    for p in params:
+    for p in sig.parameters.values():
         folded = p.name.casefold()
         if folded in {"op", "operation"} and not op_bound:
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD):
+            if p.kind is p.POSITIONAL_ONLY:
                 positional.append(operation)
             else:
                 kwargs[p.name] = operation
             op_bound = True
         elif folded in {"payload", "data", "params", "arguments"} and not payload_bound:
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD):
+            if p.kind is p.POSITIONAL_ONLY:
                 positional.append(payload)
             else:
                 kwargs[p.name] = payload
@@ -177,6 +179,7 @@ def _seed_review_only_incident() -> str:
     token = hashlib.sha256(f"{os.getpid()}:{time()}".encode()).hexdigest()[:20].upper()
     incident_id = "BCEDR-" + token
     store = EdrTelemetryStore(EDR_DB_PATH)
+    now = time()
     store.save_incident(EdrIncident(
         incident_id=incident_id,
         score=88,
@@ -187,8 +190,8 @@ def _seed_review_only_incident() -> str:
         signal_codes=["b2_harmless_acceptance_fixture"],
         evidence_families=["deterministic", "execution", "persistence"],
         reasons=["Harmless B2 Security Center persistence acceptance fixture."],
-        first_seen=time(),
-        last_seen=time(),
+        first_seen=now,
+        last_seen=now,
         automatic_destructive_action=False,
         host_isolation=False,
         response_mode="operator_review",
@@ -218,7 +221,6 @@ def run_pre_restart(root: Path, output: Path) -> int:
     if retention <= 0 or max_events <= 0:
         raise RuntimeError("EDR retention policy is not queryable over production IPC")
 
-    # Exercise the privileged endpoint without changing the effective policy.
     same_policy = client.call("edr_update_retention", {
         "retention_seconds": retention,
         "max_events": max_events,
