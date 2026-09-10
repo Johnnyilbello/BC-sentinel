@@ -45,7 +45,7 @@ _NEW_HELPER = '''def _watchdog_recursive_for_root(path: Path) -> bool:
     # recursive=False still preserves events for direct children of the root.
     parts = [
         part.casefold()
-        for part in str(target).replace("/", "\\").rstrip("\\").split("\\")
+        for part in str(target).replace("/", "\\\\").rstrip("\\\\").split("\\\\")
         if part
     ]
     suffixes = (
@@ -104,6 +104,7 @@ def apply_interactive_temp_root_fix(path: Path = REALTIME_TARGET) -> dict[str, o
         '("appdata", "local", "temp")',
         '("appdata", "roaming")',
         '("windows", "temp")',
+        'str(target).replace("/", "\\\\").rstrip("\\\\").split("\\\\")',
         "return False\n    return True",
     )
     missing = [marker for marker in required if marker not in verify]
