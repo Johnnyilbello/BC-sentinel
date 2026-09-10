@@ -47,7 +47,9 @@ try {
         'tools\v011_beta2_b1b_patch.py',
         'tools\v011_beta2_b1b_acceptance.py',
         'tools\v011_beta2_b2_live_acceptance.py',
+        'tools\v011_threat_trust_windows_compat.py',
         'tests\test_v011_beta2_b2_contract.py',
+        'tests\test_v011_beta2_threat_trust_windows_compat.py',
         'TEST-V011-BETA2-CHECKPOINT-B2.ps1',
         'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1',
         'TEST-V011-BETA2-CHECKPOINT-B2.bat'
