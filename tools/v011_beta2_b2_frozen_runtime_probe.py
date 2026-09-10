@@ -1,0 +1,146 @@
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from types import CodeType
+from typing import Any, Iterable
+
+from PyInstaller.archive.readers import CArchiveReader
+
+PROFILE = "v0.11.0-beta.2"
+
+
+def _walk_code(code: CodeType) -> Iterable[CodeType]:
+    yield code
+    for value in code.co_consts:
+        if isinstance(value, CodeType):
+            yield from _walk_code(value)
+
+
+def _facts(code: CodeType) -> dict[str, Any]:
+    objects = list(_walk_code(code))
+    function_names = sorted({obj.co_name for obj in objects})
+    names = sorted({name for obj in objects for name in obj.co_names})
+    strings = sorted({value for obj in objects for value in obj.co_consts if isinstance(value, str)})
+    callers = sorted({obj.co_name for obj in objects if "dispatch_validated" in obj.co_names})
+    return {
+        "function_names": function_names,
+        "names": names,
+        "strings": strings,
+        "dispatch_validated_callers": callers,
+    }
+
+
+def _open_pyz(exe: Path):
+    archive = CArchiveReader(str(exe))
+    pyz_names = [name for name, entry in archive.toc.items() if entry[-1] == "z"]
+    if len(pyz_names) != 1:
+        raise RuntimeError(f"expected exactly one embedded PYZ archive, found {len(pyz_names)}: {pyz_names}")
+    return archive.open_embedded_archive(pyz_names[0])
+
+
+def _extract_code(pyz: Any, module: str) -> CodeType:
+    if module not in pyz.toc:
+        raise RuntimeError(f"frozen module missing: {module}")
+    code = pyz.extract(module)
+    if not isinstance(code, CodeType):
+        raise RuntimeError(f"unexpected frozen object for {module}: {type(code).__name__}")
+    return code
+
+
+def inspect_exe(exe: Path) -> dict[str, Any]:
+    pyz = _open_pyz(exe)
+    protocol = _facts(_extract_code(pyz, "sentinel.protection_protocol"))
+    service = _facts(_extract_code(pyz, "sentinel.protection_service_core"))
+
+    protocol_functions = set(protocol["function_names"])
+    protocol_names = set(protocol["names"])
+    protocol_strings = set(protocol["strings"])
+    service_functions = set(service["function_names"])
+    service_names = set(service["names"])
+
+    checks = {
+        "protocol_has_legacy_validator": "_v011_beta2_legacy_validate_payload" in protocol_functions,
+        "protocol_has_b1b_validator": "_validate_payload" in protocol_functions,
+        "protocol_has_edr_status_literal": "edr_status" in protocol_strings,
+        "protocol_has_edr_read_allowlist_symbol": "EDR_READ_OPERATIONS" in protocol_names,
+        "protocol_has_edr_privileged_allowlist_symbol": "EDR_PRIVILEGED_OPERATIONS" in protocol_names,
+        "service_has_legacy_dispatch": "_v011_beta2_legacy_dispatch_validated" in service_functions,
+        "service_has_b1b_dispatch": "dispatch_validated" in service_functions,
+        "service_has_legacy_pending": "_v011_beta2_legacy_pending_threats" in service_functions,
+        "service_has_b1b_pending": "pending_threats" in service_functions,
+        "service_references_edr_bridge": "EdrServiceBridge" in service_names,
+        "service_references_dispatch_read": "dispatch_read" in service_names,
+        "service_references_dispatch_privileged": "dispatch_privileged" in service_names,
+    }
+
+    protocol_ok = all(checks[name] for name in (
+        "protocol_has_legacy_validator",
+        "protocol_has_b1b_validator",
+        "protocol_has_edr_status_literal",
+        "protocol_has_edr_read_allowlist_symbol",
+        "protocol_has_edr_privileged_allowlist_symbol",
+    ))
+    service_ok = all(checks[name] for name in (
+        "service_has_legacy_dispatch",
+        "service_has_b1b_dispatch",
+        "service_has_legacy_pending",
+        "service_has_b1b_pending",
+        "service_references_edr_bridge",
+        "service_references_dispatch_read",
+        "service_references_dispatch_privileged",
+    ))
+
+    if not protocol_ok and not service_ok:
+        classification = "frozen_protocol_and_service_pre_b1b_or_incomplete"
+    elif not protocol_ok:
+        classification = "frozen_protocol_pre_b1b_or_incomplete"
+    elif not service_ok:
+        classification = "frozen_service_dispatch_pre_b1b_or_incomplete"
+    else:
+        classification = "frozen_b1b_protocol_and_service_present"
+
+    protection_modules = sorted(name for name in pyz.toc if str(name).startswith("sentinel.protection"))
+    return {
+        "path": str(exe),
+        "classification": classification,
+        "passed": protocol_ok and service_ok,
+        "checks": checks,
+        "service_dispatch_validated_callers_in_module": service["dispatch_validated_callers"],
+        "protection_modules": protection_modules,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Inspect frozen B1b routing invariants inside the PyInstaller Protection Service")
+    parser.add_argument("--exe", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args()
+
+    exe = Path(args.exe).resolve()
+    output = Path(args.output).resolve()
+    try:
+        result = {
+            "profile": PROFILE,
+            "probe": "frozen_runtime_b1b",
+            **inspect_exe(exe),
+        }
+        output.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if bool(result.get("passed")) else 2
+    except Exception as exc:
+        result = {
+            "profile": PROFILE,
+            "probe": "frozen_runtime_b1b",
+            "passed": False,
+            "classification": "probe_error",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        output.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
