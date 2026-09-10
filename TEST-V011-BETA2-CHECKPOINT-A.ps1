@@ -8,6 +8,8 @@ function Fail([string]$Message) {
     exit 1
 }
 
+$PytestTemp = Join-Path $env:TEMP ('bc-sentinel-v011-beta2-checkpoint-a-' + [guid]::NewGuid().ToString('N'))
+
 try {
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) {
         throw '.venv not available'
@@ -30,9 +32,13 @@ try {
         }
     }
 
+    New-Item -ItemType Directory -Path $PytestTemp -Force | Out-Null
+
     Write-Host 'BC Sentinel v0.11.0-beta.2 - CHECKPOINT A: Indexed Retrospective Hunting' -ForegroundColor Cyan
 
-    & $Py -m pytest -q tests\test_v011_beta1_edr_foundation.py tests\test_v011_beta1_edr_adapter.py tests\test_v011_beta2_hunting.py
+    # Use an isolated per-run basetemp. This avoids pytest's shared pytest-current
+    # cleanup path, which can be transiently locked on Windows by AV/indexing.
+    & $Py -m pytest -q --basetemp $PytestTemp tests\test_v011_beta1_edr_foundation.py tests\test_v011_beta1_edr_adapter.py tests\test_v011_beta2_hunting.py
     if ($LASTEXITCODE -ne 0) {
         throw 'Beta1 EDR regressions or Beta2 hunting tests failed'
     }
@@ -59,4 +65,9 @@ try {
 }
 catch {
     Fail $_.Exception.Message
+}
+finally {
+    # Best-effort only: cleanup must never convert a completed security test run
+    # into a false failure because Windows still has a transient handle open.
+    Remove-Item -LiteralPath $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
 }
