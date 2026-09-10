@@ -4,6 +4,7 @@ from tools.v011_low_cpu_runtime_compat import (
     FILE_ETW_RUNTIME_MODE,
     PROCESS_ETW_RUNTIME_MODE,
     PYWINTRACE_RUNTIME_PROFILE,
+    WATCHDOG_RUNTIME_PROFILE,
     apply_file_etw_idle_dormancy,
     apply_process_etw_idle_dormancy,
     apply_pywintrace_runtime_install,
@@ -101,7 +102,7 @@ def test_file_etw_dormancy_patch_is_idempotent_and_preserves_provider_shape(tmp_
     assert '"provider_filter_mode": ETW_PROVIDER_FILTER_MODE' in text
 
 
-def test_realtime_high_churn_patch_keeps_watchdog_but_changes_recursion_policy(tmp_path: Path):
+def test_realtime_high_churn_patch_keeps_watchdog_and_wraps_handler_with_coalescing(tmp_path: Path):
     target = tmp_path / "realtime.py"
     target.write_text(
         'from __future__ import annotations\n\n'
@@ -126,9 +127,12 @@ def test_realtime_high_churn_patch_keeps_watchdog_but_changes_recursion_policy(t
 
     assert first["patched"] is True
     assert second["patched"] is False
+    assert first["profile"] == WATCHDOG_RUNTIME_PROFILE == "coalesced_v1"
     assert "import os" in text
+    assert "from .watchdog_coalescing import CoalescingEventHandlerProxy" in text
     assert "def _watchdog_recursive_for_root(path: Path) -> bool:" in text
     assert 'os.getenv("TEMP", "")' in text
     assert 'os.getenv("APPDATA", "")' in text
-    assert "recursive=_watchdog_recursive_for_root(p)" in text
+    assert "obs.schedule(CoalescingEventHandlerProxy(handler), str(p), recursive=_watchdog_recursive_for_root(p))" in text
+    assert "obs.schedule(handler" not in text
     assert "recursive=True" not in text
