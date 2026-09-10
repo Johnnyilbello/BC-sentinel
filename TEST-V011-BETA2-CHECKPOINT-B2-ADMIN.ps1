@@ -32,21 +32,15 @@ function Fail([string]$Message) {
 
 function Read-JsonSafe([string]$Path) {
     try {
-        if (Test-Path -LiteralPath $Path) {
-            return (Get-Content -Raw -LiteralPath $Path -Encoding UTF8 | ConvertFrom-Json)
-        }
-    }
-    catch { }
+        if (Test-Path -LiteralPath $Path) { return (Get-Content -Raw -LiteralPath $Path -Encoding UTF8 | ConvertFrom-Json) }
+    } catch { }
     return $null
 }
 
 function Read-LogTail([string]$Path, [int]$Lines = 60) {
     try {
-        if (Test-Path -LiteralPath $Path) {
-            return ((Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Lines) -join ' | ')
-        }
-    }
-    catch { }
+        if (Test-Path -LiteralPath $Path) { return ((Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Lines) -join ' | ') }
+    } catch { }
     return ''
 }
 
@@ -56,8 +50,7 @@ function Write-LogTail([string]$Label, [string]$Path, [int]$Lines = 30) {
             Write-Host ($Label + ':') -ForegroundColor DarkCyan
             Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Lines | ForEach-Object { Write-Host $_ }
         }
-    }
-    catch { }
+    } catch { }
 }
 
 function Get-ProtectionServiceRecord {
@@ -65,9 +58,7 @@ function Get-ProtectionServiceRecord {
         $p = [string]$_.PathName
         (-not [string]::IsNullOrWhiteSpace($p)) -and ($p.ToLowerInvariant().Contains('bc-sentinel-protection.exe'))
     })
-    if ($services.Count -ne 1) {
-        throw ('Expected exactly one installed BC Sentinel Protection Service, found ' + $services.Count)
-    }
+    if ($services.Count -ne 1) { throw ('Expected exactly one installed BC Sentinel Protection Service, found ' + $services.Count) }
     return $services[0]
 }
 
@@ -121,19 +112,15 @@ try {
         $beta1Exit = [int]$child.ExitCode
     }
     finally {
-        if ($null -eq $PreviousPytestAddopts) { Remove-Item Env:PYTEST_ADDOPTS -ErrorAction SilentlyContinue }
-        else { $env:PYTEST_ADDOPTS = $PreviousPytestAddopts }
-        if ($null -eq $PreviousPythonUtf8) { Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue }
-        else { $env:PYTHONUTF8 = $PreviousPythonUtf8 }
-        if ($null -eq $PreviousPythonIoEncoding) { Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue }
-        else { $env:PYTHONIOENCODING = $PreviousPythonIoEncoding }
+        if ($null -eq $PreviousPytestAddopts) { Remove-Item Env:PYTEST_ADDOPTS -ErrorAction SilentlyContinue } else { $env:PYTEST_ADDOPTS = $PreviousPytestAddopts }
+        if ($null -eq $PreviousPythonUtf8) { Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue } else { $env:PYTHONUTF8 = $PreviousPythonUtf8 }
+        if ($null -eq $PreviousPythonIoEncoding) { Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue } else { $env:PYTHONIOENCODING = $PreviousPythonIoEncoding }
         Remove-Item -LiteralPath $AdminPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     Write-LogTail 'Beta1 admin stdout tail' $Beta1StdoutPath 25
     $stderrTail = Read-LogTail $Beta1StderrPath 40
     if ($stderrTail) { Write-LogTail 'Beta1 admin stderr tail' $Beta1StderrPath 25 }
-
     $beta1Result = Read-JsonSafe $Beta1ResultPath
     if ($beta1Exit -ne 0) {
         $stdoutTail = Read-LogTail $Beta1StdoutPath 60
@@ -153,9 +140,10 @@ try {
         throw ('Beta1 administrator result is not PASS at stage ' + [string]$beta1Result.stage + ': ' + [string]$beta1Result.message)
     }
 
-    # Synchronize the running SCM process with the already-installed fresh Beta2
-    # file before asserting any new EDR operation. This is distinct from the
-    # later restart that proves EDR persistence.
+    $script:CurrentStage = 'request_op_lineage'
+    & $Py -m tools.v011_beta2_b2_request_op_compat --verify-only --output acceptance-v011-beta2-b2-request-op-lineage-admin-full.json
+    if ($LASTEXITCODE -ne 0) { throw 'B2 request.op source lineage failed after Beta1 administrator regression' }
+
     $script:CurrentStage = 'runtime_sync_restart'
     $service = Get-ProtectionServiceRecord
     $serviceName = [string]$service.Name
@@ -168,7 +156,7 @@ try {
 
     $script:CurrentStage = 'b2_live_pre_restart'
     Remove-Item -LiteralPath $PreRestartPath -Force -ErrorAction SilentlyContinue
-    & $Py -m tools.v011_beta2_b2_live_acceptance --mode pre-restart --output $PreRestartPath
+    & $Py -m tools.v011_beta2_b2_live_acceptance_compat --mode pre-restart --output $PreRestartPath
     $preExit = $LASTEXITCODE
     $pre = Read-JsonSafe $PreRestartPath
     if ($preExit -ne 0 -or $null -eq $pre -or -not [bool]$pre.passed) {
@@ -177,9 +165,7 @@ try {
     }
     $marker = [string]$pre.marker_path
     $incidentId = [string]$pre.incident_id
-    if ([string]::IsNullOrWhiteSpace($marker) -or [string]::IsNullOrWhiteSpace($incidentId)) {
-        throw 'B2 pre-restart persistence anchors are missing'
-    }
+    if ([string]::IsNullOrWhiteSpace($marker) -or [string]::IsNullOrWhiteSpace($incidentId)) { throw 'B2 pre-restart persistence anchors are missing' }
 
     $script:CurrentStage = 'service_restart'
     $prePersistencePid = [uint32](Get-ProtectionServiceRecord).ProcessId
@@ -191,7 +177,7 @@ try {
 
     $script:CurrentStage = 'b2_live_post_restart'
     Remove-Item -LiteralPath $PostRestartPath -Force -ErrorAction SilentlyContinue
-    & $Py -m tools.v011_beta2_b2_live_acceptance --mode post-restart --marker $marker --incident-id $incidentId --output $PostRestartPath
+    & $Py -m tools.v011_beta2_b2_live_acceptance_compat --mode post-restart --marker $marker --incident-id $incidentId --output $PostRestartPath
     $postExit = $LASTEXITCODE
     $post = Read-JsonSafe $PostRestartPath
     if ($postExit -ne 0 -or $null -eq $post -or -not [bool]$post.passed) {
@@ -202,7 +188,7 @@ try {
     try { Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue } catch { }
 
     $script:CurrentStage = 'completed'
-    Write-Result 'PASS' $script:CurrentStage 'Fresh Beta2 service passed Beta1 hardening/performance, synchronized its SCM runtime image, then passed production EDR IPC/native ingestion/Security Center and second-restart persistence.'
+    Write-Result 'PASS' $script:CurrentStage 'Fresh Beta2 service passed Beta1 hardening/performance, request.op lineage, synchronized SCM runtime, production EDR IPC/native ingestion/Security Center and second-restart persistence.'
     Write-Host 'B2 ADMIN LIVE GATE PASS' -ForegroundColor Green
     exit 0
 }
