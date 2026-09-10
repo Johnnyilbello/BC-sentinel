@@ -36,7 +36,12 @@ try {
         '.\tests\test_v011_beta2_b2_contract.py',
         '.\tools\broker_acceptance.py',
         '.\tools\service_hardening_benchmark.py',
-        '.\tools\windows_acceptance.py'
+        '.\tools\windows_acceptance.py',
+        '.\tools\v011_legacy_test_compat.py',
+        '.\tools\v011_threat_package_windows_compat.py',
+        '.\tools\v011_threat_index_windows_compat.py',
+        '.\tools\v011_service_update_windows_compat.py',
+        '.\tools\v011_low_cpu_runtime_compat.py'
     )
     foreach ($item in $required) {
         if (-not (Test-Path -LiteralPath $item)) { throw ('Incomplete FULL/B2 baseline. Missing: ' + $item) }
@@ -44,7 +49,26 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - CHECKPOINT B2: SERVICE-NATIVE LIVE / RESTART / PERFORMANCE' -ForegroundColor Cyan
 
-    # Freeze B1b source shape before any build or UAC activity.
+    # The branch is an integration delta over the authoritative FULL Windows
+    # tree. Re-apply the same canonical compatibility migrations as the frozen
+    # Beta1 one-command gate after every overlay, before pytest/build. This is
+    # required because delta copies can contain older FULL-source snapshots.
+    $compatibilityMigrations = @(
+        'tools.v011_legacy_test_compat',
+        'tools.v011_threat_package_windows_compat',
+        'tools.v011_threat_index_windows_compat',
+        'tools.v011_service_update_windows_compat',
+        'tools.v011_low_cpu_runtime_compat'
+    )
+    foreach ($migration in $compatibilityMigrations) {
+        Write-Host ('Applying canonical compatibility migration: ' + $migration) -ForegroundColor DarkCyan
+        & $Py -m $migration
+        if ($LASTEXITCODE -ne 0) { throw ('Compatibility migration failed before B2 pytest: ' + $migration) }
+    }
+
+    # Freeze B1b source shape after canonical FULL compatibility repair and
+    # before any build or UAC activity. The compatibility migrations do not
+    # relax the accepted B1b protocol/service/client SHA anchors.
     & $Py -m tools.v011_beta2_b1b_patch --verify-only --output integration-v011-beta2-b1b-before-b2.json
     if ($LASTEXITCODE -ne 0) { throw 'Accepted B1b protocol/service integration is not intact before B2' }
 
