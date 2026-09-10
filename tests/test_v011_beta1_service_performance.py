@@ -194,3 +194,21 @@ def test_targeted_retest_measures_idle_before_windows_acceptance_synthetic_file_
     assert acceptance_call in text
     assert text.index(performance_call) < text.index(acceptance_call)
     assert "Always run Windows Acceptance even if the performance gate failed" in text
+
+
+def test_full_admin_phase_measures_idle_before_live_synthetic_workloads():
+    script = Path(__file__).resolve().parents[1] / "TEST-V011-BETA1-ADMIN-PHASE.ps1"
+    text = script.read_text(encoding="utf-8")
+    performance_call = "tools.service_hardening_benchmark --idle-seconds 5"
+    first_live_regression = "tools.v010_web_deception_acceptance --service-live"
+    acceptance_call = "tools.windows_acceptance --benchmark-files 5000"
+
+    assert performance_call in text
+    assert first_live_regression in text
+    assert acceptance_call in text
+    assert text.index(performance_call) < text.index(first_live_regression)
+    assert text.index(performance_call) < text.index(acceptance_call)
+    assert "continuing live regressions so the full run reports all independent gates" in text
+    assert "--max-idle-cpu-percent 25" in text
+    assert "--min-ipc-rps 10" in text
+    assert "--max-storm-cpu-percent 250" in text
