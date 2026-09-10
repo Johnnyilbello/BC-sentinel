@@ -70,8 +70,10 @@ try {
         'tests\test_v011_beta1_low_cpu_runtime_compat.py',
         'tests\test_v011_beta1_service_performance.py'
     )
+    $targetedTemp = Join-Path $env:TEMP 'bc-sentinel-v011-beta1-targeted'
+    Remove-Item -LiteralPath $targetedTemp -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host 'Running targeted scheduler/runtime/performance regression tests...' -ForegroundColor Cyan
-    & $Py -m pytest -q $targeted
+    & $Py -m pytest -q --basetemp $targetedTemp $targeted
     if ($LASTEXITCODE -ne 0) { throw 'Targeted scheduler/runtime/performance tests failed' }
 
     & $Py -m compileall -q sentinel tools tests
