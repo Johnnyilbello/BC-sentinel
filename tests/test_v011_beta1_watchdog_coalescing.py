@@ -200,3 +200,24 @@ def test_ordered_scheduler_moves_extended_path_behind_earlier_deadline():
         assert [event.src_path for event in inner.events] == [second.src_path, first.src_path]
     finally:
         proxy.close()
+
+
+def test_same_inner_handler_reuses_one_live_dispatch_worker():
+    inner = _Inner()
+    first = CoalescingEventHandlerProxy(inner, modified_window_seconds=0.05)
+    second = CoalescingEventHandlerProxy(inner, modified_window_seconds=0.05)
+    try:
+        assert first is second
+        assert first._worker is second._worker
+        assert first.status()["dispatch_sharing_profile"] == "shared_by_inner_v1"
+        assert first.status()["shared_reuses"] >= 1
+
+        assert first.dispatch(_event("created", r"C:\\watched-a\\one.exe")) is None
+        assert second.dispatch(_event("created", r"C:\\watched-b\\two.exe")) is None
+        _wait_count(inner, 2)
+        assert [event.src_path for event in inner.events] == [
+            r"C:\\watched-a\\one.exe",
+            r"C:\\watched-b\\two.exe",
+        ]
+    finally:
+        first.close()
