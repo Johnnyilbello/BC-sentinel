@@ -165,11 +165,12 @@ class CoalescingEventHandlerProxy:
             if marker in parts:
                 return label
 
-        for index in range(max(0, len(parts) - 4)):
-            tail = parts[index : index + 4]
-            if len(tail) >= 3 and tail[0] == "appdata" and tail[1] == "local" and tail[2] == "temp":
+        for index, part in enumerate(parts):
+            if part != "appdata":
+                continue
+            if index + 2 < len(parts) and parts[index + 1] == "local" and parts[index + 2] == "temp":
                 return "Temp"
-            if len(tail) >= 2 and tail[0] == "appdata" and tail[1] == "roaming":
+            if index + 1 < len(parts) and parts[index + 1] == "roaming":
                 return "AppData"
         return None
 
