@@ -32,7 +32,7 @@ def test_b1b_hunt_kind_and_indicator_are_strict(tmp_path: Path):
     b = bridge(tmp_path)
     with pytest.raises(ValueError, match="unsupported EDR indicator kind"):
         b.dispatch_read("edr_hunt", {"indicator": "example.test", "kind": "shell"})
-    with pytest.raises(ValueError, match="indicator is invalid"):
+    with pytest.raises(ValueError, match="indicator cannot be empty"):
         b.dispatch_read("edr_hunt", {"indicator": ""})
 
 
