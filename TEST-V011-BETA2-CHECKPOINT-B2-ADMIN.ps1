@@ -33,7 +33,7 @@ function Fail([string]$Message) {
 function Read-JsonSafe([string]$Path) {
     try {
         if (Test-Path -LiteralPath $Path) {
-            return (Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json)
+            return (Get-Content -Raw -LiteralPath $Path -Encoding UTF8 | ConvertFrom-Json)
         }
     }
     catch { }
@@ -43,7 +43,7 @@ function Read-JsonSafe([string]$Path) {
 function Read-LogTail([string]$Path, [int]$Lines = 60) {
     try {
         if (Test-Path -LiteralPath $Path) {
-            return ((Get-Content -LiteralPath $Path -Tail $Lines) -join ' | ')
+            return ((Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Lines) -join ' | ')
         }
     }
     catch { }
@@ -54,7 +54,7 @@ function Write-LogTail([string]$Label, [string]$Path, [int]$Lines = 30) {
     try {
         if (Test-Path -LiteralPath $Path) {
             Write-Host ($Label + ':') -ForegroundColor DarkCyan
-            Get-Content -LiteralPath $Path -Tail $Lines | ForEach-Object { Write-Host $_ }
+            Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Lines | ForEach-Object { Write-Host $_ }
         }
     }
     catch { }
@@ -73,9 +73,8 @@ try {
 
     # Reuse the certified Beta1 Windows hardening gate. Pytest temp is isolated,
     # and the child process is intentionally NOT invoked through a PowerShell
-    # stderr-merging pipeline: with ErrorActionPreference=Stop, native stderr
-    # can otherwise terminate the wrapper at the first traceback line and hide
-    # the actual Beta1 stage/result. Capture both streams independently instead.
+    # stderr-merging pipeline. Python UTF-8 mode is forced only for this child
+    # tree so acceptance JSON containing Unicode cannot fail on Windows cp1252.
     $script:CurrentStage = 'beta1_admin_regression'
     Remove-Item -LiteralPath $Beta1StdoutPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Beta1StderrPath -Force -ErrorAction SilentlyContinue
@@ -83,8 +82,12 @@ try {
     $AdminPytestTemp = Join-Path $env:TEMP ('bc-sentinel-v011-beta2-b2-admin-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $AdminPytestTemp -Force | Out-Null
     $PreviousPytestAddopts = $env:PYTEST_ADDOPTS
+    $PreviousPythonUtf8 = $env:PYTHONUTF8
+    $PreviousPythonIoEncoding = $env:PYTHONIOENCODING
     try {
         $env:PYTEST_ADDOPTS = ('--basetemp="' + $AdminPytestTemp + '"')
+        $env:PYTHONUTF8 = '1'
+        $env:PYTHONIOENCODING = 'utf-8'
         $childArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"' + (Join-Path $PSScriptRoot 'TEST-V011-BETA1-ADMIN-PHASE.ps1') + '"'))
         $child = Start-Process -FilePath 'powershell.exe' -ArgumentList $childArgs -WorkingDirectory $PSScriptRoot -Wait -PassThru -NoNewWindow -RedirectStandardOutput $Beta1StdoutPath -RedirectStandardError $Beta1StderrPath
         if ($null -eq $child) { throw 'Beta1 administrator child process was not created' }
@@ -93,6 +96,10 @@ try {
     finally {
         if ($null -eq $PreviousPytestAddopts) { Remove-Item Env:PYTEST_ADDOPTS -ErrorAction SilentlyContinue }
         else { $env:PYTEST_ADDOPTS = $PreviousPytestAddopts }
+        if ($null -eq $PreviousPythonUtf8) { Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue }
+        else { $env:PYTHONUTF8 = $PreviousPythonUtf8 }
+        if ($null -eq $PreviousPythonIoEncoding) { Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue }
+        else { $env:PYTHONIOENCODING = $PreviousPythonIoEncoding }
         Remove-Item -LiteralPath $AdminPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
@@ -126,7 +133,7 @@ try {
     Remove-Item -LiteralPath $PreRestartPath -Force -ErrorAction SilentlyContinue
     & $Py -m tools.v011_beta2_b2_live_acceptance --mode pre-restart --output $PreRestartPath
     if ($LASTEXITCODE -ne 0) { throw 'B2 pre-restart production EDR IPC/native-ingestion acceptance failed' }
-    $pre = Get-Content -Raw -LiteralPath $PreRestartPath | ConvertFrom-Json
+    $pre = Get-Content -Raw -LiteralPath $PreRestartPath -Encoding UTF8 | ConvertFrom-Json
     if (-not [bool]$pre.passed) { throw 'B2 pre-restart result is not PASS' }
     $marker = [string]$pre.marker_path
     $incidentId = [string]$pre.incident_id
