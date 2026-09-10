@@ -101,7 +101,7 @@ def test_b2_admin_harness_preserves_beta1_detail_and_isolates_pytest_temp():
     assert "Frozen Beta1 administrator gate failed at stage" in source
     assert "Read-LogTail" in source
     assert "*>&1 |" not in source
-    assert "--max-idle-cpu-percent 25" not in source  # thresholds stay owned by frozen Beta1 gate
+    assert "--max-idle-cpu-percent 25" not in source
 
 
 def test_b2_admin_forces_utf8_only_for_child_acceptance_tree():
@@ -127,3 +127,28 @@ def test_b2_resume_requires_pre_admin_evidence_and_finishes_standard_user_gates(
     assert "v011_beta2_b2_live_acceptance.py" in source
     assert "$LiveAcceptanceUrl" in source
     assert "Invoke-WebRequest -Uri $LiveAcceptanceUrl -OutFile $LiveAcceptance" in source
+
+
+def test_b2_live_only_resume_reuses_only_verified_prior_evidence():
+    source = Path("RETEST-V011-BETA2-B2-LIVE-ONLY.ps1").read_text(encoding="utf-8")
+    assert "acceptance-v011-beta1-admin-phase-result.json" in source
+    assert "benchmark-v011-beta1-service.json" in source
+    assert "acceptance-v011-beta2-b2-edr-local.json" in source
+    assert "v011_beta2_b1b_patch --verify-only" in source
+    assert "TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1" in source
+    assert "tools.v011_beta2_b2_live_acceptance --mode standard-user" in source
+    assert "tools.broker_acceptance" in source
+    assert "B2 LIVE-ONLY RESUME - PASS" in source
+    assert "UPDATE-TEST-V011-BETA2-CHECKPOINT-B2" not in source
+
+
+def test_b2_live_only_admin_runs_restart_and_reports_exact_live_failure():
+    source = Path("TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "acceptance-v011-beta1-admin-phase-result.json" in source
+    assert "benchmark-v011-beta1-service.json" in source
+    assert "--mode pre-restart" in source
+    assert "Restart-Service" in source
+    assert "--mode post-restart" in source
+    assert "B2 pre-restart live acceptance failed:" in source
+    assert "B2 post-restart live acceptance failed:" in source
+    assert "B2 LIVE-ONLY ADMIN GATE PASS" in source
