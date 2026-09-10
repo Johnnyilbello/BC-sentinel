@@ -48,7 +48,8 @@ try {
         'sentinel\watchdog_coalescing.py',
         'sentinel\pywintrace_idle.py',
         'sentinel\etw_monitor.py',
-        'tools\v011_low_cpu_runtime_compat.py'
+        'tools\v011_low_cpu_runtime_compat.py',
+        'tools\v011_threat_index_windows_compat.py'
     )
     foreach ($relative in $requiredDelta) {
         if (-not (Test-Path -LiteralPath (Join-Path $Source $relative))) {
