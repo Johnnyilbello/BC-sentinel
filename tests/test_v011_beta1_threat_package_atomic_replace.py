@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import shutil
 
 import pytest
 
@@ -12,7 +13,6 @@ def test_atomic_replace_retries_transient_windows_access_denied(monkeypatch, tmp
     target = tmp_path / "active-behavior.json"
     source.write_text("new", encoding="utf-8")
     target.write_text("old", encoding="utf-8")
-    real_replace = os.replace
     attempts = {"count": 0}
 
     def flaky_replace(src, dst):
@@ -21,7 +21,11 @@ def test_atomic_replace_retries_transient_windows_access_denied(monkeypatch, tmp
             exc = PermissionError(5, "simulated transient Windows access denied")
             exc.winerror = 5
             raise exc
-        return real_replace(src, dst)
+        src_path = Path(src)
+        dst_path = Path(dst)
+        dst_path.write_bytes(src_path.read_bytes())
+        src_path.unlink()
+        return None
 
     monkeypatch.setattr(os, "replace", flaky_replace)
     monkeypatch.setattr("sentinel.threat_packages.time.sleep", lambda _: None)
@@ -37,7 +41,6 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
     target = tmp_path / "active-yara"
     source.mkdir()
     (source / "active-package.json").write_text("new", encoding="utf-8")
-    real_rename = os.rename
     attempts = {"count": 0}
 
     def flaky_replace(src, dst):
@@ -46,12 +49,14 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
             exc = PermissionError(5, "simulated transient Windows directory access denied")
             exc.winerror = 5
             raise exc
-        # Keep this retry-logic test deterministic. A real os.replace() here can
-        # itself hit a genuine transient Windows lock from Defender/indexers,
-        # which correctly causes a fourth helper attempt but makes the unit test
-        # nondeterministic. os.rename() performs the successful filesystem move
-        # without recursing through the monkeypatched os.replace symbol.
-        return real_rename(src, dst)
+        src_path = Path(src)
+        dst_path = Path(dst)
+        dst_path.mkdir()
+        for child in src_path.iterdir():
+            if child.is_file():
+                (dst_path / child.name).write_bytes(child.read_bytes())
+        shutil.rmtree(src_path)
+        return None
 
     monkeypatch.setattr(os, "replace", flaky_replace)
     monkeypatch.setattr("sentinel.threat_packages.time.sleep", lambda _: None)
