@@ -21,7 +21,7 @@ try {
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
 
     $Py = '.\.venv\Scripts\python.exe'
-    $PatchRef = 'd665594c72d380aecf8395e3f01995fdefe8e737'
+    $PatchRef = 'fef9ef62934130f1558079be44a305a83065f1a6'
     $ResumeRef = '1cfc20346c77148b5497b2a4dd2794ce06cc273e'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
