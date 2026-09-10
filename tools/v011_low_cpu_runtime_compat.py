@@ -11,7 +11,7 @@ PROCESS_ETW_CONTINUOUS = False
 FILE_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 FILE_ETW_CONTINUOUS = False
 PYWINTRACE_RUNTIME_PROFILE = "adaptive_v3"
-WATCHDOG_RUNTIME_PROFILE = "coalesced_v1"
+WATCHDOG_RUNTIME_PROFILE = "heap_debounce_v3"
 
 
 def apply_pywintrace_runtime_install(path: Path = ETW_TARGET) -> dict[str, object]:
@@ -34,7 +34,7 @@ def apply_pywintrace_runtime_install(path: Path = ETW_TARGET) -> dict[str, objec
     if install_marker not in text:
         anchor = "            import etw\n"
         if text.count(anchor) != 1:
-            raise RuntimeError("Unexpected ETW startup import shape; refusing pywintrace runtime-install patch")
+            raise RuntimeError("Unexpected ETW startup shape; refusing pywintrace runtime-install patch")
         text = text.replace(anchor, anchor + install_marker, 1)
         patched = True
 
