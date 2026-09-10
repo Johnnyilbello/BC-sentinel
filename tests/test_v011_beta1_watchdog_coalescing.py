@@ -114,9 +114,6 @@ def test_heavy_inner_handler_does_not_block_watchdog_observer_dispatch_thread():
         started = time.monotonic()
         assert proxy.dispatch(_event("created", r"C:\\watched\\new.exe")) is None
         elapsed = time.monotonic() - started
-
-        # The expensive wrapped handler runs on BCS-RealtimeDispatch, not inside
-        # WindowsApiObserver.run. Keep generous headroom for slow CI hosts.
         assert elapsed < 0.10
         _wait_count(inner, 1)
     finally:
@@ -233,9 +230,25 @@ def test_dispatch_diagnostics_attribute_temp_root_and_event(monkeypatch, tmp_pat
         _wait_count(inner, 1)
 
         status = proxy.status()
-        assert status["diagnostic_profile"] == "root_event_cpu_v1"
+        assert status["diagnostic_profile"] == "root_event_path_cpu_v2"
         assert status["diagnostic_dominant_bucket"] == "Temp:created"
         assert status["diagnostic_forward_counts"]["Temp:created"] == 1
-        assert "BCS-RealtimeDispatch[Temp:created]" == proxy._worker.name
+        assert status["diagnostic_dominant_detail"].startswith("Temp:created|")
+        assert proxy._worker.name.startswith("BCS-RealtimeDispatch[Temp:created|")
+    finally:
+        proxy.close()
+
+
+def test_dispatch_diagnostics_classify_interactive_user_windows_paths_independent_of_service_identity():
+    inner = _Inner()
+    proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=0.05)
+    try:
+        event = _event(
+            "deleted",
+            r"C:\\Users\\InteractiveUser\\Downloads\\BC_Sentinel_v0_10_0_RC1\\build\\stale.tmp",
+        )
+        bucket, detail = proxy._diagnostic_identity(event)
+        assert bucket == "Downloads:deleted"
+        assert detail.startswith("Downloads:deleted|BC_Sentinel_v0_10_0_RC1")
     finally:
         proxy.close()
