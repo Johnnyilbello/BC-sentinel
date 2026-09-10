@@ -1,4 +1,5 @@
 import inspect
+from pathlib import Path
 
 from sentinel.etw_monitor import (
     DNS_EVENT_IDS,
@@ -181,3 +182,15 @@ def test_service_benchmark_accepts_healthy_idle_and_workload_metrics():
     assert passed is True
     assert all(checks.values())
     assert reasons == []
+
+
+def test_targeted_retest_measures_idle_before_windows_acceptance_synthetic_file_load():
+    script = Path(__file__).resolve().parents[1] / "RETEST-V011-BETA1-WINDOWS-PERF.ps1"
+    text = script.read_text(encoding="utf-8")
+    performance_call = "tools.service_hardening_benchmark --idle-seconds 5"
+    acceptance_call = "tools.windows_acceptance --benchmark-files 5000"
+
+    assert performance_call in text
+    assert acceptance_call in text
+    assert text.index(performance_call) < text.index(acceptance_call)
+    assert "Always run Windows Acceptance even if the performance gate failed" in text
