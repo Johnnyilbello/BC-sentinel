@@ -4,6 +4,7 @@ import os
 import pytest
 
 from sentinel.threat_packages import ThreatPackageError, ThreatPackageManager
+from tools.v011_threat_package_windows_compat import apply_compat_patch
 
 
 def test_atomic_replace_retries_transient_windows_access_denied(monkeypatch, tmp_path):
@@ -54,6 +55,38 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
     assert attempts["count"] == 3
     assert (target / "active-package.json").read_text(encoding="utf-8") == "new"
     assert not source.exists()
+
+
+def test_existing_threat_package_patch_is_upgraded_for_yara_directory(tmp_path):
+    target = tmp_path / "threat_packages.py"
+    target.write_text(
+        "from pathlib import Path\n"
+        "import os\n\n"
+        "class ThreatPackageError(RuntimeError):\n"
+        "    pass\n\n"
+        "class ThreatPackageManager:\n"
+        "    @staticmethod\n"
+        "    def _replace_file_with_retry(source: Path, target: Path, *, attempts: int = 8) -> None:\n"
+        "        os.replace(source, target)\n\n"
+        "    def publish(self):\n"
+        "        self._replace_file_with_retry(tmp, self.state_path)\n"
+        "        self._replace_file_with_retry(tmp, self.activation_journal_path)\n"
+        "        self._replace_file_with_retry(tmp, self.active_behavior_path)\n"
+        "        self._replace_file_with_retry(tmp, self.active_behavior_path)\n"
+        "        self._replace_file_with_retry(tmp, self.active_behavior_path)\n"
+        "        os.replace(tmp, self.active_yara_dir)\n",
+        encoding="utf-8",
+    )
+
+    first = apply_compat_patch(target)
+    second = apply_compat_patch(target)
+    text = target.read_text(encoding="utf-8")
+
+    assert first["patched"] is True
+    assert first["upgrade"] == "yara_directory_retry"
+    assert second["patched"] is False
+    assert text.count("self._replace_file_with_retry(tmp, self.active_yara_dir)") == 1
+    assert "os.replace(tmp, self.active_yara_dir)" not in text
 
 
 def test_atomic_replace_fails_closed_after_bounded_transient_retries(monkeypatch, tmp_path):
