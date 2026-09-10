@@ -74,3 +74,25 @@ def test_transform_refuses_multiple_buggy_dispatch_expressions(tmp_path: Path, m
     monkeypatch.setattr(compat, "BASE_SERVICE_SHA256", _sha(service))
     with pytest.raises(RuntimeError, match="exactly one"):
         compat.transform(service)
+
+
+def test_request_op_recovery_launcher_rebuilds_and_keeps_uac_separation():
+    source = Path("REPAIR-RETEST-V011-BETA2-B2-REQUEST-OP.ps1").read_text(encoding="utf-8")
+    assert "tools.v011_beta2_b2_request_op_compat" in source
+    assert "BUILD-SERVIZIO-PROTEZIONE.ps1" in source
+    assert "tools.v011_beta2_b2_frozen_runtime_probe" in source
+    assert "Start-Process -FilePath 'powershell.exe' -Verb RunAs" in source
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode standard-user" in source
+    assert "UPDATE-TEST-V011-BETA2-CHECKPOINT-B2" not in source
+
+
+def test_request_op_admin_repair_and_performance_thresholds_are_frozen():
+    source = Path("TEST-V011-BETA2-B2-REQUEST-OP-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1" in source
+    assert "-Mode Repair" in source
+    assert "--max-idle-cpu-percent 25" in source
+    assert "--min-ipc-rps 10" in source
+    assert "--max-storm-cpu-percent 250" in source
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode pre-restart" in source
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode post-restart" in source
+    assert source.count("Restart-ProtectionService") >= 3
