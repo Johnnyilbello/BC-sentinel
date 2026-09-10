@@ -45,6 +45,7 @@ try {
         'TEST-V011-BETA1-ALL.ps1',
         'TEST-V011-BETA1-ADMIN-PHASE.ps1',
         'sentinel\thread_diagnostics.py',
+        'sentinel\watchdog_coalescing.py',
         'sentinel\pywintrace_idle.py',
         'sentinel\etw_monitor.py',
         'tools\v011_low_cpu_runtime_compat.py'
