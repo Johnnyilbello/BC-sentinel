@@ -96,3 +96,14 @@ def test_request_op_admin_repair_and_performance_thresholds_are_frozen():
     assert "tools.v011_beta2_b2_live_acceptance_compat --mode pre-restart" in source
     assert "tools.v011_beta2_b2_live_acceptance_compat --mode post-restart" in source
     assert source.count("Restart-ProtectionService") >= 3
+
+
+def test_full_b2_paths_use_request_op_lineage_and_compat_live_acceptance():
+    outer = Path("TEST-V011-BETA2-CHECKPOINT-B2.ps1").read_text(encoding="utf-8")
+    admin = Path("TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "tools.v011_beta2_b2_request_op_compat" in outer
+    assert "tools.v011_beta2_b2_frozen_runtime_probe" in outer
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode standard-user" in outer
+    assert "tools.v011_beta2_b2_request_op_compat --verify-only" in admin
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode pre-restart" in admin
+    assert "tools.v011_beta2_b2_live_acceptance_compat --mode post-restart" in admin
