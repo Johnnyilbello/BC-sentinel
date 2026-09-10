@@ -82,9 +82,14 @@ def test_b2_admin_harness_preserves_beta1_detail_and_isolates_pytest_temp():
     source = Path("TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1").read_text(encoding="utf-8")
     assert "PYTEST_ADDOPTS" in source
     assert "bc-sentinel-v011-beta2-b2-admin-" in source
-    assert "acceptance-v011-beta2-b2-beta1-admin.log" in source
+    assert "acceptance-v011-beta2-b2-beta1-admin.stdout.log" in source
+    assert "acceptance-v011-beta2-b2-beta1-admin.stderr.log" in source
+    assert "-RedirectStandardOutput $Beta1StdoutPath" in source
+    assert "-RedirectStandardError $Beta1StderrPath" in source
+    assert "Start-Process -FilePath 'powershell.exe'" in source
     assert "Frozen Beta1 administrator gate failed at stage" in source
     assert "Read-LogTail" in source
+    assert "*>&1 |" not in source
     assert "--max-idle-cpu-percent 25" not in source  # thresholds stay owned by frozen Beta1 gate
 
 
