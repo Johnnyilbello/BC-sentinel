@@ -68,18 +68,31 @@ try {
     & $Py -m tools.v011_beta2_b1b_patch --verify-only --output integration-v011-beta2-b1b-before-b2-live-only-resume.json
     if ($LASTEXITCODE -ne 0) { throw 'B1b structural/source verification failed before live-only resume' }
 
-    # Refresh only the live acceptance/harness/contract files. No FULL source,
-    # service binary or accepted B1b integration file is overlaid or patched.
+    # Refresh the live acceptance plus every harness referenced by the B2
+    # contract suite. These are test/orchestration files only: no FULL source,
+    # installed service binary or accepted B1b integration file is overlaid.
     $LiveAcceptance = Join-Path $PSScriptRoot 'tools\v011_beta2_b2_live_acceptance.py'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tools/v011_beta2_b2_live_acceptance.py' -OutFile $LiveAcceptance
     $AdminLiveScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1' -OutFile $AdminLiveScript
+    $FullAdminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1' -OutFile $FullAdminScript
+    $FromAdminResume = Join-Path $PSScriptRoot 'RETEST-V011-BETA2-B2-FROM-ADMIN.ps1'
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/RETEST-V011-BETA2-B2-FROM-ADMIN.ps1' -OutFile $FromAdminResume
     $ContractTest = Join-Path $PSScriptRoot 'tests\test_v011_beta2_b2_contract.py'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tests/test_v011_beta2_b2_contract.py' -OutFile $ContractTest
 
-    # Quick local contract check for the current live harness before UAC.
-    & $Py -m pytest -q tests\test_v011_beta2_b2_contract.py
-    if ($LASTEXITCODE -ne 0) { throw 'B2 live-only contract test failed before UAC' }
+    # Use a unique temp root so pytest never touches its shared pytest-current
+    # junction/symlink on Windows. This mirrors the hardened full B2/Beta1 gates.
+    $ContractPytestTemp = Join-Path $env:TEMP ('bc-sentinel-v011-beta2-b2-live-contract-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $ContractPytestTemp -Force | Out-Null
+    try {
+        & $Py -m pytest -q --basetemp $ContractPytestTemp tests\test_v011_beta2_b2_contract.py
+        if ($LASTEXITCODE -ne 0) { throw 'B2 live-only contract test failed before UAC' }
+    }
+    finally {
+        Remove-Item -LiteralPath $ContractPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     $adminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-live-admin-result.json'
     Remove-Item -LiteralPath $adminResultPath -Force -ErrorAction SilentlyContinue
