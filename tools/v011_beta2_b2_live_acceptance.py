@@ -237,7 +237,7 @@ def run_pre_restart(root: Path, output: Path) -> int:
     pending: dict[str, Any] = {}
     deadline = time() + 8.0
     while time() < deadline:
-        pending = client.call("pending_threats", {"limit": 500})
+        pending = client.call("pending_threats")
         if _find_incident(pending, incident_id):
             break
         sleep(0.25)
@@ -273,7 +273,7 @@ def run_post_restart(root: Path, marker: str, incident_id: str, output: Path) ->
     client = ProductionClient()
     status = client.call("edr_status")
     hunt = _wait_hunt(client, marker, timeout_seconds=8.0)
-    pending = client.call("pending_threats", {"limit": 500})
+    pending = client.call("pending_threats")
     if not _find_incident(pending, incident_id):
         raise RuntimeError("review-only EDR incident did not persist across service restart")
     result = {
