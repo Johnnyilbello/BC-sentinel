@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +38,9 @@ HELPER = '''    @staticmethod
 
 '''
 
-INSERT_BEFORE = "    def _write_state(self, body: dict[str, Any]) -> None:\n"
+WRITE_STATE_ANCHOR_RE = re.compile(
+    r"(?m)^    def _write_state\(self, body: [^\r\n]+\) -> None:\r?\n"
+)
 OLD_REPLACE = "        os.replace(tmp, self.state_path)\n"
 NEW_REPLACE = "        self._replace_state_with_retry(tmp, self.state_path)\n"
 
@@ -60,15 +63,19 @@ def apply_compat_patch(path: Path = TARGET) -> dict[str, object]:
         _verify(text)
         return {"patched": False, "already_compatible": True, "path": str(path)}
 
-    if text.count(INSERT_BEFORE) != 1:
-        raise RuntimeError("Unexpected threat-index source shape: _write_state anchor missing/ambiguous")
-    if text.count(OLD_REPLACE) != 1:
+    replace_count = text.count(OLD_REPLACE)
+    if replace_count != 1:
         raise RuntimeError(
             "Unexpected threat-index source shape: expected exactly one state os.replace call, "
-            f"found {text.count(OLD_REPLACE)}"
+            f"found {replace_count}"
         )
 
-    updated = text.replace(INSERT_BEFORE, HELPER + INSERT_BEFORE, 1)
+    anchors = list(WRITE_STATE_ANCHOR_RE.finditer(text))
+    if len(anchors) != 1:
+        raise RuntimeError("Unexpected threat-index source shape: _write_state anchor missing/ambiguous")
+
+    anchor = anchors[0]
+    updated = text[: anchor.start()] + HELPER + text[anchor.start() :]
     updated = updated.replace(OLD_REPLACE, NEW_REPLACE, 1)
     _verify(updated)
     path.write_text(updated, encoding="utf-8")
