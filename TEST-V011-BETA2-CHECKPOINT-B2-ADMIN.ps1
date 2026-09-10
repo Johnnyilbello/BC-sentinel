@@ -60,6 +60,37 @@ function Write-LogTail([string]$Label, [string]$Path, [int]$Lines = 30) {
     catch { }
 }
 
+function Get-ProtectionServiceRecord {
+    $services = @(Get-CimInstance Win32_Service | Where-Object {
+        $p = [string]$_.PathName
+        (-not [string]::IsNullOrWhiteSpace($p)) -and ($p.ToLowerInvariant().Contains('bc-sentinel-protection.exe'))
+    })
+    if ($services.Count -ne 1) {
+        throw ('Expected exactly one installed BC Sentinel Protection Service, found ' + $services.Count)
+    }
+    return $services[0]
+}
+
+function Restart-ProtectionService([string]$ServiceName, [uint32]$PreviousPid, [string]$Label) {
+    Write-Host (('Restarting installed Protection Service through SCM ({0}): {1}') -f $Label,$ServiceName) -ForegroundColor Cyan
+    Restart-Service -Name $ServiceName -Force -ErrorAction Stop
+    $deadline = (Get-Date).AddSeconds(15)
+    $record = $null
+    do {
+        Start-Sleep -Milliseconds 350
+        $record = Get-CimInstance Win32_Service -Filter ("Name='" + $ServiceName.Replace("'","''") + "'") -ErrorAction Stop
+    } while (($null -eq $record -or [string]$record.State -ne 'Running' -or [uint32]$record.ProcessId -eq 0) -and (Get-Date) -lt $deadline)
+    if ($null -eq $record -or [string]$record.State -ne 'Running' -or [uint32]$record.ProcessId -eq 0) {
+        throw ('Protection Service did not return to Running after ' + $Label + ' restart')
+    }
+    $newPid = [uint32]$record.ProcessId
+    if ($PreviousPid -gt 0 -and $newPid -eq $PreviousPid) {
+        throw ('Protection Service PID did not change after ' + $Label + ' restart; runtime image freshness is unproven')
+    }
+    Write-Host (('Protection Service runtime synchronized: old PID={0}, new PID={1}') -f $PreviousPid,$newPid) -ForegroundColor Green
+    return $record
+}
+
 try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($id)
@@ -71,10 +102,6 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - CHECKPOINT B2 ADMIN LIVE GATE' -ForegroundColor Cyan
 
-    # Reuse the certified Beta1 Windows hardening gate. Pytest temp is isolated,
-    # and the child process is intentionally NOT invoked through a PowerShell
-    # stderr-merging pipeline. Python UTF-8 mode is forced only for this child
-    # tree so acceptance JSON containing Unicode cannot fail on Windows cp1252.
     $script:CurrentStage = 'beta1_admin_regression'
     Remove-Item -LiteralPath $Beta1StdoutPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Beta1StderrPath -Force -ErrorAction SilentlyContinue
@@ -126,15 +153,28 @@ try {
         throw ('Beta1 administrator result is not PASS at stage ' + [string]$beta1Result.stage + ': ' + [string]$beta1Result.message)
     }
 
-    # B2 live production Named Pipe: authenticated EDR reads, same-policy
-    # privileged retention round-trip, native TEMP marker ingestion and
-    # Security Center review-only visibility.
+    # Synchronize the running SCM process with the already-installed fresh Beta2
+    # file before asserting any new EDR operation. This is distinct from the
+    # later restart that proves EDR persistence.
+    $script:CurrentStage = 'runtime_sync_restart'
+    $service = Get-ProtectionServiceRecord
+    $serviceName = [string]$service.Name
+    $initialPid = [uint32]$service.ProcessId
+    $service = Restart-ProtectionService -ServiceName $serviceName -PreviousPid $initialPid -Label 'runtime synchronization'
+
+    $script:CurrentStage = 'runtime_sync_readiness'
+    & $Py -m tools.v011_service_readiness --timeout-seconds 12 --poll-seconds 0.5 --output acceptance-v011-beta2-b2-runtime-sync-readiness.json
+    if ($LASTEXITCODE -ne 0) { throw 'Protection Service readiness failed after runtime synchronization restart' }
+
     $script:CurrentStage = 'b2_live_pre_restart'
     Remove-Item -LiteralPath $PreRestartPath -Force -ErrorAction SilentlyContinue
     & $Py -m tools.v011_beta2_b2_live_acceptance --mode pre-restart --output $PreRestartPath
-    if ($LASTEXITCODE -ne 0) { throw 'B2 pre-restart production EDR IPC/native-ingestion acceptance failed' }
-    $pre = Get-Content -Raw -LiteralPath $PreRestartPath -Encoding UTF8 | ConvertFrom-Json
-    if (-not [bool]$pre.passed) { throw 'B2 pre-restart result is not PASS' }
+    $preExit = $LASTEXITCODE
+    $pre = Read-JsonSafe $PreRestartPath
+    if ($preExit -ne 0 -or $null -eq $pre -or -not [bool]$pre.passed) {
+        $detail = if ($null -ne $pre -and $pre.error) { [string]$pre.error } else { 'pre-restart result missing/unreadable' }
+        throw ('B2 pre-restart production EDR IPC/native-ingestion acceptance failed: ' + $detail)
+    }
     $marker = [string]$pre.marker_path
     $incidentId = [string]$pre.incident_id
     if ([string]::IsNullOrWhiteSpace($marker) -or [string]::IsNullOrWhiteSpace($incidentId)) {
@@ -142,36 +182,27 @@ try {
     }
 
     $script:CurrentStage = 'service_restart'
-    $services = @(Get-CimInstance Win32_Service | Where-Object {
-        $p = [string]$_.PathName
-        (-not [string]::IsNullOrWhiteSpace($p)) -and ($p.ToLowerInvariant().Contains('bc-sentinel-protection.exe'))
-    })
-    if ($services.Count -ne 1) {
-        throw ('Expected exactly one installed BC Sentinel Protection Service, found ' + $services.Count)
-    }
-    $serviceName = [string]$services[0].Name
-    Write-Host ('Restarting installed Protection Service through SCM: ' + $serviceName) -ForegroundColor Cyan
-    Restart-Service -Name $serviceName -Force -ErrorAction Stop
-    $deadline = (Get-Date).AddSeconds(15)
-    do {
-        Start-Sleep -Milliseconds 350
-        $svc = Get-Service -Name $serviceName -ErrorAction Stop
-    } while ($svc.Status -ne 'Running' -and (Get-Date) -lt $deadline)
-    if ($svc.Status -ne 'Running') { throw 'Protection Service did not return to Running after restart' }
+    $prePersistencePid = [uint32](Get-ProtectionServiceRecord).ProcessId
+    $service = Restart-ProtectionService -ServiceName $serviceName -PreviousPid $prePersistencePid -Label 'persistence validation'
 
     $script:CurrentStage = 'post_restart_readiness'
     & $Py -m tools.v011_service_readiness --timeout-seconds 12 --poll-seconds 0.5 --output acceptance-v011-beta2-b2-post-restart-readiness.json
-    if ($LASTEXITCODE -ne 0) { throw 'Protection Service readiness failed after B2 restart' }
+    if ($LASTEXITCODE -ne 0) { throw 'Protection Service readiness failed after B2 persistence restart' }
 
     $script:CurrentStage = 'b2_live_post_restart'
     Remove-Item -LiteralPath $PostRestartPath -Force -ErrorAction SilentlyContinue
     & $Py -m tools.v011_beta2_b2_live_acceptance --mode post-restart --marker $marker --incident-id $incidentId --output $PostRestartPath
-    if ($LASTEXITCODE -ne 0) { throw 'B2 EDR store/hunting/Security Center persistence failed after service restart' }
+    $postExit = $LASTEXITCODE
+    $post = Read-JsonSafe $PostRestartPath
+    if ($postExit -ne 0 -or $null -eq $post -or -not [bool]$post.passed) {
+        $detail = if ($null -ne $post -and $post.error) { [string]$post.error } else { 'post-restart result missing/unreadable' }
+        throw ('B2 EDR store/hunting/Security Center persistence failed after service restart: ' + $detail)
+    }
 
     try { Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue } catch { }
 
     $script:CurrentStage = 'completed'
-    Write-Result 'PASS' $script:CurrentStage 'Fresh Beta2 service passed Beta1 hardening/performance plus production EDR IPC, native ingestion, Security Center and restart persistence.'
+    Write-Result 'PASS' $script:CurrentStage 'Fresh Beta2 service passed Beta1 hardening/performance, synchronized its SCM runtime image, then passed production EDR IPC/native ingestion/Security Center and second-restart persistence.'
     Write-Host 'B2 ADMIN LIVE GATE PASS' -ForegroundColor Green
     exit 0
 }
