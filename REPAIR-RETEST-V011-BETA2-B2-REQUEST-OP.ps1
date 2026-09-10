@@ -39,7 +39,9 @@ try {
         @('tools\v011_beta2_b2_frozen_runtime_probe.py','tools/v011_beta2_b2_frozen_runtime_probe.py'),
         @('tests\test_v011_beta2_b2_request_op_compat.py','tests/test_v011_beta2_b2_request_op_compat.py'),
         @('tests\test_v011_beta2_b2_contract.py','tests/test_v011_beta2_b2_contract.py'),
-        @('TEST-V011-BETA2-B2-REQUEST-OP-ADMIN.ps1','TEST-V011-BETA2-B2-REQUEST-OP-ADMIN.ps1')
+        @('TEST-V011-BETA2-B2-REQUEST-OP-ADMIN.ps1','TEST-V011-BETA2-B2-REQUEST-OP-ADMIN.ps1'),
+        @('TEST-V011-BETA2-CHECKPOINT-B2.ps1','TEST-V011-BETA2-CHECKPOINT-B2.ps1'),
+        @('TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1','TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1')
     )
     foreach ($item in $downloads) {
         $local = Join-Path $PSScriptRoot $item[0]
