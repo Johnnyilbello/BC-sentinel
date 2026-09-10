@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,8 @@ from tools.v011_beta2_b2_live_acceptance import (
     EXPECTED_SERVICE_SHA256,
     _call_generic,
     _find_incident,
+    _raw_sha,
+    _sha,
 )
 
 
@@ -17,6 +20,14 @@ def test_b2_is_anchored_to_accepted_b1b_full_hashes():
     assert EXPECTED_PROTOCOL_SHA256 == "2e39ec0422f820e107832b3ba20c62c103ea15cc99639159ea2ec1be211505b1"
     assert EXPECTED_SERVICE_SHA256 == "d5395dc2bb086941796703910143a0598e8fd4da36e53c19e2a910030498fe46"
     assert EXPECTED_CLIENT_SHA256 == "6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595effa66cc9d1"
+
+
+def test_b2_sha_guard_uses_same_normalized_text_semantics_as_b1b(tmp_path: Path):
+    path = tmp_path / "guard.py"
+    path.write_bytes(b"alpha\r\nbeta\r\n")
+    expected = hashlib.sha256("alpha\nbeta\n".encode("utf-8")).hexdigest()
+    assert _sha(path) == expected
+    assert _raw_sha(path) != expected
 
 
 def test_generic_client_binding_uses_named_parameters_without_shifting_defaults():
@@ -113,3 +124,6 @@ def test_b2_resume_requires_pre_admin_evidence_and_finishes_standard_user_gates(
     assert "--mode standard-user" in source
     assert "benchmark-v011-beta1-service.json" in source
     assert "does not replace the preceding 656-test/build evidence" in source
+    assert "v011_beta2_b2_live_acceptance.py" in source
+    assert "$LiveAcceptanceUrl" in source
+    assert "Invoke-WebRequest -Uri $LiveAcceptanceUrl -OutFile $LiveAcceptance" in source
