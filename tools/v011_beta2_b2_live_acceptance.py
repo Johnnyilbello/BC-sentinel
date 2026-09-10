@@ -20,6 +20,13 @@ EXPECTED_CLIENT_SHA256 = "6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595e
 
 
 def _sha(path: Path) -> str:
+    """Match the canonical B1b hash semantics across LF/CRLF platforms."""
+    text = path.read_text(encoding="utf-8")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _raw_sha(path: Path) -> str:
+    """Diagnostic-only byte hash; never used as the B1b acceptance anchor."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -31,13 +38,31 @@ def _source_guards(root: Path) -> dict[str, Any]:
     service_sha = _sha(service)
     client_sha = _sha(client)
     return {
+        "hash_mode": "normalized_utf8_text",
         "protocol_sha256": protocol_sha,
         "service_sha256": service_sha,
         "client_sha256": client_sha,
+        "protocol_raw_sha256": _raw_sha(protocol),
+        "service_raw_sha256": _raw_sha(service),
+        "client_raw_sha256": _raw_sha(client),
         "protocol_matches_b1b": protocol_sha == EXPECTED_PROTOCOL_SHA256,
         "service_matches_b1b": service_sha == EXPECTED_SERVICE_SHA256,
         "client_matches_b1b": client_sha == EXPECTED_CLIENT_SHA256,
     }
+
+
+def _guard_error(guards: dict[str, Any], stage: str) -> RuntimeError:
+    mismatches: list[str] = []
+    for name, expected in (
+        ("protocol", EXPECTED_PROTOCOL_SHA256),
+        ("service", EXPECTED_SERVICE_SHA256),
+        ("client", EXPECTED_CLIENT_SHA256),
+    ):
+        if not bool(guards.get(f"{name}_matches_b1b")):
+            mismatches.append(
+                f"{name}: canonical={guards.get(f'{name}_sha256')} expected={expected} raw={guards.get(f'{name}_raw_sha256')}"
+            )
+    return RuntimeError(f"B1b canonical source SHA guard failed {stage}: " + "; ".join(mismatches))
 
 
 def _instantiate(cls: type) -> Any | None:
@@ -206,7 +231,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 def run_pre_restart(root: Path, output: Path) -> int:
     guards = _source_guards(root)
     if not all(guards[k] for k in ("protocol_matches_b1b", "service_matches_b1b", "client_matches_b1b")):
-        raise RuntimeError("B1b source SHA guard failed before B2 live acceptance")
+        raise _guard_error(guards, "before B2 live acceptance")
 
     client = ProductionClient()
     status = client.call("edr_status")
@@ -269,7 +294,7 @@ def run_pre_restart(root: Path, output: Path) -> int:
 def run_post_restart(root: Path, marker: str, incident_id: str, output: Path) -> int:
     guards = _source_guards(root)
     if not all(guards[k] for k in ("protocol_matches_b1b", "service_matches_b1b", "client_matches_b1b")):
-        raise RuntimeError("B1b source SHA guard failed after service restart")
+        raise _guard_error(guards, "after service restart")
     client = ProductionClient()
     status = client.call("edr_status")
     hunt = _wait_hunt(client, marker, timeout_seconds=8.0)
@@ -301,7 +326,7 @@ def run_post_restart(root: Path, marker: str, incident_id: str, output: Path) ->
 def run_standard_user(root: Path, output: Path) -> int:
     guards = _source_guards(root)
     if not all(guards[k] for k in ("protocol_matches_b1b", "service_matches_b1b", "client_matches_b1b")):
-        raise RuntimeError("B1b source SHA guard failed for standard-user acceptance")
+        raise _guard_error(guards, "for standard-user acceptance")
     client = ProductionClient()
     status = client.call("edr_status")
     client.call("edr_retention_policy")
