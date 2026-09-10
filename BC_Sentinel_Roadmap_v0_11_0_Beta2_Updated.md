@@ -76,7 +76,7 @@ Windows evidence:
 - automatic process kill, file delete and host isolation remain false.
 
 ### Checkpoint B2 — Service-native live/restart/performance acceptance — current
-Prepared B2 gate must prove on the authoritative FULL Windows tree:
+Required scope:
 - full pytest and frozen Beta1 local regression families;
 - fresh Protection Service and UAC Broker build from standard-user PowerShell;
 - real Repair/readiness and frozen Beta1 administrator regression gate;
@@ -90,7 +90,36 @@ Prepared B2 gate must prove on the authoritative FULL Windows tree:
 - existing standard-user → UAC broker acceptance remains green;
 - no reboot is claimed by B2; reboot persistence remains a final-roadmap validation gate.
 
-B2 is not accepted until the authoritative Windows command reaches `BC SENTINEL v0.11.0-beta.2 CHECKPOINT B2 - PASS`.
+#### B2 Windows evidence already accepted for the pre-admin half
+The authoritative FULL Windows run reached the administrator boundary with:
+- all canonical Windows compatibility migrations applied, including threat-trust bounded atomic replace retry;
+- post-B1b source verification PASS;
+- **656 pytest tests PASS**;
+- Beta1 EDR local regression PASS;
+- v0.10 deception/response/clone-scam/RC1 local regression families PASS;
+- B1b structural acceptance PASS;
+- fresh Protection Service and UAC Broker PyInstaller builds PASS;
+- protection integrity manifest generated;
+- production Named Pipe self-test PASS;
+- `BUILD PROTECTION SERVICE + UAC BROKER + FIREWALL OK`.
+
+The run then stopped inside the UAC phase because the B2 wrapper collapsed the underlying frozen Beta1 administrator failure into a generic `beta1_admin_regression` message. No B2 live/restart/least-privilege claim is made from that failed UAC attempt.
+
+#### B2 admin harness hardening / resume policy
+The B2 admin harness now:
+- isolates the child Beta1 pytest temp root through a unique `PYTEST_ADDOPTS --basetemp` value, without changing tests or thresholds;
+- captures the complete child Beta1 administrator log;
+- reads and propagates the exact Beta1 `stage` and `message` on failure;
+- remains fail-closed.
+
+`RETEST-V011-BETA2-B2-FROM-ADMIN.ps1` is the targeted resume gate for the immediately preceding accepted pre-admin run. It is allowed to skip the already-proven 656-test/build half only when:
+- B1b source SHA guards still pass;
+- the local B2 EDR/deception/response/clone-scam/RC1 acceptance JSONs are still PASS;
+- the freshly built Protection Service, Broker and integrity manifest are still present.
+
+The resume then executes the corrected UAC admin gate and the remaining production checks: Beta1 admin regression/performance, production EDR IPC/native ingestion, Security Center visibility, real SCM restart persistence, standard-user → UAC broker regression, standard-user EDR least privilege and final 25/10/250 result verification.
+
+B2 is accepted only when the paired evidence is complete: the preceding 656-test + fresh-build log and a subsequent `BC SENTINEL v0.11.0-beta.2 B2 RESUME - PASS`, or a future full one-command run reaching `BC SENTINEL v0.11.0-beta.2 CHECKPOINT B2 - PASS`.
 
 ### Beta2 final acceptance
 Beta2 is accepted only after Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 are green on the authoritative FULL Windows tree. Beta1 full regression remains mandatory. Reboot persistence is still deferred to final-roadmap validation unless explicitly promoted into this milestone later.
