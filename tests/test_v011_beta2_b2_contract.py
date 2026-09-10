@@ -14,6 +14,7 @@ from tools.v011_beta2_b2_live_acceptance import (
     _raw_sha,
     _sha,
 )
+from tools.v011_beta2_b2_frozen_runtime_probe import _walk_constant_strings
 
 
 def test_b2_is_anchored_to_accepted_b1b_full_hashes():
@@ -28,6 +29,19 @@ def test_b2_sha_guard_uses_same_normalized_text_semantics_as_b1b(tmp_path: Path)
     expected = hashlib.sha256("alpha\nbeta\n".encode("utf-8")).hexdigest()
     assert _sha(path) == expected
     assert _raw_sha(path) != expected
+
+
+def test_frozen_probe_finds_strings_inside_aggregate_compiler_constants():
+    def fixture():
+        values = frozenset({"edr_status", "edr_hunt"})
+        fields = {"edr_status": frozenset(), "edr_hunt": ("indicator", "kind")}
+        return values, fields
+
+    strings = set(_walk_constant_strings(fixture.__code__))
+    assert "edr_status" in strings
+    assert "edr_hunt" in strings
+    assert "indicator" in strings
+    assert "kind" in strings
 
 
 def test_generic_client_binding_uses_named_parameters_without_shifting_defaults():
@@ -202,8 +216,11 @@ def test_b2_live_only_probes_frozen_b1b_code_before_uac():
     assert "tools.v011_beta2_b2_frozen_runtime_probe" in launcher
     assert "Frozen Protection Service B1b probe failed before UAC" in launcher
     assert launcher.index("tools.v011_beta2_b2_frozen_runtime_probe") < launcher.index("Opening B2 live-only UAC phase")
+    assert "_walk_constant_strings" in probe
     assert "protocol_has_edr_status_literal" in probe
     assert "service_has_legacy_dispatch" in probe
     assert "service_has_b1b_dispatch" in probe
     assert "service_references_dispatch_read" in probe
+    assert "dispatch_evidence" in probe
+    assert "request_shape_evidence" in probe
     assert "frozen_b1b_protocol_and_service_present" in probe
