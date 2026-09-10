@@ -4,7 +4,7 @@ import os
 import pytest
 
 from sentinel.threat_packages import ThreatPackageError, ThreatPackageManager
-from tools.v011_threat_package_windows_compat import apply_compat_patch
+from tools.v011_threat_package_windows_compat import HELPER, apply_compat_patch
 
 
 def test_atomic_replace_retries_transient_windows_access_denied(monkeypatch, tmp_path):
@@ -37,7 +37,7 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
     target = tmp_path / "active-yara"
     source.mkdir()
     (source / "active-package.json").write_text("new", encoding="utf-8")
-    real_replace = os.replace
+    real_rename = os.rename
     attempts = {"count": 0}
 
     def flaky_replace(src, dst):
@@ -46,7 +46,12 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
             exc = PermissionError(5, "simulated transient Windows directory access denied")
             exc.winerror = 5
             raise exc
-        return real_replace(src, dst)
+        # Keep this retry-logic test deterministic. A real os.replace() here can
+        # itself hit a genuine transient Windows lock from Defender/indexers,
+        # which correctly causes a fourth helper attempt but makes the unit test
+        # nondeterministic. os.rename() performs the successful filesystem move
+        # without recursing through the monkeypatched os.replace symbol.
+        return real_rename(src, dst)
 
     monkeypatch.setattr(os, "replace", flaky_replace)
     monkeypatch.setattr("sentinel.threat_packages.time.sleep", lambda _: None)
@@ -57,17 +62,21 @@ def test_atomic_replace_retries_transient_windows_access_denied_for_directory(mo
     assert not source.exists()
 
 
-def test_existing_threat_package_patch_is_upgraded_for_yara_directory(tmp_path):
+def test_existing_threat_package_patch_is_upgraded_for_yara_directory_and_retry_helper(tmp_path):
     target = tmp_path / "threat_packages.py"
     target.write_text(
         "from pathlib import Path\n"
-        "import os\n\n"
+        "import os\n"
+        "import time\n\n"
         "class ThreatPackageError(RuntimeError):\n"
         "    pass\n\n"
         "class ThreatPackageManager:\n"
         "    @staticmethod\n"
         "    def _replace_file_with_retry(source: Path, target: Path, *, attempts: int = 8) -> None:\n"
         "        os.replace(source, target)\n\n"
+        "    @staticmethod\n"
+        "    def _remove_tree_with_retry(path: Path, *, required: bool, attempts: int = 6) -> bool:\n"
+        "        return True\n\n"
         "    def publish(self):\n"
         "        self._replace_file_with_retry(tmp, self.state_path)\n"
         "        self._replace_file_with_retry(tmp, self.activation_journal_path)\n"
@@ -83,10 +92,14 @@ def test_existing_threat_package_patch_is_upgraded_for_yara_directory(tmp_path):
     text = target.read_text(encoding="utf-8")
 
     assert first["patched"] is True
-    assert first["upgrade"] == "yara_directory_retry"
+    assert "retry_helper_canonicalized" in first["upgrades"]
+    assert "yara_directory_retry" in first["upgrades"]
     assert second["patched"] is False
     assert text.count("self._replace_file_with_retry(tmp, self.active_yara_dir)") == 1
     assert "os.replace(tmp, self.active_yara_dir)" not in text
+    helper_start = text.index("    @staticmethod\n    def _replace_file_with_retry(")
+    helper_end = text.index("    @staticmethod\n    def _remove_tree_with_retry", helper_start)
+    assert text[helper_start:helper_end] == HELPER
 
 
 def test_atomic_replace_fails_closed_after_bounded_transient_retries(monkeypatch, tmp_path):
