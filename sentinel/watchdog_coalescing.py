@@ -38,9 +38,11 @@ class CoalescingEventHandlerProxy:
     quiet-period semantics without heap stale entries or full-map rescans.
 
     Lightweight runtime diagnostics attribute CPU spent inside the wrapped
-    realtime handler by monitored-root category and watchdog event type. The
-    worker name carries the dominant bucket so the external service benchmark
-    can identify the expensive path without weakening realtime coverage.
+    realtime handler by monitored-root category and watchdog event type. Root
+    detection includes structural Windows path recognition so a LocalSystem
+    service can still classify the interactive user's Downloads/Desktop/etc.
+    The worker name carries the dominant bucket and path group for the external
+    benchmark. Diagnostics never suppress or rewrite security events.
     """
 
     DEFAULT_MODIFIED_WINDOW_SECONDS = 0.50
@@ -51,10 +53,6 @@ class CoalescingEventHandlerProxy:
     _instances_by_inner: WeakKeyDictionary = WeakKeyDictionary()
 
     def __new__(cls, inner, *args, **kwargs):
-        # RealtimeMonitor schedules the same handler on several roots. Reuse one
-        # live proxy/worker for that handler. Weak keys avoid extending handler
-        # lifetime; unusual non-weakrefable/unhashable handlers safely fall back
-        # to an independent proxy rather than weakening event delivery.
         try:
             with cls._registry_lock:
                 existing = cls._instances_by_inner.get(inner)
@@ -104,8 +102,11 @@ class CoalescingEventHandlerProxy:
 
         self._forward_counts: dict[str, int] = {}
         self._forward_cpu_seconds: dict[str, float] = {}
+        self._forward_detail_cpu_seconds: dict[str, float] = {}
         self._dominant_bucket = "none"
         self._dominant_bucket_cpu_seconds = 0.0
+        self._dominant_detail = "none"
+        self._dominant_detail_cpu_seconds = 0.0
         self._diagnostic_roots = self._build_diagnostic_roots()
 
         self._worker = Thread(
@@ -123,6 +124,11 @@ class CoalescingEventHandlerProxy:
             return os.path.normcase(os.path.abspath(os.path.expandvars(os.path.expanduser(raw))))
         except Exception:
             return os.path.normcase(str(raw))
+
+    @staticmethod
+    def _windows_parts(raw: str) -> list[str]:
+        text = str(raw or "").replace("/", "\\")
+        return [part for part in text.split("\\") if part]
 
     @classmethod
     def _build_diagnostic_roots(cls) -> list[tuple[str, str]]:
@@ -145,32 +151,97 @@ class CoalescingEventHandlerProxy:
         roots.sort(key=lambda item: len(item[1]), reverse=True)
         return roots
 
-    def _diagnostic_bucket(self, event) -> str:
-        event_type = str(getattr(event, "event_type", "") or "unknown").lower()
-        raw_path = str(getattr(event, "src_path", "") or getattr(event, "dest_path", "") or "")
+    @classmethod
+    def _structural_root_label(cls, raw_path: str) -> str | None:
+        parts = [part.casefold() for part in cls._windows_parts(raw_path)]
+        if not parts:
+            return None
+
+        for marker, label in (
+            ("downloads", "Downloads"),
+            ("desktop", "Desktop"),
+            ("documents", "Documents"),
+        ):
+            if marker in parts:
+                return label
+
+        for index in range(max(0, len(parts) - 4)):
+            tail = parts[index : index + 4]
+            if len(tail) >= 3 and tail[0] == "appdata" and tail[1] == "local" and tail[2] == "temp":
+                return "Temp"
+            if len(tail) >= 2 and tail[0] == "appdata" and tail[1] == "roaming":
+                return "AppData"
+        return None
+
+    def _diagnostic_root_label(self, raw_path: str) -> str:
+        structural = self._structural_root_label(raw_path)
+        if structural:
+            return structural
+
         path = self._normalize_path(raw_path)
-        root_label = "Other"
         for label, root in self._diagnostic_roots:
             if path == root or path.startswith(root + os.sep):
-                root_label = label
-                break
-        return f"{root_label}:{event_type}"
+                return label
+        return "Other"
 
-    def _record_forward_diagnostic(self, bucket: str, cpu_seconds: float) -> None:
+    @classmethod
+    def _diagnostic_path_group(cls, raw_path: str, root_label: str) -> str:
+        parts = cls._windows_parts(raw_path)
+        if not parts:
+            return "unknown"
+        folded = [part.casefold() for part in parts]
+
+        marker_candidates = {
+            "Downloads": ("downloads",),
+            "Desktop": ("desktop",),
+            "Documents": ("documents",),
+            "AppData": ("roaming",),
+            "Temp": ("temp",),
+        }
+        markers = marker_candidates.get(root_label, ())
+        for marker in markers:
+            if marker in folded:
+                index = folded.index(marker)
+                if index + 1 < len(parts):
+                    child = parts[index + 1]
+                    return child[:36] if child else root_label
+                return root_label
+
+        if len(parts) >= 2:
+            parent = parts[-2]
+            return parent[:36] if parent else "Other"
+        return parts[-1][:36] or "Other"
+
+    def _diagnostic_identity(self, event) -> tuple[str, str]:
+        event_type = str(getattr(event, "event_type", "") or "unknown").lower()
+        raw_path = str(getattr(event, "src_path", "") or getattr(event, "dest_path", "") or "")
+        root_label = self._diagnostic_root_label(raw_path)
+        bucket = f"{root_label}:{event_type}"
+        group = self._diagnostic_path_group(raw_path, root_label)
+        detail = f"{bucket}|{group}"
+        return bucket, detail
+
+    def _record_forward_diagnostic(self, bucket: str, detail: str, cpu_seconds: float) -> None:
+        cpu = max(0.0, float(cpu_seconds))
         with self._diag_lock:
             self._forward_counts[bucket] = self._forward_counts.get(bucket, 0) + 1
-            total_cpu = self._forward_cpu_seconds.get(bucket, 0.0) + max(0.0, float(cpu_seconds))
+            total_cpu = self._forward_cpu_seconds.get(bucket, 0.0) + cpu
             self._forward_cpu_seconds[bucket] = total_cpu
+            detail_cpu = self._forward_detail_cpu_seconds.get(detail, 0.0) + cpu
+            self._forward_detail_cpu_seconds[detail] = detail_cpu
+
             if total_cpu >= self._dominant_bucket_cpu_seconds:
                 self._dominant_bucket = bucket
                 self._dominant_bucket_cpu_seconds = total_cpu
+            if detail_cpu >= self._dominant_detail_cpu_seconds:
+                self._dominant_detail = detail
+                self._dominant_detail_cpu_seconds = detail_cpu
                 try:
-                    self._worker.name = f"BCS-RealtimeDispatch[{bucket}]"
+                    self._worker.name = f"BCS-RealtimeDispatch[{detail}]"
                 except Exception:
                     pass
 
     def dispatch(self, event):
-        """Accept a watchdog event without doing heavy realtime work inline."""
         self.received += 1
         event_type = str(getattr(event, "event_type", "") or "").lower()
         is_directory = bool(getattr(event, "is_directory", False))
@@ -202,11 +273,6 @@ class CoalescingEventHandlerProxy:
                             if already_pending:
                                 self._pending_modified.move_to_end(path)
                                 self.scheduler_reorders += 1
-
-                            # With one fixed debounce window, every new/extended
-                            # deadline is >= the current earliest deadline. Only
-                            # the transition from empty -> non-empty needs to wake
-                            # an idle worker; immediate events notify separately.
                             if was_empty:
                                 self._cv.notify()
                 if fallback is None:
@@ -229,7 +295,6 @@ class CoalescingEventHandlerProxy:
         return None
 
     def close(self, timeout: float = 2.0) -> None:
-        """Flush queued work once and stop the worker; safe to call repeatedly."""
         with self._cv:
             if self._closed:
                 return
@@ -256,8 +321,6 @@ class CoalescingEventHandlerProxy:
                 "scheduler_reorders": int(self.scheduler_reorders),
                 "dispatch_sharing_profile": "shared_by_inner_v1",
                 "shared_reuses": int(self.shared_reuses),
-                # Legacy diagnostic keys remain present so older status readers
-                # fail safely while making it explicit that the heap is gone.
                 "scheduler_heap_entries": 0,
                 "scheduler_heap_pushes": 0,
                 "scheduler_stale_pops": 0,
@@ -268,13 +331,19 @@ class CoalescingEventHandlerProxy:
         with self._diag_lock:
             base.update(
                 {
-                    "diagnostic_profile": "root_event_cpu_v1",
+                    "diagnostic_profile": "root_event_path_cpu_v2",
                     "diagnostic_dominant_bucket": self._dominant_bucket,
                     "diagnostic_dominant_cpu_seconds": round(self._dominant_bucket_cpu_seconds, 6),
+                    "diagnostic_dominant_detail": self._dominant_detail,
+                    "diagnostic_dominant_detail_cpu_seconds": round(self._dominant_detail_cpu_seconds, 6),
                     "diagnostic_forward_counts": dict(sorted(self._forward_counts.items())),
                     "diagnostic_forward_cpu_seconds": {
                         key: round(value, 6)
                         for key, value in sorted(self._forward_cpu_seconds.items())
+                    },
+                    "diagnostic_detail_cpu_seconds": {
+                        key: round(value, 6)
+                        for key, value in sorted(self._forward_detail_cpu_seconds.items())
                     },
                 }
             )
@@ -312,17 +381,14 @@ class CoalescingEventHandlerProxy:
             try:
                 self._forward(event)
             except Exception:
-                # Preserve the observer/worker lifetime. The wrapped BC Sentinel
-                # handler owns its normal error/reporting policy; this counter is
-                # diagnostic evidence if an unexpected exception escapes it.
                 self.worker_errors += 1
 
     def _forward(self, event):
-        bucket = self._diagnostic_bucket(event)
+        bucket, detail = self._diagnostic_identity(event)
         cpu_started = thread_time()
         try:
             result = self._inner.dispatch(event)
             self.forwarded += 1
             return result
         finally:
-            self._record_forward_diagnostic(bucket, thread_time() - cpu_started)
+            self._record_forward_diagnostic(bucket, detail, thread_time() - cpu_started)
