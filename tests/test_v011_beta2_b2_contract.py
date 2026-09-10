@@ -156,14 +156,22 @@ def test_b2_live_only_resume_reuses_only_verified_prior_evidence():
     assert "tools.broker_acceptance" in source
     assert "B2 LIVE-ONLY RESUME - PASS" in source
     assert "UPDATE-TEST-V011-BETA2-CHECKPOINT-B2" not in source
+    assert "tests\\test_v011_beta2_b2_contract.py' -OutFile $ContractTest" in source
 
 
-def test_b2_live_only_admin_runs_restart_and_reports_exact_live_failure():
+def test_b2_live_only_admin_synchronizes_runtime_then_tests_persistence_restart():
     source = Path("TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1").read_text(encoding="utf-8")
     assert "acceptance-v011-beta1-admin-phase-result.json" in source
     assert "benchmark-v011-beta1-service.json" in source
+    sync_index = source.index("$script:CurrentStage = 'runtime_sync_restart'")
+    pre_index = source.index("$script:CurrentStage = 'b2_live_pre_restart'")
+    persistence_index = source.index("$script:CurrentStage = 'service_restart'")
+    post_index = source.index("$script:CurrentStage = 'b2_live_post_restart'")
+    assert sync_index < pre_index < persistence_index < post_index
+    assert source.count("Restart-ProtectionService") >= 3  # definition + two invocations
+    assert "runtime image freshness is unproven" in source
+    assert "runtime_sync_readiness" in source
     assert "--mode pre-restart" in source
-    assert "Restart-Service" in source
     assert "--mode post-restart" in source
     assert "B2 pre-restart live acceptance failed:" in source
     assert "B2 post-restart live acceptance failed:" in source
