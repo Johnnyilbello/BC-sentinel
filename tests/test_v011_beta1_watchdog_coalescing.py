@@ -221,3 +221,21 @@ def test_same_inner_handler_reuses_one_live_dispatch_worker():
         ]
     finally:
         first.close()
+
+
+def test_dispatch_diagnostics_attribute_temp_root_and_event(monkeypatch, tmp_path):
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    inner = _Inner()
+    proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=0.05)
+    try:
+        path = tmp_path / "diagnostic.exe"
+        assert proxy.dispatch(_event("created", str(path))) is None
+        _wait_count(inner, 1)
+
+        status = proxy.status()
+        assert status["diagnostic_profile"] == "root_event_cpu_v1"
+        assert status["diagnostic_dominant_bucket"] == "Temp:created"
+        assert status["diagnostic_forward_counts"]["Temp:created"] == 1
+        assert "BCS-RealtimeDispatch[Temp:created]" == proxy._worker.name
+    finally:
+        proxy.close()
