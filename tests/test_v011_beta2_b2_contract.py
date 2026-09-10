@@ -93,6 +93,17 @@ def test_b2_admin_harness_preserves_beta1_detail_and_isolates_pytest_temp():
     assert "--max-idle-cpu-percent 25" not in source  # thresholds stay owned by frozen Beta1 gate
 
 
+def test_b2_admin_forces_utf8_only_for_child_acceptance_tree():
+    source = Path("TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1").read_text(encoding="utf-8")
+    assert "$env:PYTHONUTF8 = '1'" in source
+    assert "$env:PYTHONIOENCODING = 'utf-8'" in source
+    assert "$PreviousPythonUtf8 = $env:PYTHONUTF8" in source
+    assert "$PreviousPythonIoEncoding = $env:PYTHONIOENCODING" in source
+    assert "Remove-Item Env:PYTHONUTF8" in source
+    assert "Remove-Item Env:PYTHONIOENCODING" in source
+    assert "Get-Content -LiteralPath $Path -Encoding UTF8" in source
+
+
 def test_b2_resume_requires_pre_admin_evidence_and_finishes_standard_user_gates():
     source = Path("RETEST-V011-BETA2-B2-FROM-ADMIN.ps1").read_text(encoding="utf-8")
     assert "acceptance-v011-beta2-b2-edr-local.json" in source
