@@ -47,44 +47,53 @@ Windows evidence:
 - accepted B1a service-core SHA `9b3af57236b68de1ed5f7e23808d3d409ad2a64499a484696819467b9d5f0ca3`;
 - backup `protection_service_core.py.pre-v011-beta2-b1a.bak` created.
 
-B1a does not claim authenticated EDR IPC, Inbox merge, native-live ingestion, restart persistence or performance acceptance.
-
 ### Checkpoint B1b-preflight — Authenticated IPC structure discovery — accepted
-The authoritative FULL IPC surface was captured without mutation before B1b implementation.
-
 Windows evidence:
 - 13 targeted pytest tests PASS;
 - B1b preflight PASS;
 - accepted protocol SHA-256 `cffcdaaea7850f2e0d995a75e14f18471bef9e920b57860b7ad68ce01e43090d`;
 - accepted B1a service-core SHA-256 `9b3af57236b68de1ed5f7e23808d3d409ad2a64499a484696819467b9d5f0ca3`;
 - accepted production client SHA-256 `6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595effa66cc9d1`;
-- `validate_request`, `PRIVILEGED_OPERATIONS`, `_authorize` and `dispatch_validated` all discovered;
+- `validate_request`, `PRIVILEGED_OPERATIONS`, `_authorize` and `dispatch_validated` discovered;
 - no protocol, dispatcher, authorization or client source was modified by the preflight.
 
-### Checkpoint B1b — Authenticated EDR IPC + Security Center integration — current
-Implementation candidate is prepared but is not accepted until its Windows gate is green.
-
-Required/implemented scope:
+### Checkpoint B1b — Authenticated EDR IPC + Security Center integration — accepted
+Implemented and accepted scope:
 - authenticated Named Pipe read operations for EDR status, timeline, process tree, incidents, incident evidence, root cause and IOC hunts;
 - bounded server-side query payloads with strict per-operation field allowlists and unknown-field rejection;
 - `edr_update_retention` classified as privileged and forced through the existing `_authorize`/UAC-admin path;
 - qualified persistent HIGH EDR incidents projected into the existing `pending_threats` Security Center source as review-only records;
 - existing production client source remains unchanged and SHA-guarded;
-- transactional FULL patch with exact SHA guards, backups, post-write verification and protocol rollback if service promotion fails;
+- transactional FULL patch with exact SHA guards, backups, post-write verification and rollback protection;
 - no arbitrary RPC, generic runtime method dispatch, pickle/object deserialization, shell execution or autonomous remediation added.
 
-B1b acceptance must prove all targeted Beta1/Beta2 regressions, patcher tests, strict bridge payload tests, B1a preservation, compile/import gates and `tools.v011_beta2_b1b_acceptance`.
+Windows evidence:
+- 44 targeted pytest tests PASS;
+- B1b preflight, patch verification, B1a preservation, compile/import and B1b acceptance all PASS;
+- accepted post-B1b protocol SHA-256 `2e39ec0422f820e107832b3ba20c62c103ea15cc99639159ea2ec1be211505b1`;
+- accepted post-B1b service-core SHA-256 `d5395dc2bb086941796703910143a0598e8fd4da36e53c19e2a910030498fe46`;
+- production client remains `6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595effa66cc9d1`;
+- automatic process kill, file delete and host isolation remain false.
 
-### Checkpoint B2 — Service-native live/restart/performance acceptance
-- fresh Protection Service and UAC Broker build;
-- real service-owned native event ingestion;
-- authenticated EDR IPC over production Named Pipe;
-- restart persistence for store/hunting indexes;
-- Security Center Inbox visibility for qualified test incidents;
-- Beta1 full regression and performance thresholds `25 / 10 / 250` unchanged.
+### Checkpoint B2 — Service-native live/restart/performance acceptance — current
+Prepared B2 gate must prove on the authoritative FULL Windows tree:
+- full pytest and frozen Beta1 local regression families;
+- fresh Protection Service and UAC Broker build from standard-user PowerShell;
+- real Repair/readiness and frozen Beta1 administrator regression gate;
+- enforced service performance thresholds `idle <=25%`, `IPC >=10/s`, `storm <=250%` measured before B2 synthetic workload;
+- authenticated EDR reads over the production Named Pipe;
+- privileged `edr_update_retention` accepted only in administrator context and exercised with the existing values so the effective policy is unchanged;
+- harmless native `%TEMP%` marker acquired by the existing realtime pipeline and discoverable through exact `edr_hunt`;
+- qualified harmless HIGH test incident visible through the existing Security Center `pending_threats` projection as review-only;
+- real SCM service restart, followed by readiness and persistence verification for both the hunted native marker and Security Center incident;
+- standard-user authenticated EDR reads remain available while direct privileged retention is rejected;
+- existing standard-user → UAC broker acceptance remains green;
+- no reboot is claimed by B2; reboot persistence remains a final-roadmap validation gate.
+
+B2 is not accepted until the authoritative Windows command reaches `BC SENTINEL v0.11.0-beta.2 CHECKPOINT B2 - PASS`.
 
 ### Beta2 final acceptance
-Beta2 is not accepted until Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 are green on the authoritative FULL Windows tree. Beta1 full regression remains mandatory.
+Beta2 is accepted only after Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 are green on the authoritative FULL Windows tree. Beta1 full regression remains mandatory. Reboot persistence is still deferred to final-roadmap validation unless explicitly promoted into this milestone later.
 
 ## Safety invariants carried forward
 - no single heuristic HIGH;
