@@ -131,6 +131,17 @@ def test_b2_admin_forces_utf8_only_for_child_acceptance_tree():
     assert "Get-Content -LiteralPath $Path -Encoding UTF8" in source
 
 
+def test_b2_full_admin_synchronizes_runtime_before_live_edr():
+    source = Path("TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1").read_text(encoding="utf-8")
+    sync_index = source.index("$script:CurrentStage = 'runtime_sync_restart'")
+    pre_index = source.index("$script:CurrentStage = 'b2_live_pre_restart'")
+    persistence_index = source.index("$script:CurrentStage = 'service_restart'")
+    assert sync_index < pre_index < persistence_index
+    assert "runtime image freshness is unproven" in source
+    assert "runtime_sync_readiness" in source
+    assert source.count("Restart-ProtectionService") >= 3
+
+
 def test_b2_resume_requires_pre_admin_evidence_and_finishes_standard_user_gates():
     source = Path("RETEST-V011-BETA2-B2-FROM-ADMIN.ps1").read_text(encoding="utf-8")
     assert "acceptance-v011-beta2-b2-edr-local.json" in source
@@ -156,7 +167,8 @@ def test_b2_live_only_resume_reuses_only_verified_prior_evidence():
     assert "tools.broker_acceptance" in source
     assert "B2 LIVE-ONLY RESUME - PASS" in source
     assert "UPDATE-TEST-V011-BETA2-CHECKPOINT-B2" not in source
-    assert "tests\\test_v011_beta2_b2_contract.py' -OutFile $ContractTest" in source
+    assert "$ContractTest = Join-Path $PSScriptRoot 'tests\\test_v011_beta2_b2_contract.py'" in source
+    assert "-OutFile $ContractTest" in source
 
 
 def test_b2_live_only_admin_synchronizes_runtime_then_tests_persistence_restart():
@@ -168,7 +180,7 @@ def test_b2_live_only_admin_synchronizes_runtime_then_tests_persistence_restart(
     persistence_index = source.index("$script:CurrentStage = 'service_restart'")
     post_index = source.index("$script:CurrentStage = 'b2_live_post_restart'")
     assert sync_index < pre_index < persistence_index < post_index
-    assert source.count("Restart-ProtectionService") >= 3  # definition + two invocations
+    assert source.count("Restart-ProtectionService") >= 3
     assert "runtime image freshness is unproven" in source
     assert "runtime_sync_readiness" in source
     assert "--mode pre-restart" in source
