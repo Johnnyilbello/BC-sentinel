@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict, deque
+import os
 from threading import Condition, Lock, Thread
-from time import monotonic
+from time import monotonic, thread_time
 from weakref import WeakKeyDictionary
 
 
@@ -35,6 +36,11 @@ class CoalescingEventHandlerProxy:
     ``monotonic() + fixed_window``, new/extended deadlines are naturally
     non-decreasing. Moving an updated path to the end therefore preserves exact
     quiet-period semantics without heap stale entries or full-map rescans.
+
+    Lightweight runtime diagnostics attribute CPU spent inside the wrapped
+    realtime handler by monitored-root category and watchdog event type. The
+    worker name carries the dominant bucket so the external service benchmark
+    can identify the expensive path without weakening realtime coverage.
     """
 
     DEFAULT_MODIFIED_WINDOW_SECONDS = 0.50
@@ -79,6 +85,7 @@ class CoalescingEventHandlerProxy:
         self._max_pending_modified = max(128, int(max_pending_modified))
 
         self._cv = Condition()
+        self._diag_lock = Lock()
         self._immediate = deque()
         self._pending_modified: OrderedDict[str, tuple[float, object]] = OrderedDict()
         self._stopping = False
@@ -95,12 +102,72 @@ class CoalescingEventHandlerProxy:
         self.worker_waits = 0
         self.shared_reuses = 0
 
+        self._forward_counts: dict[str, int] = {}
+        self._forward_cpu_seconds: dict[str, float] = {}
+        self._dominant_bucket = "none"
+        self._dominant_bucket_cpu_seconds = 0.0
+        self._diagnostic_roots = self._build_diagnostic_roots()
+
         self._worker = Thread(
             target=self._run,
             name="BCS-RealtimeDispatch",
             daemon=True,
         )
         self._worker.start()
+
+    @staticmethod
+    def _normalize_path(raw: str) -> str:
+        if not raw:
+            return ""
+        try:
+            return os.path.normcase(os.path.abspath(os.path.expandvars(os.path.expanduser(raw))))
+        except Exception:
+            return os.path.normcase(str(raw))
+
+    @classmethod
+    def _build_diagnostic_roots(cls) -> list[tuple[str, str]]:
+        home = os.path.expanduser("~")
+        candidates = (
+            ("Downloads", os.path.join(home, "Downloads")),
+            ("Desktop", os.path.join(home, "Desktop")),
+            ("Documents", os.path.join(home, "Documents")),
+            ("Temp", os.getenv("TEMP", "")),
+            ("AppData", os.getenv("APPDATA", "")),
+        )
+        roots: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for label, raw in candidates:
+            normalized = cls._normalize_path(raw)
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            roots.append((label, normalized))
+        roots.sort(key=lambda item: len(item[1]), reverse=True)
+        return roots
+
+    def _diagnostic_bucket(self, event) -> str:
+        event_type = str(getattr(event, "event_type", "") or "unknown").lower()
+        raw_path = str(getattr(event, "src_path", "") or getattr(event, "dest_path", "") or "")
+        path = self._normalize_path(raw_path)
+        root_label = "Other"
+        for label, root in self._diagnostic_roots:
+            if path == root or path.startswith(root + os.sep):
+                root_label = label
+                break
+        return f"{root_label}:{event_type}"
+
+    def _record_forward_diagnostic(self, bucket: str, cpu_seconds: float) -> None:
+        with self._diag_lock:
+            self._forward_counts[bucket] = self._forward_counts.get(bucket, 0) + 1
+            total_cpu = self._forward_cpu_seconds.get(bucket, 0.0) + max(0.0, float(cpu_seconds))
+            self._forward_cpu_seconds[bucket] = total_cpu
+            if total_cpu >= self._dominant_bucket_cpu_seconds:
+                self._dominant_bucket = bucket
+                self._dominant_bucket_cpu_seconds = total_cpu
+                try:
+                    self._worker.name = f"BCS-RealtimeDispatch[{bucket}]"
+                except Exception:
+                    pass
 
     def dispatch(self, event):
         """Accept a watchdog event without doing heavy realtime work inline."""
@@ -173,9 +240,9 @@ class CoalescingEventHandlerProxy:
             self._closed = True
             self._cv.notify_all()
 
-    def status(self) -> dict[str, int | bool | str]:
+    def status(self) -> dict[str, object]:
         with self._cv:
-            return {
+            base = {
                 "received": int(self.received),
                 "forwarded": int(self.forwarded),
                 "coalesced": int(self.coalesced),
@@ -198,6 +265,20 @@ class CoalescingEventHandlerProxy:
                 "worker_waits": int(self.worker_waits),
                 "worker_alive": bool(self._worker.is_alive()),
             }
+        with self._diag_lock:
+            base.update(
+                {
+                    "diagnostic_profile": "root_event_cpu_v1",
+                    "diagnostic_dominant_bucket": self._dominant_bucket,
+                    "diagnostic_dominant_cpu_seconds": round(self._dominant_bucket_cpu_seconds, 6),
+                    "diagnostic_forward_counts": dict(sorted(self._forward_counts.items())),
+                    "diagnostic_forward_cpu_seconds": {
+                        key: round(value, 6)
+                        for key, value in sorted(self._forward_cpu_seconds.items())
+                    },
+                }
+            )
+        return base
 
     def _run(self) -> None:
         while True:
@@ -237,6 +318,11 @@ class CoalescingEventHandlerProxy:
                 self.worker_errors += 1
 
     def _forward(self, event):
-        result = self._inner.dispatch(event)
-        self.forwarded += 1
-        return result
+        bucket = self._diagnostic_bucket(event)
+        cpu_started = thread_time()
+        try:
+            result = self._inner.dispatch(event)
+            self.forwarded += 1
+            return result
+        finally:
+            self._record_forward_diagnostic(bucket, thread_time() - cpu_started)
