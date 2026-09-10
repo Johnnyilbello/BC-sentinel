@@ -8,6 +8,28 @@ function Fail([string]$Message) {
     exit 1
 }
 
+function Download-RequiredFile(
+    [string]$Destination,
+    [string]$PrimaryUri,
+    [string]$FallbackUri
+) {
+    $parent = Split-Path -Parent $Destination
+    if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    Write-Host ('Downloading: ' + $PrimaryUri) -ForegroundColor DarkGray
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $PrimaryUri -OutFile $Destination -ErrorAction Stop
+        return
+    }
+    catch {
+        Write-Host ('Pinned RAW download failed: ' + $_.Exception.Message) -ForegroundColor Yellow
+        Write-Host ('Retrying branch fallback: ' + $FallbackUri) -ForegroundColor DarkGray
+        Invoke-WebRequest -UseBasicParsing -Uri $FallbackUri -OutFile $Destination -ErrorAction Stop
+    }
+}
+
 try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($id)
@@ -21,22 +43,24 @@ try {
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
 
     $Py = '.\.venv\Scripts\python.exe'
-    $PatchRef = 'fef9ef62934130f1558079be44a305a83065f1a6'
+    $PatchRef = '848a7377d652e379dc632302b53824061b8966cd'
+    $PatchBranch = 'fix/v011-beta2-b2-interactive-temp-watchdog'
     $ResumeRef = '1cfc20346c77148b5497b2a4dd2794ce06cc273e'
+    $ResumeBranch = 'checkpoint/v011-beta2-b2-current-1cfc203'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - B2 INTERACTIVE TEMP WATCHDOG REPAIR' -ForegroundColor Cyan
     Write-Host 'Fixes service-account vs interactive-user TEMP classification. No timeout or 25/10/250 threshold relaxation.' -ForegroundColor Yellow
 
-    $downloads = @(
-        @('.\tools\v011_beta2_b2_temp_root_compat.py', $RepoRaw + $PatchRef + '/tools/v011_beta2_b2_temp_root_compat.py'),
-        @('.\tests\test_v011_beta2_b2_temp_root_compat.py', $RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_temp_root_compat.py')
-    )
-    foreach ($item in $downloads) {
-        $parent = Split-Path -Parent $item[0]
-        if ($parent -and -not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-        Invoke-WebRequest -Uri $item[1] -OutFile $item[0]
-    }
+    Download-RequiredFile `
+        '.\tools\v011_beta2_b2_temp_root_compat.py' `
+        ($RepoRaw + $PatchRef + '/tools/v011_beta2_b2_temp_root_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tools/v011_beta2_b2_temp_root_compat.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta2_b2_temp_root_compat.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_temp_root_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta2_b2_temp_root_compat.py')
 
     $realtimePath = Join-Path $PSScriptRoot 'sentinel\realtime.py'
     $beforeHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -69,7 +93,10 @@ try {
     Write-Host ('CORRECTED TEMP-WATCHDOG BUILD: SHA256=' + $distHash) -ForegroundColor Green
 
     $resume = Join-Path $PSScriptRoot 'RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1'
-    Invoke-WebRequest -Uri ($RepoRaw + $ResumeRef + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1') -OutFile $resume
+    Download-RequiredFile `
+        $resume `
+        ($RepoRaw + $ResumeRef + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1') `
+        ($RepoRaw + $ResumeBranch + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1')
 
     Write-Host 'Launching the existing stabilized B2 resume against the freshly corrected build...' -ForegroundColor Yellow
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $resume
