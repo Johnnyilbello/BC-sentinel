@@ -73,6 +73,8 @@ try {
     # installed service binary or accepted B1b integration file is overlaid.
     $LiveAcceptance = Join-Path $PSScriptRoot 'tools\v011_beta2_b2_live_acceptance.py'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tools/v011_beta2_b2_live_acceptance.py' -OutFile $LiveAcceptance
+    $FrozenProbe = Join-Path $PSScriptRoot 'tools\v011_beta2_b2_frozen_runtime_probe.py'
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tools/v011_beta2_b2_frozen_runtime_probe.py' -OutFile $FrozenProbe
     $AdminLiveScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1' -OutFile $AdminLiveScript
     $FullAdminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'
@@ -92,6 +94,30 @@ try {
     }
     finally {
         Remove-Item -LiteralPath $ContractPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # Inspect the actual frozen Python code before touching SCM. Module presence
+    # alone is insufficient: stale PyInstaller cache can package pre-B1b code
+    # while still including the new EDR modules.
+    $DistService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
+    $InstalledService = Join-Path $env:ProgramFiles 'BC Sentinel\Protection\BC-Sentinel-Protection.exe'
+    if (-not (Test-Path -LiteralPath $InstalledService)) { throw ('Installed Protection Service executable missing: ' + $InstalledService) }
+    $distHash = (Get-FileHash -LiteralPath $DistService -Algorithm SHA256).Hash.ToLowerInvariant()
+    $installedHash = (Get-FileHash -LiteralPath $InstalledService -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($distHash -ne $installedHash) { throw 'Fresh dist and installed Protection Service binaries differ before frozen-runtime probe' }
+
+    $FrozenDistResult = Join-Path $PSScriptRoot 'probe-v011-beta2-b2-frozen-dist.json'
+    & $Py -m tools.v011_beta2_b2_frozen_runtime_probe --exe $DistService --output $FrozenDistResult
+    $frozenExit = $LASTEXITCODE
+    $frozen = Read-JsonSafe $FrozenDistResult
+    if ($frozenExit -ne 0 -or $null -eq $frozen -or -not [bool]$frozen.passed) {
+        $classification = if ($null -ne $frozen -and $frozen.classification) { [string]$frozen.classification } else { 'probe_unreadable' }
+        $detail = if ($null -ne $frozen -and $frozen.error) { [string]$frozen.error } else { '' }
+        throw ('Frozen Protection Service B1b probe failed before UAC: ' + $classification + $(if ($detail) { ' | ' + $detail } else { '' }))
+    }
+    Write-Host ('B2 FROZEN RUNTIME PROBE PASS: ' + [string]$frozen.classification) -ForegroundColor Green
+    if ($frozen.service_dispatch_validated_callers_in_module) {
+        Write-Host ('dispatch_validated callers in frozen service module: ' + (($frozen.service_dispatch_validated_callers_in_module | ForEach-Object { [string]$_ }) -join ', ')) -ForegroundColor DarkCyan
     }
 
     $adminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-live-admin-result.json'
