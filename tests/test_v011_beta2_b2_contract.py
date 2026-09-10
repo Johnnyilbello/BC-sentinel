@@ -58,3 +58,20 @@ def test_b2_live_acceptance_contains_no_destructive_response_primitives():
     source = Path("tools/v011_beta2_b2_live_acceptance.py").read_text(encoding="utf-8")
     forbidden = ("TerminateProcess(", "os.remove(", "shutil.rmtree(", "firewall_block_remote", "host_isolation = True")
     assert not any(token in source for token in forbidden)
+
+
+def test_b2_reapplies_frozen_beta1_compatibility_migrations_before_pytest():
+    source = Path("TEST-V011-BETA2-CHECKPOINT-B2.ps1").read_text(encoding="utf-8")
+    migrations = (
+        "tools.v011_legacy_test_compat",
+        "tools.v011_threat_package_windows_compat",
+        "tools.v011_threat_index_windows_compat",
+        "tools.v011_service_update_windows_compat",
+        "tools.v011_low_cpu_runtime_compat",
+    )
+    pytest_index = source.index("& $Py -m pytest -q --basetemp $PytestTemp")
+    for migration in migrations:
+        assert migration in source
+        assert source.index(migration) < pytest_index
+    assert "Compatibility migration failed before B2 pytest" in source
+    assert "Enforced 25/10/250 service-performance result missing or failed in B2" in source
