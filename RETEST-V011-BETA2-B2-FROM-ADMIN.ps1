@@ -49,7 +49,8 @@ try {
         if (-not (Test-Path -LiteralPath $item)) { throw ('B2 resume prerequisite missing: ' + $item) }
     }
 
-    # Prove the accepted B1b source anchors are still intact.
+    # Prove the accepted B1b structural anchors are still intact before any
+    # live work. This verifier intentionally uses the B1b canonical text hash.
     & $Py -m tools.v011_beta2_b1b_patch --verify-only --output integration-v011-beta2-b1b-before-b2-resume.json
     if ($LASTEXITCODE -ne 0) { throw 'B1b source guards are not intact; full B2 must be rerun instead of resuming' }
 
@@ -62,11 +63,15 @@ try {
     Require-PassedJson '.\acceptance-v011-beta2-b2-clone-scam-local.json' 'v0.10 clone/scam local regression'
     Require-PassedJson '.\acceptance-v011-beta2-b2-rc1-local.json' 'v0.10 RC1 local regression'
 
-    # Pull only the corrected admin harness. Do not overlay or rebuild the FULL
-    # tree; the already-built service/broker are the artifacts under test.
+    # Pull the corrected admin harness AND the corrected B2 live acceptance.
+    # The latter must use the same normalized-text SHA semantics as B1b; raw
+    # Get-FileHash values can differ on Windows because of CRLF/LF encoding.
     $AdminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'
     $AdminUrl = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'
     Invoke-WebRequest -Uri $AdminUrl -OutFile $AdminScript
+    $LiveAcceptance = Join-Path $PSScriptRoot 'tools\v011_beta2_b2_live_acceptance.py'
+    $LiveAcceptanceUrl = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tools/v011_beta2_b2_live_acceptance.py'
+    Invoke-WebRequest -Uri $LiveAcceptanceUrl -OutFile $LiveAcceptance
 
     $adminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-admin-result.json'
     Remove-Item -LiteralPath $adminResultPath -Force -ErrorAction SilentlyContinue
