@@ -173,8 +173,16 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'EDR Beta1 administrator acceptance failed' }
 
     $script:CurrentStage = 'windows_acceptance'
-    & $Py -m tools.windows_acceptance --benchmark-files 5000 --realtime-seconds 3 --service-live --output acceptance-v011-beta1-windows-live.json
-    if ($LASTEXITCODE -ne 0) { throw 'Windows live acceptance failed' }
+    $windowsAcceptancePath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-windows-live.json'
+    Remove-Item -LiteralPath $windowsAcceptancePath -Force -ErrorAction SilentlyContinue
+    & $Py -m tools.windows_acceptance --benchmark-files 5000 --realtime-seconds 3 --service-live --output $windowsAcceptancePath
+    if ($LASTEXITCODE -ne 0) {
+        $windowsAcceptance = Read-JsonSafe $windowsAcceptancePath
+        $detail = if ($null -ne $windowsAcceptance) { Compact-Json $windowsAcceptance } else { 'windows acceptance JSON unavailable' }
+        Write-Host ('WINDOWS LIVE ACCEPTANCE DETAIL: ' + $detail) -ForegroundColor Yellow
+        throw ('Windows live acceptance failed: ' + $detail)
+    }
+    Write-Host 'WINDOWS LIVE ACCEPTANCE PASS' -ForegroundColor Green
 
     $script:CurrentStage = 'service_performance'
     Write-Host 'Service performance gates: idle <= 25% one core, IPC >= 10 req/s, benign storm <= 250% one core.' -ForegroundColor Cyan
