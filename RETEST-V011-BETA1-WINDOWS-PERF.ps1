@@ -36,6 +36,20 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.1 - TARGETED WINDOWS LIVE + PERFORMANCE RETEST' -ForegroundColor Cyan
 
+    $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
+    if (-not (Test-Path -LiteralPath $distService)) {
+        throw ('Rebuilt Protection Service missing before repair: ' + $distService)
+    }
+    $maintenanceScript = Join-Path $PSScriptRoot 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1'
+    if (-not (Test-Path -LiteralPath $maintenanceScript)) {
+        throw ('Maintenance script missing: ' + $maintenanceScript)
+    }
+
+    Write-Host 'Installing the freshly rebuilt Protection Service via real Repair...' -ForegroundColor Cyan
+    & $maintenanceScript -Mode Repair
+    if ($LASTEXITCODE -ne 0) { throw 'Live Repair of rebuilt Protection Service failed' }
+    Write-Host 'REBUILT SERVICE REPAIR PASS' -ForegroundColor Green
+
     $readinessPath = Join-Path $PSScriptRoot 'acceptance-v011-beta1-service-readiness.json'
     & $Py -m tools.v011_service_readiness --timeout-seconds 12 --poll-seconds 0.5 --output $readinessPath
     if ($LASTEXITCODE -ne 0) {
