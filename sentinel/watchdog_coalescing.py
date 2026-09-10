@@ -1,81 +1,179 @@
 from __future__ import annotations
 
+from collections import deque
+from threading import Condition, Thread
 from time import monotonic
 
 
 class CoalescingEventHandlerProxy:
-    """Lightweight pre-filter for watchdog event storms.
+    """Low-CPU watchdog dispatch boundary for BC Sentinel.
 
-    The native Windows observer still receives every filesystem notification.
-    We only avoid forwarding low-value duplicate work into BC Sentinel's heavier
-    realtime pipeline:
+    Watchdog's Windows observer thread must stay cheap: it receives filesystem
+    notifications and should not execute BC Sentinel's heavier scan/correlation
+    pipeline inline. This proxy therefore moves forwarded events to one daemon
+    worker and quiet-period debounces repeated file ``modified`` notifications.
 
-    - directory ``modified`` notifications are redundant with the concrete
-      child file events that watchdog also emits;
-    - repeated ``modified`` notifications for the same file inside a very short
-      window are coalesced;
-    - create, move, delete and other event families are always forwarded.
-
-    The debounce window is intentionally far shorter than BC Sentinel's existing
-    higher-level observer debounce, so this layer reduces dispatch overhead
-    without becoming a new security decision boundary.
+    Security invariants:
+    - create, move, delete and other non-modified events are never intentionally
+      dropped; they are queued immediately;
+    - directory-only ``modified`` metadata noise is dropped because watchdog
+      also emits the concrete child file event;
+    - repeated file ``modified`` notifications are collapsed only while the
+      same path is still changing, then one final event is forwarded after the
+      short quiet window;
+    - if the immediate queue ever reaches its defensive bound, the event is
+      forwarded synchronously rather than discarded.
     """
 
-    DEFAULT_MODIFIED_WINDOW_SECONDS = 0.35
-    DEFAULT_MAX_TRACKED_PATHS = 4096
-    _PRUNE_AFTER_SECONDS = 2.0
+    DEFAULT_MODIFIED_WINDOW_SECONDS = 0.50
+    DEFAULT_MAX_IMMEDIATE_EVENTS = 4096
+    DEFAULT_MAX_PENDING_MODIFIED = 4096
 
     def __init__(
         self,
         inner,
         *,
         modified_window_seconds: float = DEFAULT_MODIFIED_WINDOW_SECONDS,
-        max_tracked_paths: int = DEFAULT_MAX_TRACKED_PATHS,
+        max_immediate_events: int = DEFAULT_MAX_IMMEDIATE_EVENTS,
+        max_pending_modified: int = DEFAULT_MAX_PENDING_MODIFIED,
     ) -> None:
         self._inner = inner
         self._modified_window_seconds = max(0.0, float(modified_window_seconds))
-        self._max_tracked_paths = max(128, int(max_tracked_paths))
-        self._modified_seen: dict[str, float] = {}
+        self._max_immediate_events = max(128, int(max_immediate_events))
+        self._max_pending_modified = max(128, int(max_pending_modified))
+
+        self._cv = Condition()
+        self._immediate = deque()
+        self._pending_modified: dict[str, tuple[float, object]] = {}
+        self._stopping = False
+        self._closed = False
+
+        self.received = 0
         self.forwarded = 0
         self.coalesced = 0
         self.directory_modified_dropped = 0
+        self.queue_fallbacks = 0
+        self.worker_errors = 0
+
+        self._worker = Thread(
+            target=self._run,
+            name="BCS-RealtimeDispatch",
+            daemon=True,
+        )
+        self._worker.start()
 
     def dispatch(self, event):
+        """Accept a watchdog event without doing heavy realtime work inline."""
+        self.received += 1
         event_type = str(getattr(event, "event_type", "") or "").lower()
         is_directory = bool(getattr(event, "is_directory", False))
 
-        # Windows generates parent-directory metadata notifications for ordinary
-        # file activity. The concrete child file event remains available and is
-        # the security-relevant object BC Sentinel needs to scan/correlate.
         if is_directory and event_type == "modified":
             self.directory_modified_dropped += 1
             return None
 
         if not is_directory and event_type == "modified":
             path = str(getattr(event, "src_path", "") or "")
-            if path:
+            if path and self._modified_window_seconds > 0.0:
                 now = monotonic()
-                previous = self._modified_seen.get(path)
-                if previous is not None and (now - previous) < self._modified_window_seconds:
-                    self.coalesced += 1
+                deadline = now + self._modified_window_seconds
+                fallback = None
+                with self._cv:
+                    if self._closed:
+                        fallback = event
+                    else:
+                        if path in self._pending_modified:
+                            self.coalesced += 1
+                        elif len(self._pending_modified) >= self._max_pending_modified:
+                            fallback = event
+                            self.queue_fallbacks += 1
+                        if fallback is None:
+                            self._pending_modified[path] = (deadline, event)
+                            self._cv.notify()
+                if fallback is None:
                     return None
-                self._modified_seen[path] = now
-                self._prune(now)
+                return self._forward(fallback)
 
+        fallback = None
+        with self._cv:
+            if self._closed:
+                fallback = event
+            elif len(self._immediate) >= self._max_immediate_events:
+                fallback = event
+                self.queue_fallbacks += 1
+            else:
+                self._immediate.append(event)
+                self._cv.notify()
+
+        if fallback is not None:
+            return self._forward(fallback)
+        return None
+
+    def close(self, timeout: float = 2.0) -> None:
+        """Flush queued work once and stop the worker; safe to call repeatedly."""
+        with self._cv:
+            if self._closed:
+                return
+            self._stopping = True
+            self._cv.notify_all()
+        self._worker.join(timeout=max(0.0, float(timeout)))
+        with self._cv:
+            self._closed = True
+            self._cv.notify_all()
+
+    def status(self) -> dict[str, int | bool]:
+        with self._cv:
+            return {
+                "received": int(self.received),
+                "forwarded": int(self.forwarded),
+                "coalesced": int(self.coalesced),
+                "directory_modified_dropped": int(self.directory_modified_dropped),
+                "queue_fallbacks": int(self.queue_fallbacks),
+                "worker_errors": int(self.worker_errors),
+                "immediate_pending": len(self._immediate),
+                "modified_pending": len(self._pending_modified),
+                "worker_alive": bool(self._worker.is_alive()),
+            }
+
+    def _run(self) -> None:
+        while True:
+            event = None
+            with self._cv:
+                while event is None:
+                    if self._immediate:
+                        event = self._immediate.popleft()
+                        break
+
+                    now = monotonic()
+                    due_path = None
+                    due_deadline = None
+                    for path, (deadline, _) in self._pending_modified.items():
+                        if due_deadline is None or deadline < due_deadline:
+                            due_path = path
+                            due_deadline = deadline
+
+                    if due_path is not None and (self._stopping or due_deadline <= now):
+                        _, event = self._pending_modified.pop(due_path)
+                        break
+
+                    if self._stopping and not self._pending_modified:
+                        self._closed = True
+                        return
+
+                    if due_deadline is None:
+                        self._cv.wait()
+                    else:
+                        self._cv.wait(timeout=max(0.0, due_deadline - now))
+
+            try:
+                self._forward(event)
+            except Exception:
+                # Preserve the observer/worker lifetime. The wrapped BC Sentinel
+                # handler owns its normal error/reporting policy; this counter is
+                # diagnostic evidence if an unexpected exception escapes it.
+                self.worker_errors += 1
+
+    def _forward(self, event):
+        result = self._inner.dispatch(event)
         self.forwarded += 1
-        return self._inner.dispatch(event)
-
-    def _prune(self, now: float) -> None:
-        if len(self._modified_seen) <= self._max_tracked_paths:
-            return
-        cutoff = now - self._PRUNE_AFTER_SECONDS
-        self._modified_seen = {
-            path: seen_at
-            for path, seen_at in self._modified_seen.items()
-            if seen_at >= cutoff
-        }
-        if len(self._modified_seen) > self._max_tracked_paths:
-            # Keep the newest entries only. Sorting is rare and bounded to event
-            # storms; ordinary operation never reaches this path.
-            newest = sorted(self._modified_seen.items(), key=lambda item: item[1], reverse=True)
-            self._modified_seen = dict(newest[: self._max_tracked_paths])
+        return result
