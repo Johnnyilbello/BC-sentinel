@@ -32,8 +32,12 @@ try {
         '.\sentinel\protection_protocol.py',
         '.\sentinel\protection_client.py',
         '.\tools\v011_beta2_b1b_patch.py',
+        '.\tools\v011_beta2_b2_request_op_compat.py',
         '.\tools\v011_beta2_b2_live_acceptance.py',
+        '.\tools\v011_beta2_b2_live_acceptance_compat.py',
+        '.\tools\v011_beta2_b2_frozen_runtime_probe.py',
         '.\tests\test_v011_beta2_b2_contract.py',
+        '.\tests\test_v011_beta2_b2_request_op_compat.py',
         '.\tools\broker_acceptance.py',
         '.\tools\service_hardening_benchmark.py',
         '.\tools\windows_acceptance.py',
@@ -50,10 +54,6 @@ try {
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - CHECKPOINT B2: SERVICE-NATIVE LIVE / RESTART / PERFORMANCE' -ForegroundColor Cyan
 
-    # The branch is an integration delta over the authoritative FULL Windows
-    # tree. Re-apply the same canonical compatibility migrations as the frozen
-    # Beta1 one-command gate after every overlay, before pytest/build. This is
-    # required because delta copies can contain older FULL-source snapshots.
     $compatibilityMigrations = @(
         'tools.v011_legacy_test_compat',
         'tools.v011_threat_package_windows_compat',
@@ -68,11 +68,12 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ('Compatibility migration failed before B2 pytest: ' + $migration) }
     }
 
-    # Freeze B1b source shape after canonical FULL compatibility repair and
-    # before any build or UAC activity. The compatibility migrations do not
-    # relax the accepted B1b protocol/service/client SHA anchors.
-    & $Py -m tools.v011_beta2_b1b_patch --verify-only --output integration-v011-beta2-b1b-before-b2.json
-    if ($LASTEXITCODE -ne 0) { throw 'Accepted B1b protocol/service integration is not intact before B2' }
+    # B1b originally addressed the validated request as request.operation even
+    # though the frozen protocol dataclass exposes request.op. B2 corrects that
+    # single expression with deterministic lineage back to the accepted B1b SHA.
+    Write-Host 'Applying/verifying B2 request.op dispatcher compatibility...' -ForegroundColor DarkCyan
+    & $Py -m tools.v011_beta2_b2_request_op_compat --output acceptance-v011-beta2-b2-request-op-lineage.json
+    if ($LASTEXITCODE -ne 0) { throw 'B2 request.op dispatcher compatibility/lineage verification failed before pytest' }
 
     $PytestTemp = Join-Path $env:TEMP ('bc-sentinel-v011-beta2-b2-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $PytestTemp -Force | Out-Null
@@ -84,7 +85,6 @@ try {
         Remove-Item -LiteralPath $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    # Match the frozen Beta1 local acceptance families before going live.
     & $Py -m tools.v011_edr_acceptance --output acceptance-v011-beta2-b2-edr-local.json
     if ($LASTEXITCODE -ne 0) { throw 'Beta1 EDR local regression failed under B2' }
     & $Py -m tools.v010_web_deception_acceptance --output acceptance-v011-beta2-b2-deception-local.json
@@ -110,6 +110,14 @@ try {
     if (-not (Test-Path -LiteralPath $distService)) { throw 'Fresh Protection Service executable missing after build' }
     if (-not (Test-Path -LiteralPath $distBroker)) { throw 'Fresh UAC Broker executable missing after build' }
 
+    $frozenPath = Join-Path $PSScriptRoot 'probe-v011-beta2-b2-frozen-full.json'
+    & $Py -m tools.v011_beta2_b2_frozen_runtime_probe --exe $distService --output $frozenPath
+    $frozen = Read-JsonSafe $frozenPath
+    if ($LASTEXITCODE -ne 0 -or $null -eq $frozen -or -not [bool]$frozen.passed) {
+        $classification = if ($null -ne $frozen -and $frozen.classification) { [string]$frozen.classification } else { 'probe_unreadable' }
+        throw ('Fresh B2 frozen runtime routing probe failed: ' + $classification)
+    }
+
     $adminScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-ADMIN.ps1'
     $adminResultPath = Join-Path $PSScriptRoot 'acceptance-v011-beta2-b2-admin-result.json'
     Remove-Item -LiteralPath $adminResultPath -Force -ErrorAction SilentlyContinue
@@ -133,13 +141,10 @@ try {
     }
     if ($null -eq $adminResult -or [string]$adminResult.status -ne 'PASS') { throw 'B2 administrator PASS result missing' }
 
-    # Confirm the existing standard-user -> UAC broker security path remains green.
     & $Py -m tools.broker_acceptance --output acceptance-v011-beta2-b2-standard-user-uac.json
     if ($LASTEXITCODE -ne 0) { throw 'Standard-user to UAC broker regression failed under B2' }
 
-    # Production EDR reads must work for the authenticated local standard user,
-    # but direct privileged retention must still be rejected.
-    & $Py -m tools.v011_beta2_b2_live_acceptance --mode standard-user --output acceptance-v011-beta2-b2-standard-user-edr.json
+    & $Py -m tools.v011_beta2_b2_live_acceptance_compat --mode standard-user --output acceptance-v011-beta2-b2-standard-user-edr.json
     if ($LASTEXITCODE -ne 0) { throw 'B2 standard-user EDR least-privilege acceptance failed' }
 
     & $Py -m tools.v011_edr_acceptance --output acceptance-v011-beta2-b2-edr-post-admin.json
@@ -151,7 +156,7 @@ try {
 
     Write-Host 'REBOOT PERSISTENCE: still deferred to final roadmap validation; B2 validates real service restart persistence.' -ForegroundColor Yellow
     Write-Host 'BC SENTINEL v0.11.0-beta.2 CHECKPOINT B2 - PASS' -ForegroundColor Green
-    Write-Host 'Validated: full regression, fresh build, production Named Pipe EDR, native ingestion, Security Center, SCM restart persistence, least privilege and unchanged 25/10/250 performance gates.' -ForegroundColor Green
+    Write-Host 'Validated: full regression, request.op lineage, fresh build/frozen routing, production Named Pipe EDR, native ingestion, Security Center, SCM restart persistence, least privilege and unchanged 25/10/250 performance gates.' -ForegroundColor Green
     exit 0
 }
 catch {
