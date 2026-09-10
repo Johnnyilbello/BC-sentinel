@@ -24,6 +24,7 @@ try {
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) { throw '.venv not available' }
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
     if (-not (Test-Path -LiteralPath '.\dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe')) { throw 'Corrected Protection Service dist executable missing' }
+    if (-not (Test-Path -LiteralPath '.\tools\broker_acceptance.py')) { throw 'FULL-only tools\broker_acceptance.py missing' }
     $Py = '.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - B2 STABILIZED PERFORMANCE/LIVE RESUME' -ForegroundColor Cyan
@@ -39,7 +40,6 @@ try {
         @('tools\v011_beta2_b2_live_acceptance_compat.py','tools/v011_beta2_b2_live_acceptance_compat.py'),
         @('tools\v011_service_readiness.py','tools/v011_service_readiness.py'),
         @('tools\service_hardening_benchmark.py','tools/service_hardening_benchmark.py'),
-        @('tools\broker_acceptance.py','tools/broker_acceptance.py'),
         @('tools\v011_edr_acceptance.py','tools/v011_edr_acceptance.py')
     )
     foreach ($item in $downloads) {
