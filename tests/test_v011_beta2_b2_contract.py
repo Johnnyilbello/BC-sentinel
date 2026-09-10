@@ -193,3 +193,17 @@ def test_b2_live_only_admin_synchronizes_runtime_then_tests_persistence_restart(
     assert "B2 pre-restart live acceptance failed:" in source
     assert "B2 post-restart live acceptance failed:" in source
     assert "B2 LIVE-ONLY ADMIN GATE PASS" in source
+
+
+def test_b2_live_only_probes_frozen_b1b_code_before_uac():
+    launcher = Path("RETEST-V011-BETA2-B2-LIVE-ONLY.ps1").read_text(encoding="utf-8")
+    probe = Path("tools/v011_beta2_b2_frozen_runtime_probe.py").read_text(encoding="utf-8")
+    assert "v011_beta2_b2_frozen_runtime_probe.py" in launcher
+    assert "tools.v011_beta2_b2_frozen_runtime_probe" in launcher
+    assert "Frozen Protection Service B1b probe failed before UAC" in launcher
+    assert launcher.index("tools.v011_beta2_b2_frozen_runtime_probe") < launcher.index("Opening B2 live-only UAC phase")
+    assert "protocol_has_edr_status_literal" in probe
+    assert "service_has_legacy_dispatch" in probe
+    assert "service_has_b1b_dispatch" in probe
+    assert "service_references_dispatch_read" in probe
+    assert "frozen_b1b_protocol_and_service_present" in probe
