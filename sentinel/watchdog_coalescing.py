@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
-import heapq
+from collections import OrderedDict, deque
 from threading import Condition, Thread
 from time import monotonic
 
@@ -22,20 +21,18 @@ class CoalescingEventHandlerProxy:
     - repeated file ``modified`` notifications are collapsed only while the
       same path is still changing, then one final event is forwarded after the
       short quiet window;
-    - if the immediate queue ever reaches its defensive bound, the event is
-      forwarded synchronously rather than discarded.
+    - if an internal defensive bound is reached, the event is forwarded
+      synchronously rather than discarded.
 
-    The modified-event scheduler uses a min-heap with lazy invalidation. This
-    preserves the same debounce semantics without rescanning every pending path
-    after each notification, which is important on Windows roots with high
-    background filesystem churn.
+    Modified deadlines use one ordered entry per path. Because every deadline is
+    ``monotonic() + fixed_window``, new/extended deadlines are naturally
+    non-decreasing. Moving an updated path to the end therefore preserves exact
+    quiet-period semantics without heap stale entries or full-map rescans.
     """
 
     DEFAULT_MODIFIED_WINDOW_SECONDS = 0.50
     DEFAULT_MAX_IMMEDIATE_EVENTS = 4096
     DEFAULT_MAX_PENDING_MODIFIED = 4096
-    _HEAP_COMPACT_MIN_ENTRIES = 1024
-    _HEAP_COMPACT_RATIO = 4
 
     def __init__(
         self,
@@ -52,9 +49,7 @@ class CoalescingEventHandlerProxy:
 
         self._cv = Condition()
         self._immediate = deque()
-        self._pending_modified: dict[str, tuple[float, int, object]] = {}
-        self._modified_heap: list[tuple[float, int, str]] = []
-        self._sequence = 0
+        self._pending_modified: OrderedDict[str, tuple[float, object]] = OrderedDict()
         self._stopping = False
         self._closed = False
 
@@ -64,9 +59,8 @@ class CoalescingEventHandlerProxy:
         self.directory_modified_dropped = 0
         self.queue_fallbacks = 0
         self.worker_errors = 0
-        self.scheduler_heap_pushes = 0
-        self.scheduler_stale_pops = 0
-        self.scheduler_compactions = 0
+        self.scheduler_deadline_updates = 0
+        self.scheduler_reorders = 0
         self.worker_waits = 0
 
         self._worker = Thread(
@@ -96,26 +90,24 @@ class CoalescingEventHandlerProxy:
                         fallback = event
                     else:
                         was_empty = not self._pending_modified
-                        if path in self._pending_modified:
+                        already_pending = path in self._pending_modified
+                        if already_pending:
                             self.coalesced += 1
                         elif len(self._pending_modified) >= self._max_pending_modified:
                             fallback = event
                             self.queue_fallbacks += 1
 
                         if fallback is None:
-                            self._sequence += 1
-                            sequence = self._sequence
-                            self._pending_modified[path] = (deadline, sequence, event)
-                            heapq.heappush(self._modified_heap, (deadline, sequence, path))
-                            self.scheduler_heap_pushes += 1
-                            self._maybe_compact_heap_locked()
+                            self._pending_modified[path] = (deadline, event)
+                            self.scheduler_deadline_updates += 1
+                            if already_pending:
+                                self._pending_modified.move_to_end(path)
+                                self.scheduler_reorders += 1
 
-                            # A first pending modified event must wake an idle worker.
-                            # Later events use the same fixed debounce window and can
-                            # only have deadlines >= the earliest existing deadline.
-                            # Repeated same-path modifications therefore do not need to
-                            # wake the worker on every extension; a stale heap entry will
-                            # be discarded lazily when its old deadline is reached.
+                            # With one fixed debounce window, every new/extended
+                            # deadline is >= the current earliest deadline. Only
+                            # the transition from empty -> non-empty needs to wake
+                            # an idle worker; immediate events notify separately.
                             if was_empty:
                                 self._cv.notify()
                 if fallback is None:
@@ -160,40 +152,18 @@ class CoalescingEventHandlerProxy:
                 "worker_errors": int(self.worker_errors),
                 "immediate_pending": len(self._immediate),
                 "modified_pending": len(self._pending_modified),
-                "scheduler_heap_entries": len(self._modified_heap),
-                "scheduler_heap_pushes": int(self.scheduler_heap_pushes),
-                "scheduler_stale_pops": int(self.scheduler_stale_pops),
-                "scheduler_compactions": int(self.scheduler_compactions),
+                "scheduler_order_entries": len(self._pending_modified),
+                "scheduler_deadline_updates": int(self.scheduler_deadline_updates),
+                "scheduler_reorders": int(self.scheduler_reorders),
+                # Legacy diagnostic keys remain present so older status readers
+                # fail safely while making it explicit that the heap is gone.
+                "scheduler_heap_entries": 0,
+                "scheduler_heap_pushes": 0,
+                "scheduler_stale_pops": 0,
+                "scheduler_compactions": 0,
                 "worker_waits": int(self.worker_waits),
                 "worker_alive": bool(self._worker.is_alive()),
             }
-
-    def _maybe_compact_heap_locked(self) -> None:
-        pending = len(self._pending_modified)
-        if pending <= 0:
-            self._modified_heap.clear()
-            return
-        threshold = max(
-            self._HEAP_COMPACT_MIN_ENTRIES,
-            pending * self._HEAP_COMPACT_RATIO,
-        )
-        if len(self._modified_heap) <= threshold:
-            return
-        self._modified_heap = [
-            (deadline, sequence, path)
-            for path, (deadline, sequence, _event) in self._pending_modified.items()
-        ]
-        heapq.heapify(self._modified_heap)
-        self.scheduler_compactions += 1
-
-    def _discard_stale_heap_entries_locked(self) -> None:
-        while self._modified_heap:
-            deadline, sequence, path = self._modified_heap[0]
-            current = self._pending_modified.get(path)
-            if current is not None and current[0] == deadline and current[1] == sequence:
-                return
-            heapq.heappop(self._modified_heap)
-            self.scheduler_stale_pops += 1
 
     def _run(self) -> None:
         while True:
@@ -204,21 +174,15 @@ class CoalescingEventHandlerProxy:
                         event = self._immediate.popleft()
                         break
 
-                    self._discard_stale_heap_entries_locked()
                     now = monotonic()
                     due_deadline = None
-
-                    if self._modified_heap:
-                        deadline, sequence, path = self._modified_heap[0]
+                    if self._pending_modified:
+                        path, (deadline, pending_event) = next(iter(self._pending_modified.items()))
                         due_deadline = deadline
                         if self._stopping or deadline <= now:
-                            heapq.heappop(self._modified_heap)
-                            current = self._pending_modified.get(path)
-                            if current is not None and current[0] == deadline and current[1] == sequence:
-                                _, _, event = self._pending_modified.pop(path)
-                                break
-                            self.scheduler_stale_pops += 1
-                            continue
+                            self._pending_modified.pop(path, None)
+                            event = pending_event
+                            break
 
                     if self._stopping and not self._pending_modified:
                         self._closed = True
