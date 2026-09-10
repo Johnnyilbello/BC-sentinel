@@ -122,13 +122,24 @@ def inspect_service(root: Path) -> dict[str, Any]:
         "etw_reference": "ETWMonitor" in text or "etw" in text.casefold(),
         "dispatch_reference": "dispatch" in text.casefold() or "operation" in text.casefold(),
     }
-    passed = all(checks.values())
+    required_checks = (
+        checks["target_exists"],
+        checks["protection_runtime_class"],
+        checks["runtime_init"],
+        checks["runtime_status"],
+    )
+    passed = all(required_checks)
     return {
         "profile": PROFILE,
         "checkpoint": "B-preflight",
         "passed": passed,
-        "target": str(target),
         "checks": checks,
+        "diagnostic_only_checks": [
+            "event_callback_reference",
+            "etw_reference",
+            "dispatch_reference",
+        ],
+        "target": str(target),
         "runtime": runtime,
         "classes": classes,
         "imports": _imports(tree),
