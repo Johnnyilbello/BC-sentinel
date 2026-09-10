@@ -68,14 +68,16 @@ try {
     & $Py -m tools.v011_beta2_b1b_patch --verify-only --output integration-v011-beta2-b1b-before-b2-live-only-resume.json
     if ($LASTEXITCODE -ne 0) { throw 'B1b structural/source verification failed before live-only resume' }
 
-    # Refresh only the two live harness files. No FULL source, service binary or
-    # accepted B1b integration file is overlaid or patched here.
+    # Refresh only the live acceptance/harness/contract files. No FULL source,
+    # service binary or accepted B1b integration file is overlaid or patched.
     $LiveAcceptance = Join-Path $PSScriptRoot 'tools\v011_beta2_b2_live_acceptance.py'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tools/v011_beta2_b2_live_acceptance.py' -OutFile $LiveAcceptance
     $AdminLiveScript = Join-Path $PSScriptRoot 'TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1'
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/TEST-V011-BETA2-CHECKPOINT-B2-LIVE-ADMIN.ps1' -OutFile $AdminLiveScript
+    $ContractTest = Join-Path $PSScriptRoot 'tests\test_v011_beta2_b2_contract.py'
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/v0.11.0-beta.2-checkpoint-b/tests/test_v011_beta2_b2_contract.py' -OutFile $ContractTest
 
-    # Quick local contract check for the corrected hash semantics before UAC.
+    # Quick local contract check for the current live harness before UAC.
     & $Py -m pytest -q tests\test_v011_beta2_b2_contract.py
     if ($LASTEXITCODE -ne 0) { throw 'B2 live-only contract test failed before UAC' }
 
