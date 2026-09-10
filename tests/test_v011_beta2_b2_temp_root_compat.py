@@ -32,7 +32,7 @@ def _legacy_realtime_source() -> str:
 
 def test_structural_high_churn_classification_is_independent_of_service_identity():
     assert is_structural_high_churn_root(r"C:\Users\InteractiveUser\AppData\Local\Temp") is True
-    assert is_structural_high_churn_root(r"D:\Profiles\Other\AppData\Local\Temp\") is True
+    assert is_structural_high_churn_root("D:\\Profiles\\Other\\AppData\\Local\\Temp\\") is True
     assert is_structural_high_churn_root(r"C:\Users\InteractiveUser\AppData\Roaming") is True
     assert is_structural_high_churn_root(r"C:\Windows\Temp") is True
     assert is_structural_high_churn_root(r"C:\Users\InteractiveUser\Downloads") is False
@@ -56,6 +56,7 @@ def test_patch_is_surgical_idempotent_and_preserves_root_level_watch_semantics(t
     assert '("appdata", "local", "temp")' in text
     assert '("appdata", "roaming")' in text
     assert '("windows", "temp")' in text
+    assert 'str(target).replace("/", "\\\\").rstrip("\\\\").split("\\\\")' in text
     assert "return False\n    return True" in text
 
 
