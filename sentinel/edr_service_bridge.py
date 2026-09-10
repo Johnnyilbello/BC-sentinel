@@ -11,6 +11,14 @@ from .edr_adapter import EdrEventAdapter
 from .edr_hunting import EdrHuntingService
 
 EDR_SERVICE_PROFILE = "v0.11.0-beta.2"
+MAX_IPC_PAGE_SIZE = 500
+MAX_CURSOR_CHARS = 512
+MAX_TEXT_CHARS = 32768
+MAX_SMALL_TEXT_CHARS = 128
+MIN_RETENTION_SECONDS = 60.0
+MAX_RETENTION_SECONDS = 90.0 * 24.0 * 3600.0
+MIN_MAX_EVENTS = 100
+MAX_MAX_EVENTS = 1_000_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +42,7 @@ class EdrInboxNotification:
             "reason_count": self.reason_count,
             "event_count": self.event_count,
             "automatic_destructive_action": self.automatic_destructive_action,
+            "review_only": True,
             "source": "edr",
             "profile": EDR_SERVICE_PROFILE,
         }
@@ -44,9 +53,9 @@ class EdrServiceBridge:
 
     The bridge intentionally contains no Windows service or transport code. It
     owns one durable EDR store/pipeline/hunting instance and exposes bounded
-    read operations that the existing authenticated Named Pipe dispatcher can
-    call. The optional inbox callback is a notification surface only; it cannot
-    kill processes, delete files, quarantine content or isolate the host.
+    operations that the existing authenticated Named Pipe dispatcher can call.
+    The Security Center projection is review-only and cannot kill processes,
+    delete files, quarantine content or isolate the host.
     """
 
     READ_OPERATIONS = frozenset({
@@ -60,6 +69,18 @@ class EdrServiceBridge:
         "edr_retention_policy",
     })
     PRIVILEGED_OPERATIONS = frozenset({"edr_update_retention"})
+
+    _FIELDS = {
+        "edr_status": frozenset(),
+        "edr_timeline": frozenset({"pid", "category", "since", "until", "limit", "cursor"}),
+        "edr_incidents": frozenset({"status", "limit"}),
+        "edr_incident_evidence": frozenset({"incident_id", "limit", "cursor"}),
+        "edr_root_cause": frozenset({"incident_id"}),
+        "edr_hunt": frozenset({"indicator", "kind", "since", "until", "limit", "cursor"}),
+        "edr_process_tree": frozenset({"since"}),
+        "edr_retention_policy": frozenset(),
+        "edr_update_retention": frozenset({"retention_seconds", "max_events", "prune"}),
+    }
 
     def __init__(
         self,
@@ -91,11 +112,7 @@ class EdrServiceBridge:
         self._last_notified_occurrence: dict[str, int] = {}
 
     def ingest_security_event(self, event: Any) -> dict[str, Any]:
-        """Ingest one existing SecurityEvent without breaking the protection path.
-
-        EDR enrichment must never become a reason for realtime protection to stop.
-        Failures are reported in bridge status and returned to the caller.
-        """
+        """Ingest one existing SecurityEvent without breaking protection."""
         try:
             result = self.adapter.ingest_security_event(event)
             with self._lock:
@@ -115,25 +132,16 @@ class EdrServiceBridge:
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
-    def _surface_incident(self, incident: dict[str, Any]) -> None:
-        if self.inbox_callback is None:
-            return
+    @staticmethod
+    def _notification_for_incident(incident: dict[str, Any]) -> dict[str, Any] | None:
         incident_id = str(incident.get("incident_id") or "")
         severity = str(incident.get("severity") or "").upper()
         score = int(incident.get("score") or 0)
         if not incident_id.startswith("BCEDR-") or severity != "HIGH" or score < 70:
-            return
+            return None
         if bool(incident.get("automatic_destructive_action")) or bool(incident.get("host_isolation")):
-            return
-
-        occurrence = max(1, int(incident.get("occurrences") or 1))
-        with self._lock:
-            previous = self._last_notified_occurrence.get(incident_id, 0)
-            if occurrence <= previous:
-                return
-            self._last_notified_occurrence[incident_id] = occurrence
-
-        notice = EdrInboxNotification(
+            return None
+        return EdrInboxNotification(
             incident_id=incident_id,
             severity=severity,
             score=score,
@@ -142,6 +150,20 @@ class EdrServiceBridge:
             reason_count=len(list(incident.get("reasons") or [])),
             event_count=len(list(incident.get("event_ids") or [])),
         ).to_dict()
+
+    def _surface_incident(self, incident: dict[str, Any]) -> None:
+        if self.inbox_callback is None:
+            return
+        notice = self._notification_for_incident(incident)
+        if notice is None:
+            return
+        incident_id = str(notice["incident_id"])
+        occurrence = max(1, int(incident.get("occurrences") or 1))
+        with self._lock:
+            previous = self._last_notified_occurrence.get(incident_id, 0)
+            if occurrence <= previous:
+                return
+            self._last_notified_occurrence[incident_id] = occurrence
         try:
             self.inbox_callback(notice)
             with self._lock:
@@ -149,6 +171,20 @@ class EdrServiceBridge:
         except Exception:
             with self._lock:
                 self._inbox_errors += 1
+
+    def security_inbox_items(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        """Project persistent qualified HIGH incidents into Security Center."""
+        if isinstance(limit, bool) or not isinstance(limit, int):
+            raise ValueError("limit must be an integer")
+        bounded = max(1, min(int(limit), MAX_IPC_PAGE_SIZE))
+        out: list[dict[str, Any]] = []
+        for incident in self.store.incidents(status="open", limit=bounded):
+            notice = self._notification_for_incident(incident)
+            if notice is not None:
+                out.append(notice)
+            if len(out) >= bounded:
+                break
+        return out
 
     @staticmethod
     def _payload(payload: Any) -> dict[str, Any]:
@@ -158,25 +194,95 @@ class EdrServiceBridge:
             raise ValueError("EDR operation payload must be an object")
         return dict(payload)
 
+    @staticmethod
+    def _number(name: str, value: Any) -> float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{name} must be numeric")
+        number = float(value)
+        if number != number or abs(number) == float("inf"):
+            raise ValueError(f"{name} must be finite")
+        return number
+
+    @staticmethod
+    def _text(name: str, value: Any, *, maximum: int, required: bool = False) -> str:
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        text = value.strip()
+        if required and not text:
+            raise ValueError(f"{name} cannot be empty")
+        if "\x00" in text or len(text) > maximum:
+            raise ValueError(f"{name} is invalid or too long")
+        return text
+
+    @classmethod
+    def _strict_payload(cls, operation: str, payload: Any) -> dict[str, Any]:
+        op = str(operation or "").strip().casefold()
+        if op not in cls._FIELDS:
+            raise ValueError("unsupported EDR operation")
+        data = cls._payload(payload)
+        unknown = sorted(set(data) - set(cls._FIELDS[op]))
+        if unknown:
+            raise ValueError("unknown EDR payload field(s): " + ", ".join(unknown))
+
+        if "limit" in data:
+            value = data["limit"]
+            if isinstance(value, bool) or not isinstance(value, int) or not (1 <= value <= MAX_IPC_PAGE_SIZE):
+                raise ValueError("limit must be between 1 and 500")
+        if "pid" in data:
+            value = data["pid"]
+            if isinstance(value, bool) or not isinstance(value, int) or not (0 <= value <= 2_147_483_647):
+                raise ValueError("pid is invalid")
+        for key in ("since", "until"):
+            if key in data:
+                data[key] = cls._number(key, data[key])
+        if "since" in data and "until" in data and data["since"] > data["until"]:
+            raise ValueError("since must be less than or equal to until")
+        if "cursor" in data:
+            data["cursor"] = cls._text("cursor", data["cursor"], maximum=MAX_CURSOR_CHARS)
+        for key in ("category", "status"):
+            if key in data:
+                data[key] = cls._text(key, data[key], maximum=MAX_SMALL_TEXT_CHARS, required=True)
+        if "incident_id" in data:
+            incident_id = cls._text("incident_id", data["incident_id"], maximum=26, required=True).upper()
+            suffix = incident_id[6:] if incident_id.startswith("BCEDR-") else ""
+            if len(suffix) != 20 or any(ch not in "0123456789ABCDEF" for ch in suffix):
+                raise ValueError("incident_id is invalid")
+            data["incident_id"] = incident_id
+        if "indicator" in data:
+            data["indicator"] = cls._text("indicator", data["indicator"], maximum=MAX_TEXT_CHARS, required=True)
+        if "kind" in data:
+            kind = cls._text("kind", data["kind"], maximum=16, required=True).casefold()
+            if kind not in {"auto", "sha256", "domain", "address", "path"}:
+                raise ValueError("unsupported EDR indicator kind")
+            data["kind"] = kind
+        if "retention_seconds" in data:
+            retention = cls._number("retention_seconds", data["retention_seconds"])
+            if not (MIN_RETENTION_SECONDS <= retention <= MAX_RETENTION_SECONDS):
+                raise ValueError("retention_seconds is outside the allowed bounds")
+            data["retention_seconds"] = retention
+        if "max_events" in data:
+            value = data["max_events"]
+            if isinstance(value, bool) or not isinstance(value, int) or not (MIN_MAX_EVENTS <= value <= MAX_MAX_EVENTS):
+                raise ValueError("max_events is outside the allowed bounds")
+        if "prune" in data and not isinstance(data["prune"], bool):
+            raise ValueError("prune must be boolean")
+        return data
+
     def dispatch_read(self, operation: str, payload: Any = None) -> dict[str, Any]:
         op = str(operation or "").strip().casefold()
         if op not in self.READ_OPERATIONS:
             raise ValueError("unsupported EDR read operation")
-        data = self._payload(payload)
+        data = self._strict_payload(op, payload)
 
         if op == "edr_status":
             return self.status()
         if op == "edr_timeline":
             return self.hunting.timeline(
-                pid=data.get("pid"),
-                category=data.get("category"),
-                since=data.get("since"),
-                until=data.get("until"),
-                limit=data.get("limit", 100),
-                cursor=data.get("cursor"),
+                pid=data.get("pid"), category=data.get("category"), since=data.get("since"),
+                until=data.get("until"), limit=data.get("limit", 100), cursor=data.get("cursor"),
             )
         if op == "edr_incidents":
-            limit = max(1, min(int(data.get("limit", 100)), 500))
+            limit = int(data.get("limit", 100))
             return {
                 "profile": EDR_SERVICE_PROFILE,
                 "items": self.store.incidents(status=data.get("status"), limit=limit),
@@ -185,19 +291,15 @@ class EdrServiceBridge:
         if op == "edr_incident_evidence":
             return self.hunting.incident_evidence(
                 str(data.get("incident_id") or ""),
-                limit=data.get("limit", 100),
-                cursor=data.get("cursor"),
+                limit=data.get("limit", 100), cursor=data.get("cursor"),
             )
         if op == "edr_root_cause":
             return self.hunting.root_cause(str(data.get("incident_id") or ""))
         if op == "edr_hunt":
             return self.hunting.hunt(
-                str(data.get("indicator") or ""),
-                kind=str(data.get("kind") or "auto"),
-                since=data.get("since"),
-                until=data.get("until"),
-                limit=data.get("limit", 100),
-                cursor=data.get("cursor"),
+                str(data.get("indicator") or ""), kind=str(data.get("kind") or "auto"),
+                since=data.get("since"), until=data.get("until"),
+                limit=data.get("limit", 100), cursor=data.get("cursor"),
             )
         if op == "edr_process_tree":
             since = data.get("since")
@@ -212,11 +314,11 @@ class EdrServiceBridge:
         op = str(operation or "").strip().casefold()
         if op not in self.PRIVILEGED_OPERATIONS:
             raise ValueError("unsupported EDR privileged operation")
-        data = self._payload(payload)
+        data = self._strict_payload(op, payload)
         return self.hunting.update_retention(
             retention_seconds=data.get("retention_seconds"),
             max_events=data.get("max_events"),
-            prune=bool(data.get("prune", True)),
+            prune=data.get("prune", True),
         )
 
     def status(self) -> dict[str, Any]:
@@ -232,6 +334,8 @@ class EdrServiceBridge:
             "service_profile": EDR_SERVICE_PROFILE,
             "service_owned_store": True,
             "authenticated_ipc_required": True,
+            "strict_payload_validation": True,
+            "security_center_projection": "qualified_high_review_only",
             "read_operations": sorted(self.READ_OPERATIONS),
             "privileged_operations": sorted(self.PRIVILEGED_OPERATIONS),
             "automatic_process_kill": False,
