@@ -11,16 +11,11 @@ PROCESS_ETW_CONTINUOUS = False
 FILE_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 FILE_ETW_CONTINUOUS = False
 PYWINTRACE_RUNTIME_PROFILE = "adaptive_v3"
+WATCHDOG_RUNTIME_PROFILE = "coalesced_v1"
 
 
 def apply_pywintrace_runtime_install(path: Path = ETW_TARGET) -> dict[str, object]:
-    """Guarantee the pywintrace low-CPU shim is active in the compiled service.
-
-    The previous compatibility layer shipped the replacement EventConsumer._run
-    implementation, but the runtime must also install it before any ETW capture
-    starts. Patching ETWMonitor.start keeps this deterministic for PyInstaller
-    builds and for the live Windows service.
-    """
+    """Guarantee the pywintrace low-CPU shim is active in the compiled service."""
     if not path.is_file():
         raise FileNotFoundError(f"etw_monitor.py missing: {path}")
 
@@ -192,6 +187,7 @@ def apply_file_etw_idle_dormancy(path: Path = ETW_TARGET) -> dict[str, object]:
 
 
 def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[str, object]:
+    """Keep native watchdog active while reducing redundant handler dispatch work."""
     if not path.is_file():
         raise FileNotFoundError(f"realtime.py missing: {path}")
 
@@ -203,6 +199,14 @@ def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[s
         if text.count(anchor) != 1:
             raise RuntimeError("Unexpected realtime imports; refusing high-churn watcher patch")
         text = text.replace(anchor, anchor + "import os\n", 1)
+        patched = True
+
+    proxy_import = "from .watchdog_coalescing import CoalescingEventHandlerProxy\n"
+    if proxy_import not in text:
+        anchor = "import os\n"
+        if text.count(anchor) != 1:
+            raise RuntimeError("Unexpected realtime import shape; refusing watchdog coalescing patch")
+        text = text.replace(anchor, anchor + proxy_import, 1)
         patched = True
 
     helper_marker = "def _watchdog_recursive_for_root(path: Path) -> bool:"
@@ -229,12 +233,17 @@ def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[s
         text = text.replace(anchor, helper + anchor, 1)
         patched = True
 
-    old_schedule = "                    obs.schedule(handler, str(p), recursive=True)\n"
-    new_schedule = "                    obs.schedule(handler, str(p), recursive=_watchdog_recursive_for_root(p))\n"
-    if new_schedule not in text:
-        if text.count(old_schedule) != 1:
-            raise RuntimeError("Unexpected watchdog scheduling shape; refusing high-churn watcher patch")
-        text = text.replace(old_schedule, new_schedule, 1)
+    legacy_schedule = "                    obs.schedule(handler, str(p), recursive=True)\n"
+    recursion_schedule = "                    obs.schedule(handler, str(p), recursive=_watchdog_recursive_for_root(p))\n"
+    coalesced_schedule = "                    obs.schedule(CoalescingEventHandlerProxy(handler), str(p), recursive=_watchdog_recursive_for_root(p))\n"
+
+    if coalesced_schedule not in text:
+        if recursion_schedule in text:
+            text = text.replace(recursion_schedule, coalesced_schedule, 1)
+        elif legacy_schedule in text:
+            text = text.replace(legacy_schedule, coalesced_schedule, 1)
+        else:
+            raise RuntimeError("Unexpected watchdog scheduling shape; refusing coalescing patch")
         patched = True
 
     if patched:
@@ -242,16 +251,18 @@ def apply_realtime_high_churn_root_patch(path: Path = REALTIME_TARGET) -> dict[s
 
     verify = path.read_text(encoding="utf-8")
     required = (
+        proxy_import.strip(),
         helper_marker,
         'os.getenv("TEMP", "")',
         'os.getenv("APPDATA", "")',
+        "CoalescingEventHandlerProxy(handler)",
         "recursive=_watchdog_recursive_for_root(p)",
     )
     missing = [marker for marker in required if marker not in verify]
     if missing:
         raise RuntimeError("Realtime high-churn watcher patch incomplete: " + "; ".join(missing))
 
-    return {"patched": patched, "path": str(path)}
+    return {"patched": patched, "path": str(path), "profile": WATCHDOG_RUNTIME_PROFILE}
 
 
 def main() -> int:
@@ -272,9 +283,9 @@ def main() -> int:
     else:
         print("v0.11 low-CPU runtime: File ETW dormant-idle mode already canonical")
     if realtime["patched"]:
-        print("v0.11 low-CPU runtime: Temp/AppData watchdog roots limited to non-recursive monitoring")
+        print("v0.11 low-CPU runtime: watchdog coalescing installed; native realtime monitoring remains active")
     else:
-        print("v0.11 low-CPU runtime: high-churn watchdog policy already canonical")
+        print("v0.11 low-CPU runtime: watchdog coalescing already canonical")
     return 0
 
 
