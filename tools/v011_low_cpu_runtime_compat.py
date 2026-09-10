@@ -11,7 +11,7 @@ PROCESS_ETW_CONTINUOUS = False
 FILE_ETW_RUNTIME_MODE = "dormant_idle_beta1"
 FILE_ETW_CONTINUOUS = False
 PYWINTRACE_RUNTIME_PROFILE = "adaptive_v3"
-WATCHDOG_RUNTIME_PROFILE = "heap_debounce_v3"
+WATCHDOG_RUNTIME_PROFILE = "ordered_shared_diag_v4"
 
 
 def apply_pywintrace_runtime_install(path: Path = ETW_TARGET) -> dict[str, object]:
