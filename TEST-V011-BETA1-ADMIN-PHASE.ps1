@@ -143,6 +143,23 @@ try {
     }
     Write-Host 'SERVICE WEB/DNS ETW READINESS PASS' -ForegroundColor Green
 
+    # Measure genuine service idle before any live regression/acceptance workload
+    # creates synthetic files. The benchmark still runs its own bounded 500-file
+    # benign storm, so performance coverage is preserved without contamination
+    # from preceding tests.
+    $script:CurrentStage = 'service_performance'
+    $benchmarkPath = Join-Path $PSScriptRoot 'benchmark-v011-beta1-service.json'
+    Remove-Item -LiteralPath $benchmarkPath -Force -ErrorAction SilentlyContinue
+    Write-Host 'Service performance gates: idle <= 25% one core, IPC >= 10 req/s, benign storm <= 250% one core.' -ForegroundColor Cyan
+    & $Py -m tools.service_hardening_benchmark --idle-seconds 5 --ipc-requests 200 --storm-files 500 --max-idle-cpu-percent 25 --min-ipc-rps 10 --max-storm-cpu-percent 250 --output $benchmarkPath
+    $performanceExit = $LASTEXITCODE
+    if ($performanceExit -ne 0) {
+        Write-Host 'SERVICE PERFORMANCE GATE FAILED; continuing live regressions so the full run reports all independent gates.' -ForegroundColor Yellow
+    }
+    else {
+        Write-Host 'SERVICE PERFORMANCE PASS' -ForegroundColor Green
+    }
+
     $script:CurrentStage = 'live_regression_deception'
     & $Py -m tools.v010_web_deception_acceptance --service-live --output acceptance-v011-regression-deception-live.json
     if ($LASTEXITCODE -ne 0) { throw 'v0.10 Beta1 deception live regression failed' }
@@ -184,10 +201,10 @@ try {
     }
     Write-Host 'WINDOWS LIVE ACCEPTANCE PASS' -ForegroundColor Green
 
-    $script:CurrentStage = 'service_performance'
-    Write-Host 'Service performance gates: idle <= 25% one core, IPC >= 10 req/s, benign storm <= 250% one core.' -ForegroundColor Cyan
-    & $Py -m tools.service_hardening_benchmark --idle-seconds 5 --ipc-requests 200 --storm-files 500 --max-idle-cpu-percent 25 --min-ipc-rps 10 --max-storm-cpu-percent 250 --output benchmark-v011-beta1-service.json
-    if ($LASTEXITCODE -ne 0) { throw 'Service hardening/performance benchmark failed' }
+    if ($performanceExit -ne 0) {
+        $script:CurrentStage = 'service_performance'
+        throw 'Service hardening/performance benchmark failed'
+    }
 
     $script:CurrentStage = 'completed'
     Write-AdminResult 'PASS' $script:CurrentStage 'Administrator phase completed successfully'
