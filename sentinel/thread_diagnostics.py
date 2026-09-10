@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import threading
 
-PATCH_MARKER = "bc-sentinel-thread-attribution-v1"
+PATCH_MARKER = "bc-sentinel-thread-attribution-v2"
 _MAX_ROLE_LENGTH = 112
 
 
@@ -11,6 +11,18 @@ def _clean(value: object) -> str:
     text = str(value or "").strip()
     text = re.sub(r"\s+", " ", text)
     return text.replace("<", "").replace(">", "")
+
+
+def _compact_role(role: str) -> str:
+    """Bound diagnostic labels while preserving the useful target suffix."""
+    role = _clean(role)
+    if len(role) <= _MAX_ROLE_LENGTH:
+        return role
+
+    separator = "..."
+    tail_length = min(48, _MAX_ROLE_LENGTH // 2)
+    head_length = _MAX_ROLE_LENGTH - len(separator) - tail_length
+    return role[:head_length] + separator + role[-tail_length:]
 
 
 def thread_origin(thread: threading.Thread) -> str:
@@ -26,13 +38,13 @@ def thread_origin(thread: threading.Thread) -> str:
             qualname = qualname or (_clean(getattr(cls, "__qualname__", cls.__name__)) + ".run")
         role = ".".join(part for part in (module, qualname) if part)
         if role:
-            return role[:_MAX_ROLE_LENGTH]
+            return _compact_role(role)
 
     cls = type(thread)
     module = _clean(getattr(cls, "__module__", ""))
     qualname = _clean(getattr(cls, "__qualname__", getattr(cls, "__name__", "Thread")))
     role = ".".join(part for part in (module, qualname + ".run") if part)
-    return (role or "python-thread")[:_MAX_ROLE_LENGTH]
+    return _compact_role(role or "python-thread")
 
 
 def install_thread_attribution() -> bool:
@@ -45,7 +57,7 @@ def install_thread_attribution() -> bool:
     if getattr(cls, "_bc_sentinel_thread_attribution_marker", "") == PATCH_MARKER:
         return False
 
-    original_start = cls.start
+    original_start = getattr(cls, "_bc_sentinel_original_start", cls.start)
 
     def start_with_role(self: threading.Thread, *args, **kwargs):
         try:
