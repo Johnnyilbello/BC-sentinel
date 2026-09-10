@@ -126,7 +126,12 @@ def _call_generic(fn: Callable[..., Any], operation: str, payload: dict[str, Any
                 kwargs[p.name] = operation
             op_bound = True
         elif folded in {"payload", "data", "params", "arguments"} and not payload_bound:
-            if p.kind is p.POSITIONAL_ONLY:
+            if p.kind is p.VAR_KEYWORD:
+                collisions = sorted(set(payload) & set(kwargs))
+                if collisions:
+                    raise RuntimeError("payload collides with bound client parameter(s): " + ", ".join(collisions))
+                kwargs.update(payload)
+            elif p.kind is p.POSITIONAL_ONLY:
                 positional.append(payload)
             else:
                 kwargs[p.name] = payload
@@ -172,8 +177,13 @@ class ProductionClient:
         if not isinstance(value, dict):
             raise RuntimeError(f"production IPC {operation} returned non-object response")
         if value.get("ok") is False:
-            code = str(value.get("code") or value.get("error") or "service_error")
-            message = str(value.get("message") or value)
+            error = value.get("error")
+            if isinstance(error, dict):
+                code = str(error.get("code") or value.get("code") or "service_error")
+                message = str(error.get("message") or value.get("message") or error)
+            else:
+                code = str(value.get("code") or error or "service_error")
+                message = str(value.get("message") or value)
             raise RuntimeError(f"production IPC {operation} rejected: {code}: {message}")
         return value
 
