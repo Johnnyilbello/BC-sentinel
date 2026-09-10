@@ -40,6 +40,7 @@ try {
         '.\tools\v011_legacy_test_compat.py',
         '.\tools\v011_threat_package_windows_compat.py',
         '.\tools\v011_threat_index_windows_compat.py',
+        '.\tools\v011_threat_trust_windows_compat.py',
         '.\tools\v011_service_update_windows_compat.py',
         '.\tools\v011_low_cpu_runtime_compat.py'
     )
@@ -57,6 +58,7 @@ try {
         'tools.v011_legacy_test_compat',
         'tools.v011_threat_package_windows_compat',
         'tools.v011_threat_index_windows_compat',
+        'tools.v011_threat_trust_windows_compat',
         'tools.v011_service_update_windows_compat',
         'tools.v011_low_cpu_runtime_compat'
     )
