@@ -42,6 +42,22 @@ def test_generic_client_binding_uses_named_parameters_without_shifting_defaults(
     assert calls == [("edr_status", "default-token", {"limit": 10})]
 
 
+def test_generic_client_binding_expands_var_keyword_payload_without_nesting():
+    calls = []
+
+    def request(operation, token="default-token", **payload):
+        calls.append((operation, token, payload))
+        return {"ok": True}
+
+    assert _call_generic(request, "edr_status", {}) == {"ok": True}
+    assert calls[-1] == ("edr_status", "default-token", {})
+
+    hunt_payload = {"indicator": "example.test", "kind": "domain", "limit": 20}
+    assert _call_generic(request, "edr_hunt", hunt_payload) == {"ok": True}
+    assert calls[-1] == ("edr_hunt", "default-token", hunt_payload)
+    assert "payload" not in calls[-1][2]
+
+
 def test_generic_client_binding_rejects_unmodelled_required_parameter():
     def request(operation, required_secret, payload=None):
         return {"ok": True}
