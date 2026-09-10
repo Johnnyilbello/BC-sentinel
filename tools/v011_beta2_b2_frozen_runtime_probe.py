@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import dis
 import json
 from pathlib import Path
 from types import CodeType
@@ -19,12 +20,7 @@ def _walk_code(code: CodeType) -> Iterable[CodeType]:
 
 
 def _walk_constant_strings(value: Any) -> Iterable[str]:
-    """Yield strings recursively from compiler aggregate constants.
-
-    Python 3.12 can store literal set/dict members inside tuple/frozenset
-    constants. Inspecting only direct string co_consts therefore produces
-    false negatives for values such as EDR operation names.
-    """
+    """Yield strings recursively from compiler aggregate constants."""
     if isinstance(value, str):
         yield value
         return
@@ -42,6 +38,16 @@ def _walk_constant_strings(value: Any) -> Iterable[str]:
             yield from _walk_constant_strings(item)
 
 
+def _direct_constant_strings(code: CodeType) -> set[str]:
+    out: set[str] = set()
+    for value in code.co_consts:
+        if isinstance(value, str):
+            out.add(value)
+        elif isinstance(value, (tuple, list, set, frozenset, dict)):
+            out.update(_walk_constant_strings(value))
+    return out
+
+
 def _code_summary(code: CodeType) -> dict[str, Any]:
     return {
         "name": code.co_name,
@@ -55,6 +61,36 @@ def _code_summary(code: CodeType) -> dict[str, Any]:
 
 def _find_code_objects(code: CodeType, name: str) -> list[CodeType]:
     return [obj for obj in _walk_code(code) if obj.co_name == name]
+
+
+def _string_owners(code: CodeType, needle: str) -> list[dict[str, Any]]:
+    owners: list[dict[str, Any]] = []
+    for obj in _walk_code(code):
+        if needle in _direct_constant_strings(obj):
+            owners.append(_code_summary(obj))
+    return owners
+
+
+def _module_store_order(code: CodeType) -> list[dict[str, Any]]:
+    interesting = {
+        "READ_OPERATIONS",
+        "PRIVILEGED_OPERATIONS",
+        "ALL_OPERATIONS",
+        "EDR_READ_OPERATIONS",
+        "EDR_PRIVILEGED_OPERATIONS",
+        "_validate_payload",
+        "_v011_beta2_legacy_validate_payload",
+    }
+    out: list[dict[str, Any]] = []
+    for index, instruction in enumerate(dis.get_instructions(code)):
+        if instruction.opname in {"STORE_NAME", "STORE_GLOBAL"} and str(instruction.argval) in interesting:
+            out.append({
+                "instruction_index": index,
+                "offset": int(instruction.offset),
+                "opname": instruction.opname,
+                "name": str(instruction.argval),
+            })
+    return out
 
 
 def _facts(code: CodeType) -> dict[str, Any]:
@@ -119,6 +155,26 @@ def _dispatch_evidence(service_code: CodeType) -> dict[str, Any]:
     return result
 
 
+def _protocol_evidence(protocol_code: CodeType) -> dict[str, Any]:
+    stores = _module_store_order(protocol_code)
+    counts: dict[str, int] = {}
+    for item in stores:
+        name = str(item["name"])
+        counts[name] = counts.get(name, 0) + 1
+    selected: dict[str, list[dict[str, Any]]] = {}
+    for target in ("validate_request", "build_request", "parse_request", "decode_request", "_validate_payload"):
+        matches = _find_code_objects(protocol_code, target)
+        if matches:
+            selected[target] = [_code_summary(item) for item in matches]
+    return {
+        "module_store_order": stores,
+        "module_store_counts": counts,
+        "selected_functions": selected,
+        "unsupported_operation_string_owners": _string_owners(protocol_code, "Unsupported operation"),
+        "unsupported_operation_code_owners": _string_owners(protocol_code, "unsupported_operation"),
+    }
+
+
 def inspect_exe(exe: Path) -> dict[str, Any]:
     pyz = _open_pyz(exe)
     protocol_code = _extract_code(pyz, "sentinel.protection_protocol")
@@ -179,6 +235,7 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "classification": classification,
         "passed": protocol_ok and service_ok,
         "checks": checks,
+        "protocol_evidence": _protocol_evidence(protocol_code),
         "service_dispatch_validated_callers_in_module": service["dispatch_validated_callers"],
         "dispatch_evidence": _dispatch_evidence(service_code),
         "request_shape_evidence": _request_shape_evidence(protocol_code),
