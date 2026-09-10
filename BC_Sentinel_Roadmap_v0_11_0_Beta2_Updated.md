@@ -38,6 +38,8 @@ Required final line:
 BC SENTINEL v0.11.0-beta.2 CHECKPOINT A - PASS
 ```
 
+Windows test isolation rule: targeted pytest execution uses a unique per-run `--basetemp` so a transient lock on pytest's shared `pytest-current` cleanup path cannot convert an otherwise green security test run into a false failure. This does not suppress or relax any test.
+
 ### Checkpoint B — Protection Service Integration
 - Protection Service owns the EDR telemetry store lifecycle;
 - native process/file/network/DNS/download/persistence events continuously feed the EDR pipeline;
@@ -62,3 +64,13 @@ Beta1 full regression remains mandatory. Beta2 is not accepted until Checkpoint 
 - no HTTPS MITM/root CA/TLS interception;
 - no mandatory cloud runtime dependency;
 - no weakening of the accepted `25 / 10 / 250` service performance thresholds.
+
+## Parallel future macro-area — BC Sentinel Rescue & Recovery
+The product roadmap now includes a dedicated recovery track for severely compromised PCs where installed Windows cannot reliably install or execute BC Sentinel. It progresses through RR-0 Architecture & Safety, RR-1 Portable, RR-2 Rescue USB, RR-3 Offline Threat Scanner, RR-4 Repair Engine, RR-5 Safe Data Rescue and RR-6 Integrity Verification & Recovery Certification.
+
+This track must reduce reimaging/formatting to a last resort without ever declaring a system recovered when integrity cannot be demonstrated. It reuses accepted detection/intelligence primitives but remains operationally independent from the installed Protection Service.
+
+Codex policy for this track:
+- **Reasoning: Extra High** for architecture, security boundaries, offline/boot parsing, repair primitives and integrity certification;
+- **Reasoning: High** for ordinary implementation and test/integration work after the security design is frozen;
+- milestone-by-milestone only, with automatic tests, compromised-PC scenarios and measurable acceptance gates; existing protections and security/performance thresholds may not be weakened to pass.
