@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict, deque
-from threading import Condition, Thread
+from threading import Condition, Lock, Thread
 from time import monotonic
+from weakref import WeakKeyDictionary
 
 
 class CoalescingEventHandlerProxy:
@@ -12,6 +13,12 @@ class CoalescingEventHandlerProxy:
     notifications and should not execute BC Sentinel's heavier scan/correlation
     pipeline inline. This proxy therefore moves forwarded events to one daemon
     worker and quiet-period debounces repeated file ``modified`` notifications.
+
+    Multiple watchdog roots in one RealtimeMonitor use the same underlying
+    handler. Construction is therefore shared per live inner handler so those
+    roots feed one BCS-RealtimeDispatch worker instead of creating one worker
+    per root. This changes scheduling overhead only; it does not remove watched
+    roots or suppress security event classes.
 
     Security invariants:
     - create, move, delete and other non-modified events are never intentionally
@@ -34,6 +41,25 @@ class CoalescingEventHandlerProxy:
     DEFAULT_MAX_IMMEDIATE_EVENTS = 4096
     DEFAULT_MAX_PENDING_MODIFIED = 4096
 
+    _registry_lock = Lock()
+    _instances_by_inner: WeakKeyDictionary = WeakKeyDictionary()
+
+    def __new__(cls, inner, *args, **kwargs):
+        # RealtimeMonitor schedules the same handler on several roots. Reuse one
+        # live proxy/worker for that handler. Weak keys avoid extending handler
+        # lifetime; unusual non-weakrefable/unhashable handlers safely fall back
+        # to an independent proxy rather than weakening event delivery.
+        try:
+            with cls._registry_lock:
+                existing = cls._instances_by_inner.get(inner)
+                if existing is not None and not bool(getattr(existing, "_closed", False)):
+                    return existing
+                instance = super().__new__(cls)
+                cls._instances_by_inner[inner] = instance
+                return instance
+        except TypeError:
+            return super().__new__(cls)
+
     def __init__(
         self,
         inner,
@@ -42,6 +68,11 @@ class CoalescingEventHandlerProxy:
         max_immediate_events: int = DEFAULT_MAX_IMMEDIATE_EVENTS,
         max_pending_modified: int = DEFAULT_MAX_PENDING_MODIFIED,
     ) -> None:
+        if bool(getattr(self, "_initialized", False)):
+            self.shared_reuses += 1
+            return
+
+        self._initialized = True
         self._inner = inner
         self._modified_window_seconds = max(0.0, float(modified_window_seconds))
         self._max_immediate_events = max(128, int(max_immediate_events))
@@ -62,6 +93,7 @@ class CoalescingEventHandlerProxy:
         self.scheduler_deadline_updates = 0
         self.scheduler_reorders = 0
         self.worker_waits = 0
+        self.shared_reuses = 0
 
         self._worker = Thread(
             target=self._run,
@@ -141,7 +173,7 @@ class CoalescingEventHandlerProxy:
             self._closed = True
             self._cv.notify_all()
 
-    def status(self) -> dict[str, int | bool]:
+    def status(self) -> dict[str, int | bool | str]:
         with self._cv:
             return {
                 "received": int(self.received),
@@ -155,6 +187,8 @@ class CoalescingEventHandlerProxy:
                 "scheduler_order_entries": len(self._pending_modified),
                 "scheduler_deadline_updates": int(self.scheduler_deadline_updates),
                 "scheduler_reorders": int(self.scheduler_reorders),
+                "dispatch_sharing_profile": "shared_by_inner_v1",
+                "shared_reuses": int(self.shared_reuses),
                 # Legacy diagnostic keys remain present so older status readers
                 # fail safely while making it explicit that the heap is gone.
                 "scheduler_heap_entries": 0,
