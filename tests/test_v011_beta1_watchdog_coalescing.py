@@ -136,3 +136,46 @@ def test_close_flushes_a_pending_modified_event_once():
     status = proxy.status()
     assert status["forwarded"] == 1
     assert status["worker_alive"] is False
+
+
+def test_heap_scheduler_preserves_one_final_event_for_many_unique_modified_paths():
+    inner = _Inner()
+    proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=60.0)
+    events = [_event("modified", rf"C:\\watched\\unique-{i:04d}.bin") for i in range(300)]
+
+    for event in events:
+        assert proxy.dispatch(event) is None
+
+    before_close = proxy.status()
+    assert before_close["modified_pending"] == len(events)
+    assert before_close["scheduler_heap_entries"] >= len(events)
+    assert inner.events == []
+
+    proxy.close(timeout=3.0)
+
+    assert len(inner.events) == len(events)
+    assert {event.src_path for event in inner.events} == {event.src_path for event in events}
+    status = proxy.status()
+    assert status["forwarded"] == len(events)
+    assert status["modified_pending"] == 0
+    assert status["worker_alive"] is False
+
+
+def test_heap_scheduler_compacts_stale_deadlines_for_repeated_same_path():
+    inner = _Inner()
+    proxy = CoalescingEventHandlerProxy(inner, modified_window_seconds=60.0)
+    path = r"C:\\watched\\very-chatty.tmp"
+
+    for _ in range(1500):
+        assert proxy.dispatch(_event("modified", path)) is None
+
+    status = proxy.status()
+    assert status["modified_pending"] == 1
+    assert status["coalesced"] == 1499
+    assert status["scheduler_heap_pushes"] == 1500
+    assert status["scheduler_compactions"] >= 1
+    assert status["scheduler_heap_entries"] < 1024
+
+    proxy.close(timeout=2.0)
+    assert len(inner.events) == 1
+    assert inner.events[0].src_path == path
