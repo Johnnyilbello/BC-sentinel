@@ -20,7 +20,6 @@ def _walk_code(code: CodeType) -> Iterable[CodeType]:
 
 
 def _walk_constant_strings(value: Any) -> Iterable[str]:
-    """Yield strings recursively from compiler aggregate constants."""
     if isinstance(value, str):
         yield value
         return
@@ -150,8 +149,8 @@ def _dispatch_evidence(service_code: CodeType) -> dict[str, Any]:
         matches = _find_code_objects(service_code, target)
         result[target] = [_code_summary(item) for item in matches]
     b1b = _find_code_objects(service_code, "dispatch_validated")
-    result["b1b_reads_request_operation"] = any("operation" in item.co_names for item in b1b)
-    result["b1b_reads_request_op"] = any("op" in item.co_names for item in b1b)
+    result["b1b_reads_request_operation"] = any("operation" in _direct_constant_strings(item) for item in b1b)
+    result["b1b_reads_request_op"] = any("op" in _direct_constant_strings(item) for item in b1b)
     return result
 
 
@@ -181,6 +180,7 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
     service_code = _extract_code(pyz, "sentinel.protection_service_core")
     protocol = _facts(protocol_code)
     service = _facts(service_code)
+    dispatch_evidence = _dispatch_evidence(service_code)
 
     protocol_functions = set(protocol["function_names"])
     protocol_names = set(protocol["names"])
@@ -201,6 +201,8 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "service_references_edr_bridge": "EdrServiceBridge" in service_names,
         "service_references_dispatch_read": "dispatch_read" in service_names,
         "service_references_dispatch_privileged": "dispatch_privileged" in service_names,
+        "service_b1b_reads_request_op": bool(dispatch_evidence.get("b1b_reads_request_op")),
+        "service_b1b_does_not_read_request_operation": not bool(dispatch_evidence.get("b1b_reads_request_operation")),
     }
 
     protocol_ok = all(checks[name] for name in (
@@ -210,7 +212,7 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "protocol_has_edr_read_allowlist_symbol",
         "protocol_has_edr_privileged_allowlist_symbol",
     ))
-    service_ok = all(checks[name] for name in (
+    service_shape_ok = all(checks[name] for name in (
         "service_has_legacy_dispatch",
         "service_has_b1b_dispatch",
         "service_has_legacy_pending",
@@ -219,8 +221,12 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "service_references_dispatch_read",
         "service_references_dispatch_privileged",
     ))
+    request_field_ok = checks["service_b1b_reads_request_op"] and checks["service_b1b_does_not_read_request_operation"]
+    service_ok = service_shape_ok and request_field_ok
 
-    if not protocol_ok and not service_ok:
+    if protocol_ok and service_shape_ok and not request_field_ok:
+        classification = "frozen_b1b_request_field_mismatch"
+    elif not protocol_ok and not service_ok:
         classification = "frozen_protocol_and_service_pre_b1b_or_incomplete"
     elif not protocol_ok:
         classification = "frozen_protocol_pre_b1b_or_incomplete"
@@ -237,7 +243,7 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "checks": checks,
         "protocol_evidence": _protocol_evidence(protocol_code),
         "service_dispatch_validated_callers_in_module": service["dispatch_validated_callers"],
-        "dispatch_evidence": _dispatch_evidence(service_code),
+        "dispatch_evidence": dispatch_evidence,
         "request_shape_evidence": _request_shape_evidence(protocol_code),
         "protection_modules": protection_modules,
     }
