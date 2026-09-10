@@ -18,11 +18,50 @@ def _walk_code(code: CodeType) -> Iterable[CodeType]:
             yield from _walk_code(value)
 
 
+def _walk_constant_strings(value: Any) -> Iterable[str]:
+    """Yield strings recursively from compiler aggregate constants.
+
+    Python 3.12 can store literal set/dict members inside tuple/frozenset
+    constants. Inspecting only direct string co_consts therefore produces
+    false negatives for values such as EDR operation names.
+    """
+    if isinstance(value, str):
+        yield value
+        return
+    if isinstance(value, CodeType):
+        for item in value.co_consts:
+            yield from _walk_constant_strings(item)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield from _walk_constant_strings(key)
+            yield from _walk_constant_strings(item)
+        return
+    if isinstance(value, (tuple, list, set, frozenset)):
+        for item in value:
+            yield from _walk_constant_strings(item)
+
+
+def _code_summary(code: CodeType) -> dict[str, Any]:
+    return {
+        "name": code.co_name,
+        "qualname": getattr(code, "co_qualname", code.co_name),
+        "argcount": code.co_argcount,
+        "varnames": list(code.co_varnames[: code.co_argcount + code.co_kwonlyargcount]),
+        "names": sorted(set(code.co_names)),
+        "strings": sorted(set(_walk_constant_strings(code))),
+    }
+
+
+def _find_code_objects(code: CodeType, name: str) -> list[CodeType]:
+    return [obj for obj in _walk_code(code) if obj.co_name == name]
+
+
 def _facts(code: CodeType) -> dict[str, Any]:
     objects = list(_walk_code(code))
     function_names = sorted({obj.co_name for obj in objects})
     names = sorted({name for obj in objects for name in obj.co_names})
-    strings = sorted({value for obj in objects for value in obj.co_consts if isinstance(value, str)})
+    strings = sorted({value for obj in objects for value in _walk_constant_strings(obj)})
     callers = sorted({obj.co_name for obj in objects if "dispatch_validated" in obj.co_names})
     return {
         "function_names": function_names,
@@ -49,10 +88,43 @@ def _extract_code(pyz: Any, module: str) -> CodeType:
     return code
 
 
+def _request_shape_evidence(protocol_code: CodeType) -> dict[str, Any]:
+    candidates: list[dict[str, Any]] = []
+    for obj in _walk_code(protocol_code):
+        folded_name = obj.co_name.casefold()
+        names = set(obj.co_names)
+        strings = set(_walk_constant_strings(obj))
+        if (
+            "request" in folded_name
+            or "operation" in names
+            or "op" in names
+            or "operation" in strings
+            or "op" in strings
+        ):
+            summary = _code_summary(obj)
+            summary["mentions_operation_name"] = "operation" in names or "operation" in strings
+            summary["mentions_op_name"] = "op" in names or "op" in strings
+            candidates.append(summary)
+    return {"candidates": candidates[:40]}
+
+
+def _dispatch_evidence(service_code: CodeType) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for target in ("dispatch_validated", "_v011_beta2_legacy_dispatch_validated", "dispatch", "dispatch_bytes"):
+        matches = _find_code_objects(service_code, target)
+        result[target] = [_code_summary(item) for item in matches]
+    b1b = _find_code_objects(service_code, "dispatch_validated")
+    result["b1b_reads_request_operation"] = any("operation" in item.co_names for item in b1b)
+    result["b1b_reads_request_op"] = any("op" in item.co_names for item in b1b)
+    return result
+
+
 def inspect_exe(exe: Path) -> dict[str, Any]:
     pyz = _open_pyz(exe)
-    protocol = _facts(_extract_code(pyz, "sentinel.protection_protocol"))
-    service = _facts(_extract_code(pyz, "sentinel.protection_service_core"))
+    protocol_code = _extract_code(pyz, "sentinel.protection_protocol")
+    service_code = _extract_code(pyz, "sentinel.protection_service_core")
+    protocol = _facts(protocol_code)
+    service = _facts(service_code)
 
     protocol_functions = set(protocol["function_names"])
     protocol_names = set(protocol["names"])
@@ -108,6 +180,8 @@ def inspect_exe(exe: Path) -> dict[str, Any]:
         "passed": protocol_ok and service_ok,
         "checks": checks,
         "service_dispatch_validated_callers_in_module": service["dispatch_validated_callers"],
+        "dispatch_evidence": _dispatch_evidence(service_code),
+        "request_shape_evidence": _request_shape_evidence(protocol_code),
         "protection_modules": protection_modules,
     }
 
