@@ -25,19 +25,22 @@ class ProtectionConfigStore:
 
 class ProtectionRuntime:
     def start(self):
-        try:
-            self.settings = self.config_store.load()
-        except Exception as exc:
-            return False
-        realtime_running = bool(self.realtime.start()) if self.settings.realtime_enabled else False
-        return realtime_running
+        with self._lock:
+            if True:
+                try:
+                    self.settings = self.config_store.load()
+                except Exception as exc:
+                    return False
+                realtime_running = bool(self.realtime.start()) if self.settings.realtime_enabled else False
+                return realtime_running
 
     def resume(self):
-        # Resume using persisted settings.
-        self._protection_enabled = True
-        self.settings = self.config_store.load()
-        realtime_running = bool(self.realtime.start()) if self.settings.realtime_enabled else False
-        return realtime_running
+        with self._lock:
+            # Resume using persisted settings.
+            self._protection_enabled = True
+            self.settings = self.config_store.load()
+            realtime_running = bool(self.realtime.start()) if self.settings.realtime_enabled else False
+            return realtime_running
 '''
 
 
