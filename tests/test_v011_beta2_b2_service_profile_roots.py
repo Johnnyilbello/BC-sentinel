@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import sentinel.config as config
 from sentinel.config import (
+    Settings,
     _default_root_candidates,
     _discover_local_user_profiles,
+    _merge_path_strings,
     _profile_monitor_candidates,
     _service_identity_needs_local_profiles,
+    ensure_service_profile_roots,
 )
 
 
@@ -108,3 +112,49 @@ def test_normal_user_defaults_do_not_expand_other_profiles(tmp_path: Path):
     assert alice / "AppData" / "Local" / "Temp" in monitored
     assert bob / "Downloads" not in monitored
     assert bob / "AppData" / "Local" / "Temp" not in monitored
+
+
+def test_merge_path_strings_preserves_configured_and_adds_required_without_duplicates():
+    merged = _merge_path_strings(
+        [r"C:\Legacy", r"C:\Users\Alice\Desktop"],
+        [r"c:\users\alice\desktop", r"C:\Users\Alice\AppData\Local\Temp"],
+    )
+
+    assert merged[0] == r"C:\Legacy"
+    assert sum(path.casefold().endswith(r"users\alice\desktop") for path in merged) == 1
+    assert any(path.casefold().endswith(r"appdata\local\temp") for path in merged)
+
+
+def test_service_profile_root_migration_preserves_legacy_and_adds_required(monkeypatch):
+    required = Settings(
+        monitored_dirs=[r"C:\Users\Alice\Downloads", r"C:\Users\Alice\AppData\Local\Temp"],
+        ransomware_dirs=[r"C:\Users\Alice\Documents"],
+    )
+    persisted = Settings(
+        monitored_dirs=[r"C:\Windows\Temp", r"D:\CustomWatch"],
+        ransomware_dirs=[r"D:\Protected"],
+    )
+
+    monkeypatch.setattr(config.os, "name", "nt")
+    monkeypatch.setattr(config, "_service_identity_needs_local_profiles", lambda *args, **kwargs: True)
+    monkeypatch.setattr(config.Settings, "defaults", classmethod(lambda cls: required))
+
+    result = ensure_service_profile_roots(persisted)
+
+    assert r"C:\Windows\Temp" in result.monitored_dirs
+    assert r"D:\CustomWatch" in result.monitored_dirs
+    assert r"C:\Users\Alice\Downloads" in result.monitored_dirs
+    assert r"C:\Users\Alice\AppData\Local\Temp" in result.monitored_dirs
+    assert r"D:\Protected" in result.ransomware_dirs
+    assert r"C:\Users\Alice\Documents" in result.ransomware_dirs
+
+
+def test_normal_user_persisted_roots_are_not_forced(monkeypatch):
+    persisted = Settings(monitored_dirs=[r"D:\CustomWatch"], ransomware_dirs=[r"D:\Protected"])
+    monkeypatch.setattr(config.os, "name", "nt")
+    monkeypatch.setattr(config, "_service_identity_needs_local_profiles", lambda *args, **kwargs: False)
+
+    result = ensure_service_profile_roots(persisted)
+
+    assert result.monitored_dirs == [r"D:\CustomWatch"]
+    assert result.ransomware_dirs == [r"D:\Protected"]
