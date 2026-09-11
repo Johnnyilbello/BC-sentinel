@@ -73,10 +73,28 @@ def _is_reparse_or_symlink(path: Path) -> bool:
         return True
 
 
-def _load_json_file(path: Path, *, label: str) -> tuple[Path, dict, str]:
+def _refuse_reparse_pre_resolution(path: Path, *, label: str, must_exist: bool) -> Path:
     original = Path(path)
     if original.is_symlink():
-        raise ValueError(f"B5-5 {label} symlink/reparse refused: {original}")
+        raise ValueError(f"B5-5 {label} symlink/reparse refused before resolution: {original}")
+    try:
+        st = original.stat(follow_symlinks=False)
+        attrs = int(getattr(st, "st_file_attributes", 0) or 0)
+        if bool(attrs & int(getattr(os, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))):
+            raise ValueError(f"B5-5 {label} symlink/reparse refused before resolution: {original}")
+    except FileNotFoundError:
+        if must_exist:
+            raise
+    except ValueError:
+        raise
+    except OSError as exc:
+        if must_exist:
+            raise ValueError(f"B5-5 {label} pre-resolution validation failed: {type(exc).__name__}:{exc}") from exc
+    return original
+
+
+def _load_json_file(path: Path, *, label: str) -> tuple[Path, dict, str]:
+    original = _refuse_reparse_pre_resolution(Path(path), label=label, must_exist=True)
     resolved = original.resolve(strict=True)
     if not resolved.is_file() or _is_reparse_or_symlink(resolved):
         raise ValueError(f"B5-5 {label} must be regular non-reparse file: {resolved}")
@@ -87,7 +105,8 @@ def _load_json_file(path: Path, *, label: str) -> tuple[Path, dict, str]:
 
 
 def _ensure_outside_target(path: Path, target_root: Path, *, label: str, must_exist: bool) -> Path:
-    candidate = Path(path).resolve(strict=must_exist)
+    original = _refuse_reparse_pre_resolution(Path(path), label=label, must_exist=must_exist)
+    candidate = original.resolve(strict=must_exist)
     root = Path(target_root).resolve(strict=True)
     try:
         candidate.relative_to(root)
