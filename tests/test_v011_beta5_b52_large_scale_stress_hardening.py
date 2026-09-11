@@ -109,7 +109,7 @@ def test_deep_tree_reports_depth_without_recursion(tmp_path: Path) -> None:
     assert result["enumeration"]["max_depth_observed"] >= 24
 
 
-def test_depth_bound_prunes_beyond_limit(tmp_path: Path) -> None:
+def test_depth_bound_prunes_with_explicit_partial_state(tmp_path: Path) -> None:
     root = make_windows(tmp_path / "offline")
     current = root / "Deep"
     for i in range(12):
@@ -117,6 +117,8 @@ def test_depth_bound_prunes_beyond_limit(tmp_path: Path) -> None:
     current.mkdir(parents=True)
     (current / "leaf.bin").write_bytes(b"leaf")
     result = b52.stress_probe_target(root, limits=b52.StressLimits(max_files=100, max_depth=4, max_workers=1, max_inflight=1))
+    assert result["state"] == b52.STATE_PARTIAL_DEPTH_LIMIT
+    assert result["reason"] == "depth_budget_reached"
     assert result["enumeration"]["depth_pruned"] >= 1
     assert all(not row["relative_path"].endswith("leaf.bin") for row in result["records"])
 
