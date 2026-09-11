@@ -17,14 +17,18 @@ function Fail([string]$Stage, [string]$Message) {
 function Get-BasePython {
     $py = Get-Command py.exe -ErrorAction SilentlyContinue
     if ($null -ne $py) {
-        & $py.Source -3.12 -c "import sys; assert sys.version_info >= (3,12); print(sys.executable)" *> $null
-        if ($LASTEXITCODE -eq 0) { return @($py.Source, '-3.12') }
+        & $py.Source -3.12 -c "import sys; assert sys.version_info >= (3,12)" *> $null
+        if ($LASTEXITCODE -eq 0) {
+            return [pscustomobject]@{ Exe = $py.Source; PrefixArgs = @('-3.12') }
+        }
     }
 
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     if ($null -ne $python) {
         & $python.Source -c "import sys; assert sys.version_info >= (3,12)" *> $null
-        if ($LASTEXITCODE -eq 0) { return @($python.Source) }
+        if ($LASTEXITCODE -eq 0) {
+            return [pscustomobject]@{ Exe = $python.Source; PrefixArgs = @() }
+        }
     }
 
     throw 'Python 3.12+ not found. Install Python 3.12 and run this launcher again.'
@@ -44,11 +48,8 @@ try {
     if (-not (Test-Path -LiteralPath $VenvPython)) {
         Write-Host 'Creating local .venv with Python 3.12+...' -ForegroundColor Yellow
         $base = Get-BasePython
-        if ($base.Count -eq 2) {
-            & $base[0] $base[1] -m venv '.\.venv'
-        } else {
-            & $base[0] -m venv '.\.venv'
-        }
+        $venvArgs = @($base.PrefixArgs) + @('-m', 'venv', '.\.venv')
+        & $base.Exe @venvArgs
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $VenvPython)) {
             Fail 'venv' 'Unable to create .venv.'
         }
