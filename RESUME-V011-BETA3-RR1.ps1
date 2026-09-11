@@ -25,7 +25,7 @@ try {
     }
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) { throw '.venv not available' }
 
-    $PatchRef = '19c94e0f4e54c27f549197a86aac0c7b32aa45c5'
+    $PatchRef = 'c603d0a8b7aa57f8dccf24075f07ecc2755c900e'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.3 - RR-1 PORTABLE BOOTSTRAP' -ForegroundColor Cyan
