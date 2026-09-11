@@ -36,6 +36,7 @@ try {
     Write-Host ('RR6 BUILD REPO=' + $RepoRoot) -ForegroundColor DarkCyan
     Write-Host ('RR6 BUILD SHORT_BASE=' + $ShortBase) -ForegroundColor DarkCyan
     Write-Host ('RR6 BUILD REPO_PATH_LENGTH=' + $RepoRoot.Length) -ForegroundColor DarkCyan
+    Write-Host 'RR6 BUILD NATIVE_STDERR_POLICY=capture-without-terminating' -ForegroundColor DarkCyan
 
     $Built = $false
     $LastFailure = ''
@@ -62,7 +63,15 @@ try {
         Write-Host ('RR6 BUILD TEMPPATH=' + $TempPath + ' length=' + $TempPath.Length) -ForegroundColor DarkCyan
         Write-Host ('RR6 BUILD LOG=' + $LogPath) -ForegroundColor DarkCyan
 
+        $ExitCode = -999
+        $OldErrorActionPreference = $ErrorActionPreference
         try {
+            # PyInstaller writes normal INFO/WARNING diagnostics to stderr. Under Windows
+            # PowerShell 5.1, merging stderr with 2>&1 while ErrorActionPreference=Stop
+            # can turn the first native stderr line into a terminating NativeCommandError.
+            # Temporarily use Continue so the native process can finish and we can judge
+            # the real process exit code. The strict policy is restored immediately after.
+            $ErrorActionPreference = 'Continue'
             & $Py -m PyInstaller --noconfirm --clean --onedir `
                 --name 'BC-Sentinel-Rescue-Certification-Portable' `
                 --distpath $FinalDist `
@@ -72,20 +81,25 @@ try {
                 $Entry 2>&1 | Tee-Object -FilePath $LogPath
             $ExitCode = $LASTEXITCODE
         }
+        catch {
+            $LastFailure = ('attempt=' + $Attempt + ' wrapper_exception=' + $_.Exception.GetType().FullName + ' message=' + $_.Exception.Message + ' log=' + $LogPath)
+            Write-Host ('RR6 BUILD WRAPPER EXCEPTION ' + $LastFailure) -ForegroundColor Yellow
+        }
         finally {
+            $ErrorActionPreference = $OldErrorActionPreference
             $env:TEMP = $OldTemp
             $env:TMP = $OldTmp
         }
 
         if ($ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $FinalFolder 'BC-Sentinel-Rescue-Certification-Portable.exe'))) {
-            Write-Host ('RR6 BUILD ATTEMPT=' + $Attempt + ' RESULT=PASS') -ForegroundColor Green
+            Write-Host ('RR6 BUILD ATTEMPT=' + $Attempt + ' RESULT=PASS exit_code=' + $ExitCode) -ForegroundColor Green
             $Built = $true
             break
         }
 
         $Tail = @()
         if (Test-Path -LiteralPath $LogPath) {
-            $Tail = @(Get-Content -LiteralPath $LogPath -Tail 35 -ErrorAction SilentlyContinue)
+            $Tail = @(Get-Content -LiteralPath $LogPath -Tail 45 -ErrorAction SilentlyContinue)
         }
         $TailText = ($Tail -join [Environment]::NewLine)
         $FailureClass = 'pyinstaller_nonzero_exit'
@@ -97,6 +111,9 @@ try {
         }
         elseif ($TailText -match 'Permission denied|Access is denied|WinError 5') {
             $FailureClass = 'build_file_lock_or_access_denied'
+        }
+        elseif ($LastFailure -match 'wrapper_exception=') {
+            $FailureClass = 'powershell_wrapper_exception'
         }
         $LastFailure = ('attempt=' + $Attempt + ' exit_code=' + $ExitCode + ' class=' + $FailureClass + ' log=' + $LogPath)
         Write-Host ('RR6 BUILD ATTEMPT=' + $Attempt + ' RESULT=FAIL ' + $LastFailure) -ForegroundColor Yellow
@@ -136,6 +153,7 @@ try {
         repair_execution = $false
         destructive_action = $false
         build_isolation = 'short-per-attempt-work-temp'
+        native_stderr_policy = 'captured_without_terminating_windows_powershell_5_1'
         max_build_attempts = $MaxAttempts
     }
     $Json = $Manifest | ConvertTo-Json -Depth 5
