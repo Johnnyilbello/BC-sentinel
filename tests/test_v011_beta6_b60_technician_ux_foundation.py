@@ -110,7 +110,8 @@ def test_window_constructs_offscreen() -> None:
     _app()
     window = ui.TechnicianWindow()
     try:
-        assert window.windowTitle() == "BC Sentinel — Rescue Technician"
+        assert ui.WINDOW_TITLE == "BC Sentinel - Rescue Technician"
+        assert window.windowTitle() == ui.WINDOW_TITLE
         assert window.ui_state.state == "IDLE"
         assert window.minimumWidth() >= 900
         assert window.minimumHeight() >= 640
