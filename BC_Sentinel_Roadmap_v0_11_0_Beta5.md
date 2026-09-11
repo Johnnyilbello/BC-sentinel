@@ -15,38 +15,68 @@ Move BC Sentinel Rescue from technically accepted synthetic/offline workflows to
 
 Beta5 is hardening, observability and field validation. It is not permission to add automatic destructive behavior.
 
-## B5-0 — Real-World Target Discovery — current
-Purpose: discover candidate offline Windows installations safely across realistic storage layouts without modifying disks.
+## B5-0 — Real-World Target Discovery — accepted
+Authoritative Windows acceptance:
+- Beta3 + complete Beta4 + B5-0 regression: **212 tests PASS**;
+- deterministic multi-volume fixture PASS;
+- READY / INCOMPLETE / UNSUPPORTED / LOCKED classifications PASS;
+- live Windows volume enumeration bounded;
+- live `SystemDrive` explicitly refused as offline target;
+- target unchanged;
+- no unlock/mount/write;
+- no service registration;
+- B2 protected sources unchanged.
 
-Required boundaries:
-- enumerate candidate roots from explicit paths and discovered volumes in read-only mode;
-- support multiple disks/partitions and more than one Windows candidate;
-- validate each candidate using required Windows markers without executing or loading target code;
-- classify candidate state as `READY`, `LOCKED`, `ACCESS_DENIED`, `INCOMPLETE`, `UNSUPPORTED` or `ERROR`;
-- detect likely BitLocker/locked-volume conditions and refuse safely when not readable;
-- never attempt unlock, mount mutation, format, partition changes, BCD changes or filesystem repair;
-- normalize and log volume/root paths, discovery source, stage, reason, elapsed time and correlation ID;
-- cap enumeration and timeout/volume counts;
-- preserve all Beta4 target-validation rules before any later Rescue stage can run;
-- no installer/service/driver and no network/cloud requirement.
+Frozen checkpoint:
+```text
+checkpoint/v011-beta5-b50-pass
+385ba83a483f6a894dd7048cc2d3cec9c11e3a8e
+```
 
-Acceptance must include synthetic multi-volume fixtures, inaccessible/partial candidates, locked-volume classification, bounded enumeration, deterministic ordering, target byte-identical checks, no service, B2 protected sources unchanged and complete Beta3+Beta4 regression.
+## B5-1 — Hostile / Damaged System Scenarios — current
+Purpose: harden the Rescue workflow against realistic damage and hostile filesystem conditions while remaining read-only.
 
-## B5-1 — Hostile / Damaged System Scenarios
-Purpose: harden the Rescue workflow against realistic damage and hostile filesystem conditions.
-
-Scenarios:
+Required coverage:
 - missing/corrupt critical files;
 - broken ACLs and unreadable paths;
 - partial directory trees;
-- malformed metadata;
-- stale or inconsistent evidence;
-- simulated persistent malware artifacts;
-- extremely slow filesystems;
-- reparse/symlink/junction traps;
-- intermittent read failures.
+- simulated persistent malware/startup artifacts;
+- slow I/O;
+- intermittent read failures;
+- reparse/symlink traps;
+- bounded file/byte/time budgets;
+- output outside target;
+- explicit reason/state for every refusal or degraded condition.
 
-Required outcome: fail closed, preserve evidence, expose exact stage/reason, never convert uncertainty into success.
+Allowed assessment states:
+- `HEALTHY`;
+- `REVIEW_REQUIRED`;
+- `DAMAGED`;
+- `ACCESS_RESTRICTED`;
+- `IO_DEGRADED`;
+- `REFUSED`.
+
+Rules:
+- no state automatically triggers repair, quarantine, delete, restore or certification;
+- target code is never executed/loaded;
+- uncertainty never becomes success;
+- critical target-contract failure is `DAMAGED`;
+- suspicious persistence is operator review only;
+- permission/I/O failures are preserved as explicit degraded states;
+- no network/cloud requirement.
+
+B5-1 Windows acceptance must include:
+- complete Beta3 + Beta4 + B5-0 regression;
+- 14 new B5-1 tests, expected cumulative **226 tests**;
+- clean fixture -> `HEALTHY`;
+- missing critical file -> `DAMAGED`;
+- persistence fixture -> `REVIEW_REQUIRED`;
+- deterministic permission case -> `ACCESS_RESTRICTED`;
+- deterministic I/O failure -> `IO_DEGRADED`;
+- target byte-identical;
+- no repair/quarantine/write;
+- no service;
+- B2 protected sources unchanged.
 
 ## B5-2 — Large-Scale & Stress Hardening
 Purpose: prove bounded behavior under real technician workloads.
