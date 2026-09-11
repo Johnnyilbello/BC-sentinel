@@ -12,6 +12,7 @@ from sentinel import rescue_stress_hardening as b52
 PROFILE = b52.PROFILE
 CHECKPOINT = "B5-2-large-scale-stress-hardening"
 FIXTURE_FILES = 12_000
+DEEP_LEVELS = 40
 THROUGHPUT_FLOOR_FILES_PER_SEC = 100.0
 PEAK_PYTHON_MEMORY_CEILING = 192 * 1024 * 1024
 
@@ -41,7 +42,7 @@ def build_large_fixture(root: Path) -> tuple[Path, Path]:
         (bulk / f"item-{i:05d}.dat").write_bytes((f"B52-{i:05d}" * 2).encode("ascii"))
 
     deep = target / "Deep"
-    for i in range(80):
+    for i in range(DEEP_LEVELS):
         deep = deep / f"d{i:02d}"
     deep.mkdir(parents=True)
     (deep / "deep-leaf.bin").write_bytes(b"deep")
@@ -108,10 +109,7 @@ def run_acceptance(output: Path) -> dict:
             cancel_check=cancel,
         )
 
-        slow_counter = {"n": 0}
-
         def slow_reader(path: Path, amount: int) -> bytes:
-            slow_counter["n"] += 1
             time.sleep(0.08)
             with path.open("rb") as handle:
                 return handle.read(amount)
@@ -136,7 +134,7 @@ def run_acceptance(output: Path) -> dict:
             "schema": full.get("schema") == b52.SCHEMA,
             "large_scale_complete": full.get("state") == b52.STATE_COMPLETE,
             "tens_of_thousands_scale": int(full["counters"]["probed"]) >= FIXTURE_FILES,
-            "deep_tree_observed": int(full["enumeration"]["max_depth_observed"]) >= 80,
+            "deep_tree_observed": int(full["enumeration"]["max_depth_observed"]) >= DEEP_LEVELS,
             "large_file_sample_bounded": bool(large_row) and int(large_row["file_size"]) == 8 * 1024 * 1024 and int(large_row["sampled_bytes"]) == 64,
             "file_limit_partial": limited.get("state") == b52.STATE_PARTIAL_FILE_LIMIT and int(limited["counters"]["scheduled"]) == 1000,
             "cancellation_partial": cancelled.get("state") == b52.STATE_CANCELLED,
@@ -167,6 +165,7 @@ def run_acceptance(output: Path) -> dict:
             "checks": checks,
             "detail": {
                 "fixture_files": FIXTURE_FILES,
+                "deep_levels": DEEP_LEVELS,
                 "probed": full["counters"]["probed"],
                 "sampled_bytes": full["sampled_bytes"],
                 "max_depth_observed": full["enumeration"]["max_depth_observed"],
