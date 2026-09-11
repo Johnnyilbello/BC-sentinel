@@ -103,7 +103,7 @@ try {
         schema = 'bc-sentinel-offline-intel-v1'
         approved = $true
         sha256 = @([ordered]@{ value = $IocHash; name = 'RR3.Live.IOC'; source = 'windows_acceptance' })
-    } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $IntelPath -Encoding UTF8
+    } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $IntelPath -Encoding ASCII
 
     $YaraPath = Join-Path $RunRoot 'harmless-test.yar'
     @'
