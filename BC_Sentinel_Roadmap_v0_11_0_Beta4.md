@@ -46,36 +46,57 @@ checkpoint/v011-beta4-b40-pass
 
 This checkpoint is immutable.
 
-## B4-1 — Evidence Inventory + Guided Scan — current
-Integrate read-only evidence discovery and RR-3 invocation into the Console.
+## B4-1 — Evidence Inventory + Guided Scan — accepted
+Accepted scope:
+- evidence classified as `TRUSTED`, `UNTRUSTED` or `MISSING`;
+- existing RR-3 evidence revalidated before reuse;
+- target/profile/mode/safety contract, scan completeness, hashed findings and mandatory hive hashes checked;
+- stale/incomplete/tampered evidence surfaced as untrusted with exact reasons;
+- fresh RR-3 scan requires explicit operator request;
+- trusted reuse requires explicit operator request;
+- deterministic IOC/YARA findings do not automatically trigger repair or quarantine;
+- target remains byte-identical;
+- no new mutation authority added.
+
+Authoritative Windows acceptance:
+- Beta3 + B4-0 + B4-1 regression: **157 tests PASS**;
+- all predecessor deterministic acceptances PASS;
+- fresh RR-3 scan PASS;
+- deterministic IOC observed without automatic action PASS;
+- trusted scan reuse PASS;
+- tampered scan refusal PASS;
+- target unchanged, no service, B2 protected sources unchanged;
+- final B4-1 core and bootstrap PASS.
+
+Frozen checkpoint:
+
+```text
+checkpoint/v011-beta4-b41-pass
+5049b2246df692c0f417131af44353cc234e1f95
+```
+
+This checkpoint is immutable.
+
+## B4-2 — Guided Repair Handoff — current
+Purpose: connect trusted B4-1 evidence to the already accepted RR-4B transaction engine without duplicating or broadening mutation authority inside the Console.
 
 Required boundaries:
-- finding an evidence file does not make it trusted;
-- existing RR-3 evidence must be provenance/integrity checked before reuse;
-- evidence is classified as `TRUSTED`, `UNTRUSTED` or `MISSING`;
-- target/profile/mode/safety contract, scan completeness, hashed findings and mandatory hive hashes are revalidated where applicable;
-- stale/incomplete/tampered evidence is surfaced as untrusted with exact reasons;
-- trusted evidence reuse requires explicit operator request;
-- fresh RR-3 scan requires explicit operator request;
-- an untrusted reuse request must not silently start a scan; it requests a fresh scan instead;
-- scan remains offline/read-only and writes only outside target;
-- deterministic IOC/YARA findings do not automatically trigger repair or quarantine;
-- session audit records stage start/end, timings, counts, normalized paths and exact reason on failure;
-- target remains byte-identical;
+- a repair handoff requires `TRUSTED` RR-3 evidence;
+- the operator-supplied RR-4B operations file must be explicitly approved;
+- operations are bound to both the current RR-6 target fingerprint and the exact trusted RR-3 scan SHA-256;
+- every operation retains an evidence reference;
+- the Console may create the immutable RR-4B plan and expose its exact plan-bound confirmation token;
+- the Console does **not** execute repair or rollback in B4-2;
+- execution and rollback remain delegated to the frozen RR-4B engine and its already accepted confirmation/backup/precondition/rollback semantics;
+- exact plan-bound confirmation remains mandatory in RR-4B;
+- verified backup before mutation remains mandatory in RR-4B;
+- stale plan/precondition refusal and rollback preflight remain mandatory in RR-4B;
+- no heuristic-only repair;
+- no confirmation may be synthesized or auto-approved;
+- preparation of the handoff must leave the target byte-identical;
 - no new mutation authority is added.
 
-B4-1 Windows acceptance must include Beta3 + B4-0 + B4-1 regression, all predecessor deterministic gates, deterministic B4-1 acceptance, fresh-scan live gate, trusted-reuse live gate, tampered-evidence refusal, target unchanged, no service and B2 protected sources unchanged.
-
-## B4-2 — Guided Repair Handoff
-Integrate RR-4B plan/confirmation/execute/rollback without bypassing its accepted transaction semantics.
-
-Required boundaries:
-- exact plan-bound confirmation remains mandatory;
-- verified backup before mutation remains mandatory;
-- no heuristic-only repair;
-- stale plan/precondition refuses execution;
-- rollback preflight remains mandatory;
-- Console cannot silently synthesize or auto-approve confirmations.
+B4-2 Windows acceptance must include Beta3 + B4-0..B4-2 regression, all predecessor deterministic gates including RR-4B execute/rollback acceptance, deterministic B4-2 handoff acceptance, live trusted-scan/approved-operations binding, plan-bound confirmation generation, target unchanged, no service and B2 protected sources unchanged.
 
 ## B4-3 — Guided Safe Data Rescue
 Integrate RR-5 explicit-selection rescue into the session.
