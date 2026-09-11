@@ -17,7 +17,7 @@ def sha(path: Path) -> str:
 
 
 def write_evidence(base: Path, name: str, data: bytes = b"evidence") -> dict:
-    path = base / name
+    path = base / "evidence" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     return {"path": str(path), "sha256": sha(path), "size": path.stat().st_size, "kind": "fixture"}
