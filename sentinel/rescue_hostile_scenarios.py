@@ -170,9 +170,19 @@ def assess_target(
     limits = limits or AssessmentLimits()
     limits.validate()
     started = time.perf_counter()
-    root = Path(target_root).resolve(strict=True)
-    if not root.is_dir() or _is_reparse_or_symlink(root):
-        raise ValueError("B5-1 target must be a real directory, not symlink/reparse")
+
+    raw_root = Path(target_root)
+    raw_normalized = os.path.abspath(os.fspath(raw_root))
+    if _is_reparse_or_symlink(raw_root):
+        raise ValueError(
+            "B5-1 target root symlink/reparse refused before resolution: " + raw_normalized
+        )
+
+    root = raw_root.resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError("B5-1 target must be an existing directory: " + str(root))
+    if _is_reparse_or_symlink(root):
+        raise ValueError("B5-1 resolved target root is symlink/reparse: " + str(root))
 
     fingerprint = ""
     target_contract_valid = False
@@ -303,7 +313,13 @@ def assess_target(
 
 
 def write_assessment(result: dict, output_path: Path, target_root: Path) -> Path:
-    root = Path(target_root).resolve(strict=True)
+    raw_root = Path(target_root)
+    if _is_reparse_or_symlink(raw_root):
+        raise ValueError(
+            "B5-1 assessment target root symlink/reparse refused before resolution: "
+            + os.path.abspath(os.fspath(raw_root))
+        )
+    root = raw_root.resolve(strict=True)
     output = Path(output_path).resolve(strict=False)
     try:
         output.relative_to(root)
@@ -344,7 +360,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["state"] in {STATE_HEALTHY, STATE_REVIEW, STATE_IO_DEGRADED} else 3
     except Exception as exc:
-        print(json.dumps({"passed": False, "profile": PROFILE, "state": STATE_REFUSED, "stage": "assessment", "reason": f"{type(exc).__name__}:{exc}"}, indent=2))
+        print(json.dumps({
+            "passed": False,
+            "profile": PROFILE,
+            "state": STATE_REFUSED,
+            "stage": "assessment",
+            "target_root_input": os.path.abspath(os.fspath(Path(args.target_root))),
+            "reason": f"{type(exc).__name__}:{exc}",
+        }, indent=2))
         return 2
 
 
