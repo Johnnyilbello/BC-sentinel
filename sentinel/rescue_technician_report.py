@@ -238,10 +238,7 @@ def _human_report(report: dict) -> str:
         "## Decision reasons",
     ]
     lines.extend([f"- {item}" for item in reasons] or ["- none"])
-    lines.extend([
-        "",
-        "## Unresolved risks / refusals",
-    ])
+    lines.extend(["", "## Unresolved risks / refusals"])
     lines.extend([f"- {item}" for item in risks] or ["- none"])
     lines.extend([
         "",
@@ -308,28 +305,17 @@ def create_package(request: ReportRequest) -> dict:
     size, copied_sha = _copy_verified(decision_path, decision_copy, decision_file_sha)
     total_bytes += size
     rows.append({
-        "label": "b54_decision",
-        "source_path": str(decision_path),
-        "package_path": f"{EVIDENCE_DIR}/{decision_copy.name}",
-        "trusted": True,
-        "copied": True,
-        "size": size,
-        "sha256": copied_sha,
-        "reason": "validated_b54_decision",
+        "label": "b54_decision", "source_path": str(decision_path),
+        "package_path": f"{EVIDENCE_DIR}/{decision_copy.name}", "trusted": True,
+        "copied": True, "size": size, "sha256": copied_sha, "reason": "validated_b54_decision",
     })
     trusted_copied += 1
 
     for ordinal, (label, info) in enumerate(sorted(evidence_index_in.items()), start=1):
         if not isinstance(info, dict):
             rows.append({
-                "label": str(label),
-                "source_path": "",
-                "package_path": "",
-                "trusted": False,
-                "copied": False,
-                "size": 0,
-                "sha256": "",
-                "reason": "invalid_evidence_index_entry",
+                "label": str(label), "source_path": "", "package_path": "", "trusted": False,
+                "copied": False, "size": 0, "sha256": "", "reason": "invalid_evidence_index_entry",
             })
             untrusted_not_copied += 1
             continue
@@ -339,13 +325,8 @@ def create_package(request: ReportRequest) -> dict:
         expected_sha = str(info.get("file_sha256") or "").casefold()
         if not trusted:
             rows.append({
-                "label": str(label),
-                "source_path": source_text,
-                "package_path": "",
-                "trusted": False,
-                "copied": False,
-                "size": 0,
-                "sha256": expected_sha if _valid_sha256(expected_sha) else "",
+                "label": str(label), "source_path": source_text, "package_path": "", "trusted": False,
+                "copied": False, "size": 0, "sha256": expected_sha if _valid_sha256(expected_sha) else "",
                 "reason": "source_marked_untrusted_by_b54",
             })
             untrusted_not_copied += 1
@@ -367,14 +348,9 @@ def create_package(request: ReportRequest) -> dict:
         if total_bytes > MAX_PACKAGE_BYTES:
             raise ValueError(f"package_byte_limit_exceeded:{total_bytes}")
         rows.append({
-            "label": str(label),
-            "source_path": str(source),
-            "package_path": f"{EVIDENCE_DIR}/{destination_name}",
-            "trusted": True,
-            "copied": True,
-            "size": size,
-            "sha256": copied_sha,
-            "reason": "sha256_binding_verified",
+            "label": str(label), "source_path": str(source),
+            "package_path": f"{EVIDENCE_DIR}/{destination_name}", "trusted": True,
+            "copied": True, "size": size, "sha256": copied_sha, "reason": "sha256_binding_verified",
         })
         trusted_copied += 1
         try:
@@ -386,8 +362,7 @@ def create_package(request: ReportRequest) -> dict:
 
     unresolved = [str(item) for item in (decision.get("reasons") or [])]
     unresolved.extend(
-        f"untrusted_evidence:{row['label']}:{row['reason']}"
-        for row in rows if row["trusted"] is False
+        f"untrusted_evidence:{row['label']}:{row['reason']}" for row in rows if row["trusted"] is False
     )
 
     rescue_detail = _collect_rescue_detail(payload_by_label.get("b43_data_rescue"))
@@ -404,40 +379,26 @@ def create_package(request: ReportRequest) -> dict:
         "unresolved_risks": unresolved,
         "data_rescue": rescue_detail,
         "evidence_summary": {
-            "total": len(rows),
-            "trusted_copied": trusted_copied,
-            "untrusted_not_copied": untrusted_not_copied,
-            "total_copied_bytes": total_bytes,
+            "total": len(rows), "trusted_copied": trusted_copied,
+            "untrusted_not_copied": untrusted_not_copied, "total_copied_bytes": total_bytes,
         },
         "safety": {
-            "report_only": True,
-            "package_outside_target": True,
-            "target_read_only": True,
-            "target_execution": False,
-            "repair_execution": False,
-            "quarantine_execution": False,
-            "data_rescue_execution": False,
-            "format_or_reimage_execution": False,
-            "registry_write": False,
-            "boot_write": False,
-            "automatic_destructive_action": False,
+            "report_only": True, "package_outside_target": True, "target_read_only": True,
+            "target_execution": False, "repair_execution": False, "quarantine_execution": False,
+            "data_rescue_execution": False, "format_or_reimage_execution": False,
+            "registry_write": False, "boot_write": False, "automatic_destructive_action": False,
             "new_mutation_authority_added": False,
         },
     }
     report_sha = _sha256_bytes(_canonical_json(report_core))
     report = {
-        **report_core,
-        "created_utc": _utc_now(),
-        "report_sha256": report_sha,
+        **report_core, "created_utc": _utc_now(), "report_sha256": report_sha,
         "elapsed_ms": round((time.perf_counter() - started) * 1000.0, 3),
     }
 
     index_core = {
-        "schema": INDEX_SCHEMA,
-        "profile": PROFILE,
-        "target_fingerprint": fingerprint,
-        "decision_sha256": str(decision.get("decision_sha256") or ""),
-        "records": rows,
+        "schema": INDEX_SCHEMA, "profile": PROFILE, "target_fingerprint": fingerprint,
+        "decision_sha256": str(decision.get("decision_sha256") or ""), "records": rows,
     }
     index_sha = _sha256_bytes(_canonical_json(index_core))
     index_payload = {**index_core, "index_sha256": index_sha}
@@ -449,28 +410,16 @@ def create_package(request: ReportRequest) -> dict:
     package_files = []
     for file_path in sorted((p for p in package.rglob("*") if p.is_file()), key=lambda p: str(p.relative_to(package)).casefold()):
         rel = str(file_path.relative_to(package)).replace("\\", "/")
-        package_files.append({
-            "path": rel,
-            "size": file_path.stat().st_size,
-            "sha256": _sha256_file(file_path),
-        })
+        package_files.append({"path": rel, "size": file_path.stat().st_size, "sha256": _sha256_file(file_path)})
 
     manifest_core = {
-        "schema": MANIFEST_SCHEMA,
-        "profile": PROFILE,
-        "target_fingerprint": fingerprint,
-        "report_sha256": report_sha,
-        "evidence_index_sha256": index_sha,
+        "schema": MANIFEST_SCHEMA, "profile": PROFILE, "target_fingerprint": fingerprint,
+        "report_sha256": report_sha, "evidence_index_sha256": index_sha,
         "decision_sha256": str(decision.get("decision_sha256") or ""),
-        "files": package_files,
-        "safety": report_core["safety"],
+        "files": package_files, "safety": report_core["safety"],
     }
     manifest_sha = _sha256_bytes(_canonical_json(manifest_core))
-    manifest = {
-        **manifest_core,
-        "created_utc": _utc_now(),
-        "manifest_sha256": manifest_sha,
-    }
+    manifest = {**manifest_core, "created_utc": _utc_now(), "manifest_sha256": manifest_sha}
     _atomic_json(package / MANIFEST_JSON, manifest)
 
     verification = verify_package(package)
@@ -478,34 +427,31 @@ def create_package(request: ReportRequest) -> dict:
         raise ValueError("package_self_verification_failed:" + ",".join(verification["errors"]))
 
     return {
-        "profile": PROFILE,
-        "package_dir": str(package),
-        "target_fingerprint": fingerprint,
-        "report_path": str(package / REPORT_JSON),
-        "human_report_path": str(package / REPORT_MD),
-        "evidence_index_path": str(package / EVIDENCE_INDEX_JSON),
-        "manifest_path": str(package / MANIFEST_JSON),
-        "report_sha256": report_sha,
-        "evidence_index_sha256": index_sha,
-        "manifest_sha256": manifest_sha,
-        "advisory_state": report["advisory_state"],
-        "rr6_outcome": report["rr6_outcome"],
-        "evidence_records": len(rows),
-        "trusted_copied": trusted_copied,
-        "untrusted_not_copied": untrusted_not_copied,
-        "verification_passed": True,
+        "profile": PROFILE, "package_dir": str(package), "target_fingerprint": fingerprint,
+        "report_path": str(package / REPORT_JSON), "human_report_path": str(package / REPORT_MD),
+        "evidence_index_path": str(package / EVIDENCE_INDEX_JSON), "manifest_path": str(package / MANIFEST_JSON),
+        "report_sha256": report_sha, "evidence_index_sha256": index_sha, "manifest_sha256": manifest_sha,
+        "advisory_state": report["advisory_state"], "rr6_outcome": report["rr6_outcome"],
+        "evidence_records": len(rows), "trusted_copied": trusted_copied,
+        "untrusted_not_copied": untrusted_not_copied, "verification_passed": True,
         "new_mutation_authority_added": False,
     }
 
 
 def verify_package(package_dir: Path) -> dict:
-    package = Path(package_dir).resolve(strict=True)
+    try:
+        original = _refuse_reparse_pre_resolution(Path(package_dir), label="verify-package", must_exist=True)
+        package = original.resolve(strict=True)
+    except Exception as exc:
+        return {"passed": False, "errors": [f"package_preflight_refused:{type(exc).__name__}:{exc}"], "checked": 0}
+
     errors: list[str] = []
     if not package.is_dir() or _is_reparse_or_symlink(package):
         return {"passed": False, "errors": ["package_not_real_directory"], "checked": 0}
 
     manifest_path = package / MANIFEST_JSON
     try:
+        _refuse_reparse_pre_resolution(manifest_path, label="manifest", must_exist=True)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
         if not isinstance(manifest, dict):
             raise ValueError("manifest_root_not_object")
@@ -545,13 +491,20 @@ def verify_package(package_dir: Path) -> dict:
             errors.append(f"duplicate_manifest_path:{rel}")
             continue
         listed_paths.add(rel)
-        file_path = (package / rel).resolve(strict=False)
+
+        candidate = package / rel
+        try:
+            _refuse_reparse_pre_resolution(candidate, label=f"manifest-file:{rel}", must_exist=True)
+            file_path = candidate.resolve(strict=True)
+        except Exception:
+            errors.append(f"package_file_missing_or_reparse:{rel}")
+            continue
         try:
             file_path.relative_to(package)
         except ValueError:
             errors.append(f"manifest_path_escape:{rel}")
             continue
-        if not file_path.is_file() or file_path.is_symlink() or _is_reparse_or_symlink(file_path):
+        if not file_path.is_file() or _is_reparse_or_symlink(file_path):
             errors.append(f"package_file_missing_or_reparse:{rel}")
             continue
         checked += 1
@@ -561,20 +514,24 @@ def verify_package(package_dir: Path) -> dict:
         if actual_sha != expected_sha:
             errors.append(f"package_file_sha256_mismatch:{rel}")
 
-    actual_files = {
-        str(p.relative_to(package)).replace("\\", "/")
-        for p in package.rglob("*")
-        if p.is_file() and p.name != MANIFEST_JSON
-    }
+    actual_files: set[str] = set()
+    for candidate in package.rglob("*"):
+        rel = str(candidate.relative_to(package)).replace("\\", "/")
+        if rel == MANIFEST_JSON:
+            continue
+        if candidate.is_symlink() or _is_reparse_or_symlink(candidate):
+            errors.append(f"package_reparse_present:{rel}")
+            continue
+        if candidate.is_file():
+            actual_files.add(rel)
+
     missing_from_manifest = sorted(actual_files - listed_paths)
     missing_from_package = sorted(listed_paths - actual_files)
     errors.extend(f"unlisted_package_file:{item}" for item in missing_from_manifest)
     errors.extend(f"listed_file_missing:{item}" for item in missing_from_package)
 
     return {
-        "passed": not errors,
-        "errors": errors,
-        "checked": checked,
+        "passed": not errors, "errors": errors, "checked": checked,
         "manifest_sha256": expected_manifest_sha,
         "target_fingerprint": str(manifest.get("target_fingerprint") or ""),
     }
@@ -596,9 +553,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "build":
             result = create_package(ReportRequest(
-                target_root=Path(args.target_root),
-                decision_path=Path(args.decision),
-                package_dir=Path(args.package_dir),
+                target_root=Path(args.target_root), decision_path=Path(args.decision), package_dir=Path(args.package_dir),
             ))
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
@@ -607,9 +562,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result["passed"] else 4
     except Exception as exc:
         print(json.dumps({
-            "profile": PROFILE,
-            "passed": False,
-            "stage": "technician_report_package",
+            "profile": PROFILE, "passed": False, "stage": "technician_report_package",
             "reason": f"{type(exc).__name__}:{exc}",
         }, indent=2, sort_keys=True))
         return 2
