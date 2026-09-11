@@ -53,66 +53,63 @@ checkpoint/v011-beta5-b51-pass
 32bce8ccdeb65c266ef651a1dfb0849950d0f0e5
 ```
 
-## B5-2 — Large-Scale & Stress Hardening — current
-Purpose: prove bounded behavior under real technician workloads without adding mutation authority.
-
-Required coverage:
-- tens/hundreds of thousands of files;
-- deep directory trees;
-- large individual files;
-- CPU/RAM/I/O pressure;
-- bounded workers and in-flight work;
-- cancellation and timeout safety;
-- deterministic partial-result semantics;
-- no unbounded memory growth;
-- explicit performance metrics and regression thresholds.
-
-B5-2 implementation contract:
-- profile `v0.11.0-beta.5-b52`;
-- read-only offline target probe validated through the existing RR-6 target contract;
-- hard ceilings: 200,000 files, 8 GiB sampled-byte budget, 120 s elapsed budget, depth 256, workers 8, in-flight 512, sample 1 MiB;
-- normal defaults remain lower than hard ceilings;
-- bounded `ThreadPoolExecutor` with explicit `max_workers` and `max_inflight`;
-- samples files rather than loading large files fully;
-- iterative directory walk, no recursive Python call stack;
-- symlink/reparse paths skipped and root symlink/reparse refused before resolution;
-- partial states are not success: `PARTIAL_FILE_LIMIT`, `PARTIAL_BYTE_LIMIT`, `PARTIAL_TIME_LIMIT`, `PARTIAL_DEPTH_LIMIT`, `CANCELLED`;
-- complete probe with read/enumeration errors becomes `DEGRADED`;
-- stable SHA-256 probe hash excludes volatile timing metrics;
-- performance report includes elapsed ms, files/s, sampled MiB/s, Python peak memory and in-flight peak;
-- output only outside target using atomic replace;
-- no repair, quarantine, delete, registry/boot write, target execution, network or cloud requirement.
-
-B5-2 Windows acceptance must include:
-- complete Beta3 + Beta4 + B5-0..B5-1 regression;
-- **13 new B5-2 tests, expected cumulative 239 tests**;
-- deterministic fixture with 12,000 bulk files plus Windows markers, deep tree and large file;
-- full stress state `COMPLETE`;
-- file-limit state `PARTIAL_FILE_LIMIT`;
-- cancellation state `CANCELLED`;
-- time-limit state `PARTIAL_TIME_LIMIT`;
-- depth-limit state `PARTIAL_DEPTH_LIMIT` when pruning occurs;
-- deep-tree coverage at 40 levels without reliance on Windows Long Paths policy;
-- large 8 MiB file sampled with bounded 64-byte sample;
-- throughput floor >= 100 files/s on deterministic local fixture;
-- Python peak-memory ceiling <= 192 MiB;
-- worker bound <= 4 and in-flight peak <= 64 for deterministic acceptance;
-- live CLI fixture with 1,500 additional files;
+## B5-2 — Large-Scale & Stress Hardening — accepted / frozen
+Authoritative Windows acceptance:
+- cumulative regression: **239 tests PASS**;
+- deterministic stress fixture probed **12,005 files**;
+- throughput **1855.418 files/s** against >= 100 files/s floor;
+- Python traced peak **19,694,597 bytes** against <= 192 MiB ceiling;
+- in-flight peak **64** against <= 64 bound;
+- 40-level deep-tree coverage PASS;
+- 8 MiB file bounded sampling PASS;
+- explicit file-limit / time-limit / cancellation partial states PASS;
+- live CLI fixture `COMPLETE`, **1503 files** probed;
 - target byte-identical;
-- no service;
+- no repair/quarantine/write;
+- no service registration;
 - B2 protected sources unchanged.
 
-## B5-3 — Session Resume & Crash Recovery
-Purpose: allow interrupted Rescue sessions to continue without duplicating actions or losing evidence trust.
+Frozen checkpoint:
+```text
+checkpoint/v011-beta5-b52-pass
+d490f91aa16a5a2ae6f4660669f651619f1dd7b1
+```
 
-Required boundaries:
-- durable session journal outside target;
-- resume only when target fingerprint and evidence hashes still match;
-- idempotent replay prevention;
-- distinguish planned, started, completed, refused and rolled-back stages;
-- crash/restart simulation;
-- interrupted repair/data rescue never auto-resumes mutation;
-- operator confirmation must be re-established where required.
+## B5-3 — Session Resume & Crash Recovery — current
+Purpose: allow interrupted Rescue sessions to continue without duplicating actions or losing evidence trust, while never converting an interrupted mutation-capable stage into automatic consent.
+
+Implementation contract:
+- profile `v0.11.0-beta.5-b53`;
+- durable JSON journal outside target using atomic replace;
+- journal binds session ID, correlation ID, target root and target fingerprint;
+- every event is sequence-bound and SHA-256 hash-chain bound;
+- every event has an idempotent operation key;
+- linked evidence files are SHA-256 bound and must remain outside target;
+- resume revalidates journal schema/profile, complete event chain, operation-key uniqueness, journal hash, target fingerprint and evidence hashes;
+- any mismatch fails closed as `REFUSED`;
+- read-only stages may return `RESUME_READ_ONLY_ALLOWED` after `PLANNED`, `STARTED` or `INTERRUPTED`;
+- repair handoff/execute/rollback and data rescue return `RECONFIRM_REQUIRED` after interruption;
+- terminal states `COMPLETED`, `REFUSED`, `ROLLED_BACK` return `SKIP_TERMINAL`;
+- exact event replay is refused;
+- B5-3 does not preserve an old RR-4B confirmation as reusable consent;
+- no automatic repair, rollback, quarantine or data-rescue continuation;
+- no target-write, registry/boot-write, service/driver or network/cloud authority added.
+
+B5-3 acceptance must include:
+- accepted B5-2 complete gate rerun first, preserving the **239-test** predecessor regression and stress thresholds;
+- **16 new B5-3 tests**, giving **255 cumulative tests covered**;
+- live session initialized in one process and resumed from later processes;
+- interrupted read-only stage -> `RESUME_READ_ONLY_ALLOWED`;
+- interrupted repair -> `RECONFIRM_REQUIRED`;
+- interrupted data rescue -> `RECONFIRM_REQUIRED`;
+- duplicate operation replay refused;
+- tampered evidence refused;
+- changed target fingerprint refused;
+- tampered journal/hash chain refused;
+- journal/evidence outside target;
+- target byte-identical in live gate;
+- no service;
+- B2 protected sources unchanged.
 
 ## B5-4 — Advanced Recovery Decision Engine
 Purpose: summarize trusted evidence into an operator decision without replacing RR-6 certification semantics.
