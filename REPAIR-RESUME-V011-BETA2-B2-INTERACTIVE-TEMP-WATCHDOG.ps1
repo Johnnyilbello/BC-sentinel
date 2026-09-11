@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 function Fail([string]$Message) {
-    Write-Host 'BC SENTINEL v0.11.0-beta.2 B2 INTERACTIVE-TEMP WATCHDOG REPAIR - FAIL' -ForegroundColor Red
+    Write-Host 'BC SENTINEL v0.11.0-beta.2 B2 NATIVE-INGESTION REPAIR - FAIL' -ForegroundColor Red
     Write-Host $Message -ForegroundColor Red
     exit 1
 }
@@ -43,14 +43,14 @@ try {
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
 
     $Py = '.\.venv\Scripts\python.exe'
-    $PatchRef = '848a7377d652e379dc632302b53824061b8966cd'
+    $PatchRef = 'dcb8c7c19901236031d0711e46dabe00e6139458'
     $PatchBranch = 'fix/v011-beta2-b2-interactive-temp-watchdog'
     $ResumeRef = '1cfc20346c77148b5497b2a4dd2794ce06cc273e'
     $ResumeBranch = 'checkpoint/v011-beta2-b2-current-1cfc203'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
-    Write-Host 'BC Sentinel v0.11.0-beta.2 - B2 INTERACTIVE TEMP WATCHDOG REPAIR' -ForegroundColor Cyan
-    Write-Host 'Fixes service-account vs interactive-user TEMP classification. No timeout or 25/10/250 threshold relaxation.' -ForegroundColor Yellow
+    Write-Host 'BC Sentinel v0.11.0-beta.2 - B2 NATIVE INGESTION REPAIR' -ForegroundColor Cyan
+    Write-Host 'Fixes interactive TEMP watchdog classification and retention-safe EDR timestamps. No timeout or 25/10/250 threshold relaxation.' -ForegroundColor Yellow
 
     Download-RequiredFile `
         '.\tools\v011_beta2_b2_temp_root_compat.py' `
@@ -61,6 +61,16 @@ try {
         '.\tests\test_v011_beta2_b2_temp_root_compat.py' `
         ($RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_temp_root_compat.py') `
         ($RepoRaw + $PatchBranch + '/tests/test_v011_beta2_b2_temp_root_compat.py')
+
+    Download-RequiredFile `
+        '.\sentinel\edr_adapter.py' `
+        ($RepoRaw + $PatchRef + '/sentinel/edr_adapter.py') `
+        ($RepoRaw + $PatchBranch + '/sentinel/edr_adapter.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta1_edr_adapter.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta1_edr_adapter.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta1_edr_adapter.py')
 
     $realtimePath = Join-Path $PSScriptRoot 'sentinel\realtime.py'
     $beforeHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -80,26 +90,27 @@ try {
     try {
         & $Py -m pytest -q --basetemp $FocusedPytestTemp `
             tests/test_v011_beta2_b2_temp_root_compat.py `
+            tests/test_v011_beta1_edr_adapter.py `
             tests/test_v011_beta1_low_cpu_runtime_compat.py `
             tests/test_v011_beta1_watchdog_coalescing.py `
             tests/test_v011_beta1_service_performance.py
-        if ($LASTEXITCODE -ne 0) { throw 'Focused watchdog/low-CPU/service-performance regression failed' }
+        if ($LASTEXITCODE -ne 0) { throw 'Focused EDR/watchdog/low-CPU/service-performance regression failed' }
     }
     finally {
         Remove-Item -LiteralPath $FocusedPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     & $Py -m compileall -q sentinel tools tests
-    if ($LASTEXITCODE -ne 0) { throw 'compileall failed after interactive TEMP watchdog repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'compileall failed after native-ingestion repair' }
 
-    Write-Host 'Building a fresh Protection Service with the corrected realtime watcher...' -ForegroundColor Cyan
+    Write-Host 'Building a fresh Protection Service with corrected native EDR ingestion...' -ForegroundColor Cyan
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\BUILD-SERVIZIO-PROTEZIONE.ps1'
-    if ($LASTEXITCODE -ne 0) { throw 'Fresh Protection Service build failed after TEMP watchdog repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'Fresh Protection Service build failed after native-ingestion repair' }
 
     $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
     if (-not (Test-Path -LiteralPath $distService)) { throw 'Corrected Protection Service executable missing after build' }
     $distHash = (Get-FileHash -LiteralPath $distService -Algorithm SHA256).Hash.ToLowerInvariant()
-    Write-Host ('CORRECTED TEMP-WATCHDOG BUILD: SHA256=' + $distHash) -ForegroundColor Green
+    Write-Host ('CORRECTED NATIVE-INGESTION BUILD: SHA256=' + $distHash) -ForegroundColor Green
 
     Write-Host 'Deploying the freshly rebuilt Protection Service through UAC Repair...' -ForegroundColor Yellow
     $maintenance = Join-Path $PSScriptRoot 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1'
@@ -118,7 +129,7 @@ try {
     if (-not (Test-Path -LiteralPath $installedService)) { throw 'Installed Protection Service missing after Repair' }
     $installedHash = (Get-FileHash -LiteralPath $installedService -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($installedHash -ne $distHash) { throw 'Installed Protection Service does not match freshly rebuilt dist after Repair' }
-    Write-Host ('DEPLOYED TEMP-WATCHDOG BUILD: SHA256=' + $installedHash) -ForegroundColor Green
+    Write-Host ('DEPLOYED NATIVE-INGESTION BUILD: SHA256=' + $installedHash) -ForegroundColor Green
 
     $resume = Join-Path $PSScriptRoot 'RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1'
     Download-RequiredFile `
@@ -128,9 +139,9 @@ try {
 
     Write-Host 'Launching the existing stabilized B2 resume against the freshly corrected and deployed build...' -ForegroundColor Yellow
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $resume
-    if ($LASTEXITCODE -ne 0) { throw 'Stabilized B2 resume still failed after interactive TEMP watchdog repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'Stabilized B2 resume still failed after native-ingestion repair' }
 
-    Write-Host 'BC SENTINEL v0.11.0-beta.2 B2 INTERACTIVE-TEMP WATCHDOG REPAIR - PASS' -ForegroundColor Green
+    Write-Host 'BC SENTINEL v0.11.0-beta.2 B2 NATIVE-INGESTION REPAIR - PASS' -ForegroundColor Green
     exit 0
 }
 catch {
