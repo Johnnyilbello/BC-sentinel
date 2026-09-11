@@ -72,13 +72,20 @@ try {
     $afterHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-Host (('Realtime source: {0} -> {1}' -f $beforeHash,$afterHash)) -ForegroundColor Green
 
-    Write-Host 'Running focused regression tests...' -ForegroundColor DarkCyan
-    & $Py -m pytest -q `
-        tests/test_v011_beta2_b2_temp_root_compat.py `
-        tests/test_v011_beta1_low_cpu_runtime_compat.py `
-        tests/test_v011_beta1_watchdog_coalescing.py `
-        tests/test_v011_beta1_service_performance.py
-    if ($LASTEXITCODE -ne 0) { throw 'Focused watchdog/low-CPU/service-performance regression failed' }
+    Write-Host 'Running focused regression tests with isolated project-local basetemp...' -ForegroundColor DarkCyan
+    $FocusedPytestTemp = Join-Path $PSScriptRoot ('.b2-focused-pytest-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $FocusedPytestTemp -Force | Out-Null
+    try {
+        & $Py -m pytest -q --basetemp $FocusedPytestTemp `
+            tests/test_v011_beta2_b2_temp_root_compat.py `
+            tests/test_v011_beta1_low_cpu_runtime_compat.py `
+            tests/test_v011_beta1_watchdog_coalescing.py `
+            tests/test_v011_beta1_service_performance.py
+        if ($LASTEXITCODE -ne 0) { throw 'Focused watchdog/low-CPU/service-performance regression failed' }
+    }
+    finally {
+        Remove-Item -LiteralPath $FocusedPytestTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     & $Py -m compileall -q sentinel tools tests
     if ($LASTEXITCODE -ne 0) { throw 'compileall failed after interactive TEMP watchdog repair' }
