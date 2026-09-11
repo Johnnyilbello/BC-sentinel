@@ -11,6 +11,7 @@ function Fail([string]$Message) {
 try {
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) { throw '.venv not available' }
     $Py = '.\.venv\Scripts\python.exe'
+    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     Write-Host 'Building BC Sentinel Safe Data Rescue (onedir, source read-only)...' -ForegroundColor Cyan
 
     & $Py -m PyInstaller --noconfirm --clean --onedir `
@@ -39,7 +40,7 @@ try {
         recovery_certification = $false
     }
     $Json = $Manifest | ConvertTo-Json -Depth 5
-    [IO.File]::WriteAllText((Join-Path $Folder 'safe-data-rescue-integrity.json'), $Json + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText((Join-Path $Folder 'safe-data-rescue-integrity.json'), $Json + [Environment]::NewLine, $Utf8NoBom)
     Write-Host ('RR5 SAFE DATA RESCUE BUILD SHA256=' + $Hash) -ForegroundColor Green
     Write-Host ('Safe data rescue folder: ' + $Folder) -ForegroundColor Green
     Write-Host 'BC SENTINEL RR5 SAFE DATA RESCUE BUILD - PASS' -ForegroundColor Green
