@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Callable, Final, Iterable
 
 from sentinel import rescue_integrity_certification as rr6
-from sentinel import rescue_usb as rr2
 
 PROFILE: Final[str] = "v0.11.0-beta.5-b50"
 RESULT_SCHEMA: Final[str] = "bc-sentinel-beta5-target-discovery-v1"
@@ -100,12 +99,31 @@ def _drive_letter_root(path: Path) -> str | None:
     if os.name != "nt":
         return None
     text = _canonical_path_text(path)
-    drive, tail = os.path.splitdrive(text)
-    if len(drive) == 2 and drive[1] == ":" and tail in {"\\", "/", ""}:
-        return drive.upper() + "\\"
+    drive, _ = os.path.splitdrive(text)
     if len(drive) == 2 and drive[1] == ":":
         return drive.upper() + "\\"
     return None
+
+
+def _live_system_root() -> str | None:
+    if os.name != "nt":
+        return None
+    drive = os.environ.get("SystemDrive", "").strip().rstrip("\\/")
+    if len(drive) == 2 and drive[1] == ":":
+        return drive.upper() + "\\"
+    return None
+
+
+def _is_live_system_root(path: Path) -> bool:
+    live = _live_system_root()
+    if not live:
+        return False
+    try:
+        candidate = os.path.normcase(os.path.abspath(os.fspath(path))).rstrip("\\/")
+        live_norm = os.path.normcase(os.path.abspath(live)).rstrip("\\/")
+        return candidate == live_norm
+    except Exception:
+        return False
 
 
 def enumerate_windows_volume_roots(*, max_roots: int = DEFAULT_MAX_ROOTS) -> list[Path]:
@@ -246,6 +264,15 @@ def classify_candidate(
     started = time.perf_counter()
     root = Path(root_in)
     normalized = _canonical_path_text(root)
+
+    if _is_live_system_root(root):
+        return CandidateRecord(
+            root=str(root), normalized_root=normalized, discovery_source=discovery_source,
+            state=STATE_UNSUPPORTED, reason="live_system_volume_refused", markers_present=(), markers_missing=WINDOWS_MARKERS,
+            target_fingerprint="", bitlocker={"provider": "skipped", "available": False, "locked": None, "reason": "live_system_volume"},
+            write_attempted=False, elapsed_ms=round((time.perf_counter() - started) * 1000.0, 3),
+        )
+
     bitlocker_probe = bitlocker_probe or (lambda p: _probe_bitlocker_windows(p, timeout_sec=bitlocker_timeout_sec))
     try:
         bitlocker = bitlocker_probe(root)
