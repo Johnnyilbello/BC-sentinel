@@ -99,13 +99,32 @@ try {
     $distHash = (Get-FileHash -LiteralPath $distService -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-Host ('CORRECTED TEMP-WATCHDOG BUILD: SHA256=' + $distHash) -ForegroundColor Green
 
+    Write-Host 'Deploying the freshly rebuilt Protection Service through UAC Repair...' -ForegroundColor Yellow
+    $maintenance = Join-Path $PSScriptRoot 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1'
+    $repairArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"' + $maintenance + '"'),'-Mode','Repair')
+    try {
+        $repairProc = Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru -ArgumentList $repairArgs
+    }
+    catch {
+        throw ('Repair deployment UAC cancelled or failed: ' + $_.Exception.Message)
+    }
+    if ($null -eq $repairProc -or $repairProc.ExitCode -ne 0) {
+        throw 'Repair deployment of freshly rebuilt Protection Service failed'
+    }
+
+    $installedService = Join-Path $env:ProgramFiles 'BC Sentinel\Protection\BC-Sentinel-Protection.exe'
+    if (-not (Test-Path -LiteralPath $installedService)) { throw 'Installed Protection Service missing after Repair' }
+    $installedHash = (Get-FileHash -LiteralPath $installedService -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($installedHash -ne $distHash) { throw 'Installed Protection Service does not match freshly rebuilt dist after Repair' }
+    Write-Host ('DEPLOYED TEMP-WATCHDOG BUILD: SHA256=' + $installedHash) -ForegroundColor Green
+
     $resume = Join-Path $PSScriptRoot 'RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1'
     Download-RequiredFile `
         $resume `
         ($RepoRaw + $ResumeRef + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1') `
         ($RepoRaw + $ResumeBranch + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1')
 
-    Write-Host 'Launching the existing stabilized B2 resume against the freshly corrected build...' -ForegroundColor Yellow
+    Write-Host 'Launching the existing stabilized B2 resume against the freshly corrected and deployed build...' -ForegroundColor Yellow
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $resume
     if ($LASTEXITCODE -ne 0) { throw 'Stabilized B2 resume still failed after interactive TEMP watchdog repair' }
 
