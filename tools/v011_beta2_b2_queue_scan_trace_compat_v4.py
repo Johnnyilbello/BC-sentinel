@@ -170,7 +170,7 @@ def transform_realtime(text: str) -> str:
         stable_first - 1,
         f'{stable_indent}trace_marker("STABLE_ENTER", path=str({stable_path}), '
         f'exists=bool(__import__("os").path.exists(str({stable_path}))), '
-        f'is_file=bool(__import__("os").path.isfile(str({stable_path})))\n'
+        f'is_file=bool(__import__("os").path.isfile(str({stable_path}))))\n'
     ))
     for ret in _returns(stable):
         line_no = int(ret.lineno)
@@ -181,7 +181,7 @@ def transform_realtime(text: str) -> str:
             f'{indent}trace_marker("STABLE_RETURN", path=str({stable_path}), '
             f'source_line={line_no}, source_context={context}, '
             f'exists=bool(__import__("os").path.exists(str({stable_path}))), '
-            f'is_file=bool(__import__("os").path.isfile(str({stable_path})))\n'
+            f'is_file=bool(__import__("os").path.isfile(str({stable_path}))))\n'
         ))
 
     for index, payload in sorted(insertions, key=lambda item: item[0], reverse=True):
