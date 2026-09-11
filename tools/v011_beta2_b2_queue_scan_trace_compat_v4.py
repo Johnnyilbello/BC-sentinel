@@ -64,7 +64,6 @@ def _returns(method: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Return]
             if node is method:
                 for item in node.body:
                     self.visit(item)
-            # Never descend into nested functions.
 
         def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
             if node is method:
@@ -81,6 +80,13 @@ def _returns(method: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Return]
 def _indent_at(lines: list[str], line_no: int) -> str:
     raw = lines[line_no - 1]
     return raw[: len(raw) - len(raw.lstrip(" \t"))]
+
+
+def _source_context(lines: list[str], line_no: int, before: int = 3) -> str:
+    start = max(0, int(line_no) - before - 1)
+    end = min(len(lines), int(line_no))
+    parts = [line.strip() for line in lines[start:end] if line.strip()]
+    return " | ".join(parts)[-900:]
 
 
 def _path_arg(method: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
@@ -121,32 +127,31 @@ def transform_realtime(text: str) -> str:
 
     insertions: list[tuple[int, str]] = []
 
-    # Entry into _queue_scan: proves the inner watchdog handler actually called it.
     queue_first = int(queue.body[0].lineno)
     queue_indent = _indent_at(lines, queue_first)
     insertions.append((
         queue_first - 1,
         f'{queue_indent}# {MARKER}: marker-only queue/stabilization diagnostics\n'
-        f'{queue_indent}trace_marker("QUEUE_SCAN_ENTER", path=str({queue_path}), '\
-        f'exists=bool(__import__("os").path.exists(str({queue_path}))), '\
-        f'is_file=bool(__import__("os").path.isfile(str({queue_path}))), '\
-        f'debounce_size=len(getattr(self, "_debounce", {{}})), '\
+        f'{queue_indent}trace_marker("QUEUE_SCAN_ENTER", path=str({queue_path}), '
+        f'exists=bool(__import__("os").path.exists(str({queue_path}))), '
+        f'is_file=bool(__import__("os").path.isfile(str({queue_path}))), '
+        f'debounce_size=len(getattr(self, "_debounce", {{}})), '
         f'recent_hashes_size=len(getattr(self, "_recent_hashes", {{}})))\n'
     ))
 
-    # Record every early return from _queue_scan with the exact source line.
     for ret in _returns(queue):
-        indent = _indent_at(lines, int(ret.lineno))
+        line_no = int(ret.lineno)
+        indent = _indent_at(lines, line_no)
+        context = repr(_source_context(lines, line_no))
         insertions.append((
-            int(ret.lineno) - 1,
+            line_no - 1,
             f'{indent}trace_marker("QUEUE_SCAN_RETURN", path=str({queue_path}), '
-            f'source_line={int(ret.lineno)}, '
+            f'source_line={line_no}, source_context={context}, '
             f'exists=bool(__import__("os").path.exists(str({queue_path}))), '
             f'is_file=bool(__import__("os").path.isfile(str({queue_path}))), '
             f'debounce_value=str(getattr(self, "_debounce", {{}}).get(str({queue_path}), "")))\n'
         ))
 
-    # Prove that the BCS-RealtimeScan thread is actually scheduled and started.
     thread_start = int(thread_expr.lineno)
     thread_end = int(thread_expr.end_lineno or thread_expr.lineno)
     thread_indent = _indent_at(lines, thread_start)
@@ -159,7 +164,6 @@ def transform_realtime(text: str) -> str:
         f'{thread_indent}trace_marker("QUEUE_SCAN_THREAD_STARTED", path=str({queue_path}), source_line={thread_end})\n'
     ))
 
-    # Entry into stabilization plus every return before the existing callback.
     stable_first = int(stable.body[0].lineno)
     stable_indent = _indent_at(lines, stable_first)
     insertions.append((
@@ -169,16 +173,17 @@ def transform_realtime(text: str) -> str:
         f'is_file=bool(__import__("os").path.isfile(str({stable_path})))\n'
     ))
     for ret in _returns(stable):
-        indent = _indent_at(lines, int(ret.lineno))
+        line_no = int(ret.lineno)
+        indent = _indent_at(lines, line_no)
+        context = repr(_source_context(lines, line_no))
         insertions.append((
-            int(ret.lineno) - 1,
+            line_no - 1,
             f'{indent}trace_marker("STABLE_RETURN", path=str({stable_path}), '
-            f'source_line={int(ret.lineno)}, '
+            f'source_line={line_no}, source_context={context}, '
             f'exists=bool(__import__("os").path.exists(str({stable_path}))), '
             f'is_file=bool(__import__("os").path.isfile(str({stable_path})))\n'
         ))
 
-    # Insert bottom-up so original AST line numbers stay valid.
     for index, payload in sorted(insertions, key=lambda item: item[0], reverse=True):
         lines[index:index] = payload.splitlines(keepends=True)
 
@@ -192,6 +197,7 @@ def transform_realtime(text: str) -> str:
         "stable_enter_once": result.count('trace_marker("STABLE_ENTER"') == 1,
         "queue_returns_traced": result.count('trace_marker("QUEUE_SCAN_RETURN"') == len(_returns(queue)),
         "stable_returns_traced": result.count('trace_marker("STABLE_RETURN"') == len(_returns(stable)),
+        "source_context_present": "source_context=" in result,
     }
     if not all(checks.values()):
         raise RuntimeError(f"queue/stable instrumentation verification failed: {checks}")
