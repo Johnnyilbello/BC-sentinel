@@ -188,13 +188,15 @@ def test_max_files_is_fail_closed(tmp_path: Path):
         _rescue(root, tmp_path / "out", ["Users/Alice/Documents"], limits=_limits(max_files=2))
 
 
-def test_max_total_bytes_is_fail_closed(tmp_path: Path):
+def test_max_total_bytes_stops_over_budget_copy_and_reports_error(tmp_path: Path):
     root = _offline_root(tmp_path)
     docs = root / "Users" / "Alice" / "Documents"
     (docs / "one.txt").write_bytes(b"a" * 8)
     (docs / "two.txt").write_bytes(b"b" * 8)
-    with pytest.raises(ValueError, match="max_total_bytes"):
-        _rescue(root, tmp_path / "out", ["Users/Alice/Documents"], limits=_limits(max_total_bytes=10))
+    result = _rescue(root, tmp_path / "out", ["Users/Alice/Documents"], limits=_limits(max_total_bytes=10))
+    assert result["summary"]["copied"] == 1
+    assert result["summary"]["errors"] == 1
+    assert any("max_total_bytes" in item["reason"] for item in result["records"] if item["status"] == "error")
 
 
 def test_duplicate_selection_is_deduplicated(tmp_path: Path):
