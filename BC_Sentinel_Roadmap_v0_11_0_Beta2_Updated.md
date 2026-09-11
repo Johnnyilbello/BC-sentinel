@@ -75,54 +75,56 @@ Windows evidence:
 - production client remains `6910eb42f6e7c5ba4d87b1f1533dfacff99483fbf4ffb06810595effa66cc9d1`;
 - automatic process kill, file delete and host isolation remain false.
 
-### Checkpoint B2 — Service-native live/restart/performance acceptance — current
-Required scope:
-- full pytest and frozen Beta1 local regression families;
+### Checkpoint B2 — Service-native live/restart/performance acceptance — accepted
+Accepted scope:
+- full frozen Beta1 regression families remain green;
 - fresh Protection Service and UAC Broker build from standard-user PowerShell;
-- real Repair/readiness and frozen Beta1 administrator regression gate;
-- enforced service performance thresholds `idle <=25%`, `IPC >=10/s`, `storm <=250%` measured before B2 synthetic workload;
+- real Repair/readiness and administrator gate;
+- enforced service performance thresholds `idle <=25%`, `IPC >=10/s`, `storm <=250%` remain unchanged;
 - authenticated EDR reads over the production Named Pipe;
-- privileged `edr_update_retention` accepted only in administrator context and exercised with the existing values so the effective policy is unchanged;
-- harmless native `%TEMP%` marker acquired by the existing realtime pipeline and discoverable through exact `edr_hunt`;
+- privileged `edr_update_retention` accepted only in administrator context with unchanged effective values;
+- harmless native `%TEMP%` `.tmp` marker acquired by the realtime filesystem-observation path and discoverable through exact `edr_hunt`;
 - qualified harmless HIGH test incident visible through the existing Security Center `pending_threats` projection as review-only;
-- real SCM service restart, followed by readiness and persistence verification for both the hunted native marker and Security Center incident;
-- standard-user authenticated EDR reads remain available while direct privileged retention is rejected;
-- existing standard-user → UAC broker acceptance remains green;
+- real SCM service restart followed by readiness and persistence verification;
+- standard-user authenticated EDR reads preserved while direct privileged retention remains rejected;
+- standard-user → UAC broker acceptance and Beta1 EDR regression remain green;
 - no reboot is claimed by B2; reboot persistence remains a final-roadmap validation gate.
 
-#### B2 Windows evidence already accepted for the pre-admin half
-The authoritative FULL Windows run reached the administrator boundary with:
-- all canonical Windows compatibility migrations applied, including threat-trust bounded atomic replace retry;
-- post-B1b source verification PASS;
-- **656 pytest tests PASS**;
-- Beta1 EDR local regression PASS;
-- v0.10 deception/response/clone-scam/RC1 local regression families PASS;
-- B1b structural acceptance PASS;
-- fresh Protection Service and UAC Broker PyInstaller builds PASS;
-- protection integrity manifest generated;
-- production Named Pipe self-test PASS;
-- `BUILD PROTECTION SERVICE + UAC BROKER + FIREWALL OK`.
+#### Final B2 V6 Windows evidence
+The authoritative FULL Windows run completed the repaired non-executable filesystem-observation path with:
+- patcher preflight: **7 tests PASS** before touching production source;
+- temporary V1/V4 marker diagnostics removed from production source using exact pre-instrumentation backups;
+- final non-executable observation separation applied with static-scan scope unchanged;
+- focused final V6 regression suite: **58 tests PASS**;
+- strict deterministic source-lineage v3: **PASS**;
+- accepted service SHA-256 `4be64d52f1e6a735bcd4deefdcaf4293cd3bb268d26748f1e3b0cd21c05886ae`;
+- accepted realtime SHA-256 `aa8c657182329e7a020271bdfa69a9caebe89386fe67c7c5fda1073445c3ca1a`;
+- final Protection Service build + UAC Broker + firewall build: **PASS**;
+- Named Pipe self-test: **PASS**;
+- final binary SHA-256 `22fc0330e1efc9dab4335ed37a67f30565fb7e5ac9e76cdd5141ed6627d31fc1`;
+- frozen administrator live/performance phase: **PASS**;
+- measured steady-state performance: **idle 5.00%**, **IPC 31.00 requests/s**, **benign storm 9.63%**;
+- native `%TEMP%` B2 marker: **PASS**;
+- Beta1 EDR regression: **PASS**, including persistence, stable event dedup, flood guard, queryability and throughput floor;
+- automatic destructive action remains disabled in the accepted runtime path: no automatic process kill, file delete or host isolation.
 
-The run then stopped inside the UAC phase because the B2 wrapper collapsed the underlying frozen Beta1 administrator failure into a generic `beta1_admin_regression` message. No B2 live/restart/least-privilege claim is made from that failed UAC attempt.
+Final gate:
 
-#### B2 admin harness hardening / resume policy
-The B2 admin harness now:
-- isolates the child Beta1 pytest temp root through a unique `PYTEST_ADDOPTS --basetemp` value, without changing tests or thresholds;
-- captures the complete child Beta1 administrator log;
-- reads and propagates the exact Beta1 `stage` and `message` on failure;
-- remains fail-closed.
+```text
+BC SENTINEL v0.11.0-beta.2 B2 NONEXEC OBSERVATION V6 - PASS
+```
 
-`RETEST-V011-BETA2-B2-FROM-ADMIN.ps1` is the targeted resume gate for the immediately preceding accepted pre-admin run. It is allowed to skip the already-proven 656-test/build half only when:
-- B1b source SHA guards still pass;
-- the local B2 EDR/deception/response/clone-scam/RC1 acceptance JSONs are still PASS;
-- the freshly built Protection Service, Broker and integrity manifest are still present.
+Frozen recovery checkpoint:
 
-The resume then executes the corrected UAC admin gate and the remaining production checks: Beta1 admin regression/performance, production EDR IPC/native ingestion, Security Center visibility, real SCM restart persistence, standard-user → UAC broker regression, standard-user EDR least privilege and final 25/10/250 result verification.
+```text
+checkpoint/v011-beta2-b2-pass-v6
+b943f1ee550ad5c2bee3d8753962d5971c212381
+```
 
-B2 is accepted only when the paired evidence is complete: the preceding 656-test + fresh-build log and a subsequent `BC SENTINEL v0.11.0-beta.2 B2 RESUME - PASS`, or a future full one-command run reaching `BC SENTINEL v0.11.0-beta.2 CHECKPOINT B2 - PASS`.
+### Beta2 final acceptance — accepted
+Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 are green on the authoritative FULL Windows tree. Beta1 regression remains preserved. The v0.11.0-beta.2 service-integration/hunting milestone is therefore closed.
 
-### Beta2 final acceptance
-Beta2 is accepted only after Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 are green on the authoritative FULL Windows tree. Beta1 full regression remains mandatory. Reboot persistence is still deferred to final-roadmap validation unless explicitly promoted into this milestone later.
+Reboot persistence is still deferred to final-roadmap validation and is not implied by the B2 PASS.
 
 ## Safety invariants carried forward
 - no single heuristic HIGH;
@@ -134,12 +136,32 @@ Beta2 is accepted only after Checkpoint A, B0, B1a, B1b-preflight, B1b and B2 ar
 - no mandatory cloud runtime dependency;
 - no weakening of service performance thresholds `25 / 10 / 250`.
 
-## Parallel future macro-area — BC Sentinel Rescue & Recovery
-The roadmap includes the dedicated recovery track for severely compromised PCs where installed Windows cannot reliably install or execute BC Sentinel: RR-0 Architecture & Safety, RR-1 Portable, RR-2 Rescue USB, RR-3 Offline Threat Scanner, RR-4 Repair Engine, RR-5 Safe Data Rescue and RR-6 Integrity Verification & Recovery Certification.
+## Next milestone — BC Sentinel Rescue & Recovery / RR-0 Architecture & Safety
+RR-0 is the next implementation milestone. It defines the security boundary for recovery of severely compromised PCs where installed Windows cannot reliably install or execute BC Sentinel.
+
+RR-0 must be completed before Portable/USB/offline scanning or repair implementation begins.
+
+Required RR-0 outputs:
+- explicit trust model for running from compromised Windows versus trusted external/boot media;
+- read-only-by-default evidence acquisition and immutable session manifest;
+- filesystem/device discovery model with no blind destructive repair;
+- quarantine/repair transaction model with rollback and provenance;
+- offline registry/boot/startup inspection boundaries;
+- integrity verification strategy that can refuse to certify a machine as recovered;
+- containment of symlink/reparse-point/path traversal/device alias risks;
+- privilege/elevation model and operator-confirmation boundaries;
+- measurable resource ceilings and bounded concurrency;
+- deterministic audit/log schema with correlation IDs and exact failure stage/reason;
+- threat-model tests and compromised-PC simulation scenarios;
+- explicit rule that formatting/reimaging remains available when integrity cannot be demonstrated.
+
+RR-0 acceptance requires architecture + tests/spec evidence only; it must not silently introduce destructive repair actions into production.
+
+Codex policy for RR-0:
+- **Reasoning: Extra High** for architecture, security boundaries, offline/boot parsing, repair primitives and integrity certification;
+- **Reasoning: High** only after those boundaries are frozen and implementation becomes ordinary test/integration work.
+
+## Parallel future Rescue & Recovery track
+After RR-0: RR-1 Portable, RR-2 Rescue USB, RR-3 Offline Threat Scanner, RR-4 Repair Engine, RR-5 Safe Data Rescue and RR-6 Integrity Verification & Recovery Certification.
 
 The track aims to make reimaging/formatting the last resort, but a machine is never declared recovered when integrity cannot be demonstrated. It reuses accepted detection/intelligence primitives while remaining operationally independent from the installed Protection Service.
-
-Codex policy:
-- **Reasoning: Extra High** for architecture, security boundaries, offline/boot parsing, repair primitives and integrity certification;
-- **Reasoning: High** for ordinary implementation and test/integration after the security design is frozen;
-- milestone-by-milestone only, with automatic tests, compromised-PC scenarios and measurable acceptance gates; existing protections and thresholds may not be weakened to pass.
