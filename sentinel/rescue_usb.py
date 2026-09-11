@@ -135,8 +135,6 @@ def _validate_destination(destination: Path, *, simulation: bool) -> None:
     resolved = destination.resolve()
     if resolved == Path(resolved.anchor):
         raise ValueError("RR2 refuses writing directly to a filesystem root")
-    if any(destination.iterdir()):
-        raise ValueError("RR2 destination must be empty; existing media content is never deleted")
     if not simulation:
         if os.name != "nt":
             raise ValueError("RR2 real-media preparation currently requires Windows")
@@ -145,6 +143,11 @@ def _validate_destination(destination: Path, *, simulation: bool) -> None:
         drive_type = _windows_drive_type(resolved)
         if drive_type != DRIVE_REMOVABLE:
             raise ValueError(f"RR2 destination drive is not removable (drive_type={drive_type})")
+
+
+def _assert_destination_empty(destination: Path) -> None:
+    if any(destination.iterdir()):
+        raise ValueError("RR2 destination must be empty; existing media content is never deleted")
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -170,8 +173,9 @@ def prepare_rescue_usb(
         raise ValueError("RR2 source_payload must be an existing directory")
     if _is_reparse_or_symlink(source):
         raise ValueError("RR2 source payload may not be a symlink/reparse point")
-    _assert_no_overlap(source, destination)
     _validate_destination(destination, simulation=simulation)
+    _assert_no_overlap(source, destination)
+    _assert_destination_empty(destination)
 
     session_seed = f"{source}|{destination.resolve()}|{time.time_ns()}|{os.getpid()}"
     session_id = "RR2-" + hashlib.sha256(session_seed.encode("utf-8")).hexdigest()[:16].upper()
