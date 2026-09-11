@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import time
 from types import SimpleNamespace
 
 from sentinel.edr import EdrPipeline, EdrTelemetryStore
@@ -38,6 +39,7 @@ def test_security_event_adapter_maps_core_fields(tmp_path):
     assert event.session_id == 2
     assert event.integrity_level == "medium"
     assert event.source == "security_event"
+    assert event.ts == 1234.5
 
 
 def test_adapter_ingests_into_pipeline(tmp_path):
@@ -58,3 +60,37 @@ def test_adapter_ingests_into_pipeline(tmp_path):
     rows = pipeline.store.query_events(pid=100)
     assert len(rows) == 1
     assert rows[0]["process_name"] == "notepad.exe"
+
+
+def test_adapter_supplies_current_timestamp_when_native_event_has_no_ts(tmp_path):
+    pipeline = EdrPipeline(EdrTelemetryStore(tmp_path / "edr.sqlite3"))
+    adapter = EdrEventAdapter(pipeline)
+    before = time()
+    source = SimpleNamespace(
+        category="file",
+        pid=0,
+        ppid=0,
+        process_name="",
+        process_path="",
+        path=r"C:\Users\Example\AppData\Local\Temp\marker.tmp",
+        data={},
+    )
+
+    result = adapter.ingest_security_event(source)
+    after = time()
+
+    assert result["stored"] is True
+    rows = pipeline.store.query_events(category="file", since=before - 1.0)
+    assert len(rows) == 1
+    assert rows[0]["path"].endswith("marker.tmp")
+    assert before <= float(rows[0]["ts"]) <= after
+
+
+def test_adapter_replaces_zero_or_invalid_timestamp_but_preserves_positive_data_ts():
+    zero = telemetry_from_security_event(SimpleNamespace(category="file", path="x", ts=0, data={}))
+    invalid = telemetry_from_security_event(SimpleNamespace(category="file", path="x", ts="bad", data={}))
+    data_ts = telemetry_from_security_event(SimpleNamespace(category="file", path="x", data={"ts": 9876.5}))
+
+    assert zero.ts > 0
+    assert invalid.ts > 0
+    assert data_ts.ts == 9876.5
