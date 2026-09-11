@@ -31,8 +31,18 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'RR0/RR1 compileall failed' }
 
     Write-Host 'Running RR0 + RR1 safety regression...' -ForegroundColor DarkCyan
-    & $Py -m pytest -q tests/test_v011_beta3_rr0_rescue_contract.py tests/test_v011_beta3_rr1_portable.py
-    if ($LASTEXITCODE -ne 0) { throw 'RR0/RR1 pytest regression failed' }
+    $PytestBase = Join-Path $env:USERPROFILE 'BCSentinel-TestTemp'
+    if (-not (Test-Path -LiteralPath $PytestBase)) { New-Item -ItemType Directory -Path $PytestBase -Force | Out-Null }
+    $PytestTemp = Join-Path $PytestBase ('rr1-pytest-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $PytestTemp -Force | Out-Null
+    Write-Host ('RR1 PYTEST BASETEMP=' + $PytestTemp) -ForegroundColor DarkGray
+    try {
+        & $Py -m pytest -q --basetemp $PytestTemp tests/test_v011_beta3_rr0_rescue_contract.py tests/test_v011_beta3_rr1_portable.py
+        if ($LASTEXITCODE -ne 0) { throw ('RR0/RR1 pytest regression failed; basetemp=' + $PytestTemp) }
+    }
+    finally {
+        Remove-Item -LiteralPath $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     & $Py -m tools.v011_beta3_rr0_acceptance --output acceptance-v011-beta3-rr0-regression.json
     if ($LASTEXITCODE -ne 0) { throw 'RR0 safety regression acceptance failed' }
