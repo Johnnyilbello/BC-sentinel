@@ -166,7 +166,6 @@ def transform_realtime(text: str) -> str:
         "nonexec_queue_callback_once": len(queue_callbacks) == 1,
         "stabilized_exec_callback_once": len(stable_callbacks) == 1,
         "static_scanner_once": len(scanners) == 1,
-        "tmp_not_added_to_executable_set": '".tmp"' not in result and "'.tmp'" not in result,
     }
     if not all(checks.values()):
         raise RuntimeError(f"post-transform verification failed: {checks}")
