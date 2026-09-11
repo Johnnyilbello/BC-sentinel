@@ -132,11 +132,11 @@ def _validate_destination(destination: Path, *, simulation: bool) -> None:
         raise ValueError("RR2 destination must be an existing directory")
     if _is_reparse_or_symlink(destination):
         raise ValueError("RR2 destination may not be a symlink/reparse point")
-    if any(destination.iterdir()):
-        raise ValueError("RR2 destination must be empty; existing media content is never deleted")
     resolved = destination.resolve()
     if resolved == Path(resolved.anchor):
         raise ValueError("RR2 refuses writing directly to a filesystem root")
+    if any(destination.iterdir()):
+        raise ValueError("RR2 destination must be empty; existing media content is never deleted")
     if not simulation:
         if os.name != "nt":
             raise ValueError("RR2 real-media preparation currently requires Windows")
@@ -168,8 +168,10 @@ def prepare_rescue_usb(
     source = source_payload.resolve(strict=True)
     if not source.is_dir():
         raise ValueError("RR2 source_payload must be an existing directory")
-    _validate_destination(destination, simulation=simulation)
+    if _is_reparse_or_symlink(source):
+        raise ValueError("RR2 source payload may not be a symlink/reparse point")
     _assert_no_overlap(source, destination)
+    _validate_destination(destination, simulation=simulation)
 
     session_seed = f"{source}|{destination.resolve()}|{time.time_ns()}|{os.getpid()}"
     session_id = "RR2-" + hashlib.sha256(session_seed.encode("utf-8")).hexdigest()[:16].upper()
