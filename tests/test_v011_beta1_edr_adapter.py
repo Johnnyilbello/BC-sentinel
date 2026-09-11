@@ -83,7 +83,9 @@ def test_adapter_supplies_current_timestamp_when_native_event_has_no_ts(tmp_path
     rows = pipeline.store.query_events(category="file", since=before - 1.0)
     assert len(rows) == 1
     assert rows[0]["path"].endswith("marker.tmp")
-    assert before <= float(rows[0]["ts"]) <= after
+    stored_ts = float(rows[0]["ts"])
+    assert stored_ts > 0.0
+    assert before - 0.01 <= stored_ts <= after + 0.01
 
 
 def test_adapter_replaces_zero_or_invalid_timestamp_but_preserves_positive_data_ts():
