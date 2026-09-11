@@ -76,7 +76,7 @@ B5-2 implementation contract:
 - samples files rather than loading large files fully;
 - iterative directory walk, no recursive Python call stack;
 - symlink/reparse paths skipped and root symlink/reparse refused before resolution;
-- partial states are not success: `PARTIAL_FILE_LIMIT`, `PARTIAL_BYTE_LIMIT`, `PARTIAL_TIME_LIMIT`, `CANCELLED`;
+- partial states are not success: `PARTIAL_FILE_LIMIT`, `PARTIAL_BYTE_LIMIT`, `PARTIAL_TIME_LIMIT`, `PARTIAL_DEPTH_LIMIT`, `CANCELLED`;
 - complete probe with read/enumeration errors becomes `DEGRADED`;
 - stable SHA-256 probe hash excludes volatile timing metrics;
 - performance report includes elapsed ms, files/s, sampled MiB/s, Python peak memory and in-flight peak;
@@ -91,6 +91,7 @@ B5-2 Windows acceptance must include:
 - file-limit state `PARTIAL_FILE_LIMIT`;
 - cancellation state `CANCELLED`;
 - time-limit state `PARTIAL_TIME_LIMIT`;
+- depth-limit state `PARTIAL_DEPTH_LIMIT` when pruning occurs;
 - deep-tree coverage at 40 levels without reliance on Windows Long Paths policy;
 - large 8 MiB file sampled with bounded 64-byte sample;
 - throughput floor >= 100 files/s on deterministic local fixture;
