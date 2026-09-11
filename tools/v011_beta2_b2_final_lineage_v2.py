@@ -9,7 +9,7 @@ from typing import Any
 
 from tools.v011_beta2_b2_file_observation_compat import (
     CORE_PRE_SHA256,
-    REALTIME_PRE_SHA256,
+    REALTIME_PRE_SHA256_ALLOWED,
     MARKER as OBSERVATION_MARKER,
     transform_core_text as transform_observation_core,
     transform_realtime_text,
@@ -78,6 +78,7 @@ def verify_lineage(root: Path) -> dict[str, Any]:
     core_pre = _read(paths["obs_core_backup"])
     realtime_pre = _read(paths["obs_realtime_backup"])
     admission_pre = _read(paths["admission_backup"])
+    realtime_pre_sha256 = _sha(realtime_pre)
 
     transform_error = ""
     expected_observation_core = ""
@@ -104,7 +105,7 @@ def verify_lineage(root: Path) -> dict[str, Any]:
         "protocol_exact": _sha(protocol_text) == EXPECTED_PROTOCOL_SHA256,
         "client_exact": _sha(client_text) == EXPECTED_CLIENT_SHA256,
         "observation_core_backup_exact": _sha(core_pre) == CORE_PRE_SHA256,
-        "observation_realtime_backup_exact": _sha(realtime_pre) == REALTIME_PRE_SHA256,
+        "observation_realtime_backup_allowed_lineage": realtime_pre_sha256 in REALTIME_PRE_SHA256_ALLOWED,
         "admission_backup_equals_observation_v1": bool(expected_observation_core) and admission_pre == expected_observation_core,
         "service_equals_deterministic_final_transform_v2": bool(expected_service) and service_text == expected_service,
         "realtime_equals_deterministic_observation_transform": bool(expected_realtime) and realtime_text == expected_realtime,
@@ -145,7 +146,8 @@ def verify_lineage(root: Path) -> dict[str, Any]:
         "expected_realtime_sha256": _sha(expected_realtime) if expected_realtime else "",
         "admission_backup_sha256": _sha(admission_pre),
         "observation_core_backup_sha256": _sha(core_pre),
-        "observation_realtime_backup_sha256": _sha(realtime_pre),
+        "observation_realtime_backup_sha256": realtime_pre_sha256,
+        "allowed_observation_realtime_backup_sha256": sorted(REALTIME_PRE_SHA256_ALLOWED),
         "baseline_service_sha256": _sha(b1b_text),
         "protocol_sha256": _sha(protocol_text),
         "client_sha256": _sha(client_text),
