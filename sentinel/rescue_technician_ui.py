@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from sentinel import rescue_technician_ui_model as model
 
 PROFILE: Final[str] = model.PROFILE
+WINDOW_TITLE: Final[str] = "BC Sentinel - Rescue Technician"
 
 
 class StatusPill(QLabel):
@@ -58,7 +59,7 @@ class TechnicianWindow(QMainWindow):
             raise RuntimeError("B6-0 engine contract refused: " + ";".join(contract["failures"]))
 
         self.ui_state = model.initial_state()
-        self.setWindowTitle("BC Sentinel — Rescue Technician")
+        self.setWindowTitle(WINDOW_TITLE)
         self.setMinimumSize(980, 680)
         self.resize(1180, 780)
         self.setObjectName("TechnicianWindow")
@@ -174,7 +175,7 @@ class TechnicianWindow(QMainWindow):
 
     def _show_contract(self, contract: dict) -> None:
         self.statusBar().showMessage(
-            "Contract PASS — engine commands locked to Beta5; forbidden destructive commands absent.",
+            "Contract PASS - engine commands locked to Beta5; forbidden destructive commands absent.",
             8000,
         )
 
