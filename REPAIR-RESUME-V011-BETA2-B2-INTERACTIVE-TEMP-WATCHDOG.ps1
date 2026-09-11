@@ -72,8 +72,10 @@ try {
     $afterHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-Host (('Realtime source: {0} -> {1}' -f $beforeHash,$afterHash)) -ForegroundColor Green
 
-    Write-Host 'Running focused regression tests with isolated project-local basetemp...' -ForegroundColor DarkCyan
-    $FocusedPytestTemp = Join-Path $PSScriptRoot ('.b2-focused-pytest-' + [guid]::NewGuid().ToString('N'))
+    Write-Host 'Running focused regression tests with isolated neutral basetemp...' -ForegroundColor DarkCyan
+    $FocusedPytestBase = Join-Path $env:USERPROFILE 'BCSentinel-TestTemp'
+    if (-not (Test-Path -LiteralPath $FocusedPytestBase)) { New-Item -ItemType Directory -Path $FocusedPytestBase -Force | Out-Null }
+    $FocusedPytestTemp = Join-Path $FocusedPytestBase ('b2-focused-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $FocusedPytestTemp -Force | Out-Null
     try {
         & $Py -m pytest -q --basetemp $FocusedPytestTemp `
