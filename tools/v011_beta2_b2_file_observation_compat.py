@@ -12,6 +12,11 @@ PROFILE = "v0.11.0-beta.2"
 REALTIME_REL = Path("sentinel") / "realtime.py"
 CORE_REL = Path("sentinel") / "protection_service_core.py"
 REALTIME_PRE_SHA256 = "33f860934ccacbefada01632e2358108b64fc854f7cb2c411bf072be782afbe9"
+REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT = "37656fd77f84804a42425eee97dd0b56d3102144fec17c82894b642a1b1c6378"
+REALTIME_PRE_SHA256_ALLOWED = frozenset({
+    REALTIME_PRE_SHA256,
+    REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT,
+})
 CORE_PRE_SHA256 = "55302443fd488c4f6da28010f25a23c9e37e930943109ae4984f9719ba4187ed"
 REALTIME_BACKUP_REL = Path("sentinel") / "realtime.py.pre-v011-beta2-b2-file-observation.bak"
 CORE_BACKUP_REL = Path("sentinel") / "protection_service_core.py.pre-v011-beta2-b2-file-observation.bak"
@@ -25,6 +30,13 @@ _CORE_CALL_OLD = "            ransomware_callback=self._on_ransomware_detection,
 _CORE_CALL_NEW = "            ransomware_callback=self._on_ransomware_detection,\n            event_callback=self._on_realtime_file_observed,\n            correlator=self.correlator,\n"
 _CORE_METHOD_ANCHOR = "    def _on_realtime_detection(self, report):\n"
 _CORE_METHOD = f'''    # {MARKER}: service file-observation bridge\n    def _on_realtime_file_observed(self, path: str):\n        value = str(path or "")\n        if not value:\n            return\n        self._on_event(SecurityEvent(\n            category="filesystem",\n            action="observed",\n            source="watchdog",\n            score=0,\n            path=value,\n            data={{"realtime": True, "watchdog_observed": True}},\n        ))\n\n'''
+
+_MIGRATED_TEMP_ROOT_MARKERS = (
+    "if target in high_churn:",
+    '("appdata", "local", "temp")',
+    '("appdata", "roaming")',
+    '("windows", "temp")',
+)
 
 
 def _sha(text: str) -> str:
@@ -80,6 +92,31 @@ def _scanner_call(method: ast.FunctionDef | ast.AsyncFunctionDef) -> ast.Call:
     if len(calls) != 1:
         raise RuntimeError(f"expected exactly one scanner call in RealtimeMonitor._scan_when_stable, found {len(calls)}")
     return calls[0]
+
+
+def _validate_realtime_prepatch(text: str) -> str:
+    digest = _sha(text)
+    if digest not in REALTIME_PRE_SHA256_ALLOWED:
+        raise RuntimeError(
+            "realtime.py prepatch lineage mismatch: "
+            f"{digest}; allowed={','.join(sorted(REALTIME_PRE_SHA256_ALLOWED))}"
+        )
+    if MARKER in text:
+        raise RuntimeError("realtime observation marker unexpectedly present in prepatch validation")
+    if text.count(_RT_PARAM_OLD) != 1 or text.count(_RT_ASSIGN_OLD) != 1:
+        raise RuntimeError("unexpected realtime constructor shape; refusing patch")
+    tree = ast.parse(text)
+    realtime_cls = _class(tree, "RealtimeMonitor")
+    stable = _method(realtime_cls, "_scan_when_stable")
+    _scanner_call(stable)
+    if digest == REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT:
+        missing = [marker for marker in _MIGRATED_TEMP_ROOT_MARKERS if marker not in text]
+        if missing:
+            raise RuntimeError(
+                "migrated TEMP-root realtime hash matched but structural markers are missing: "
+                + "; ".join(missing)
+            )
+    return digest
 
 
 def transform_realtime_text(text: str) -> str:
@@ -172,9 +209,9 @@ def apply(root: Path) -> dict[str, Any]:
     if rt_canonical != core_canonical:
         raise RuntimeError("partial file-observation patch detected; refusing repair-by-guess")
 
+    accepted_realtime_pre_sha256 = ""
     if not rt_canonical:
-        if _sha(rt_before) != REALTIME_PRE_SHA256:
-            raise RuntimeError(f"realtime.py prepatch hash mismatch: {_sha(rt_before)}")
+        accepted_realtime_pre_sha256 = _validate_realtime_prepatch(rt_before)
         if _sha(core_before) != CORE_PRE_SHA256:
             raise RuntimeError(f"protection_service_core.py prepatch hash mismatch: {_sha(core_before)}")
         rt_after = transform_realtime_text(rt_before)
@@ -197,6 +234,9 @@ def apply(root: Path) -> dict[str, Any]:
     else:
         rt_after = rt_before
         core_after = core_before
+        rt_backup = root / REALTIME_BACKUP_REL
+        if rt_backup.is_file():
+            accepted_realtime_pre_sha256 = _sha(rt_backup.read_text(encoding="utf-8"))
 
     rt_checks = _verify_realtime(rt_after)
     core_checks = _verify_core(core_after)
@@ -209,6 +249,7 @@ def apply(root: Path) -> dict[str, Any]:
         "passed": True,
         "changed": not rt_canonical,
         "status": "patched" if not rt_canonical else "already_canonical",
+        "accepted_realtime_pre_sha256": accepted_realtime_pre_sha256,
         "realtime_sha256": _sha(rt_after),
         "core_sha256": _sha(core_after),
         "realtime_checks": rt_checks,
@@ -223,7 +264,8 @@ def main() -> int:
     result = apply(Path(args.root))
     print(
         "v0.11 Beta2 B2 file observation compatibility: "
-        f"{result['status']} | realtime={result['realtime_sha256']} | core={result['core_sha256']}"
+        f"{result['status']} | pre={result['accepted_realtime_pre_sha256']} | "
+        f"realtime={result['realtime_sha256']} | core={result['core_sha256']}"
     )
     return 0
 
