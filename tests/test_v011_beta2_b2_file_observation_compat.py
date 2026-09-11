@@ -6,6 +6,9 @@ import pytest
 
 from tools.v011_beta2_b2_file_observation_compat import (
     MARKER,
+    REALTIME_PRE_SHA256,
+    REALTIME_PRE_SHA256_ALLOWED,
+    REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT,
     transform_core_text,
     transform_realtime_text,
 )
@@ -54,3 +57,10 @@ def test_core_transform_refuses_unknown_construction_shape():
     )
     with pytest.raises(RuntimeError, match="construction shape"):
         transform_core_text(source)
+
+
+def test_allowed_realtime_lineages_include_original_and_migrated_temp_root():
+    assert REALTIME_PRE_SHA256 in REALTIME_PRE_SHA256_ALLOWED
+    assert REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT in REALTIME_PRE_SHA256_ALLOWED
+    assert REALTIME_PRE_SHA256_MIGRATED_TEMP_ROOT == "37656fd77f84804a42425eee97dd0b56d3102144fec17c82894b642a1b1c6378"
+    assert len(REALTIME_PRE_SHA256_ALLOWED) == 2
