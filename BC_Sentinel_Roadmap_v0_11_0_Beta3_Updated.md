@@ -131,33 +131,15 @@ checkpoint/v011-beta3-rr3-pass
 ## RR-4A — Reversible Transaction Core — accepted
 RR-4A introduced the first controlled offline mutation primitive, restricted to harmless synthetic Windows fixtures and designed around fail-closed transaction semantics.
 
-Accepted scope:
-- validated offline Windows target only; live-host repair remains disabled;
-- exact SHA-256 plan hash and explicit operator confirmation bound to that plan;
-- replacement source must be outside the offline target and hash-verified before use;
-- target pre-state hash checked immediately before mutation;
-- verified rollback copy created outside the offline target before the first write;
-- atomic replacement and post-state SHA-256 verification;
-- transaction journal persisted with session/plan identity and exact operation state;
-- manual rollback supported and verified;
-- stale precondition fails closed and preserves the target;
-- partial transaction failure automatically rolls back already-applied operations;
-- boot, registry hive and identity-critical targets remain refused in RR-4A;
-- no arbitrary shell/command execution;
-- no automatic repair, no recovery certification and no cloud dependency;
-- B2 protected sources remain byte-identical.
-
 Authoritative FULL Windows evidence:
 - RR-0 through RR-4A regression: **88 tests PASS**;
 - deterministic RR-0/RR-1/RR-2/RR-3/RR-4A acceptance: **PASS**;
 - wrong confirmation refused and target unchanged;
-- repair plan SHA-256 `7f5e5bb23293b0a81fd569a10ac2730f7cf3b4fea1d6e15606f001c7a64b32c2`;
-- rollback backup SHA-256 matched the pre-state hash;
+- verified rollback backup created before mutation;
 - repair applied and verified;
-- manual rollback passed and restored original content;
+- manual rollback restored original content;
 - stale precondition refused and stale target preserved;
 - induced partial failure triggered automatic rollback and restored all already-applied operations;
-- final transaction state `rolled_back`;
 - automatic repair, live-host repair, registry write, boot write and recovery certification remained disabled;
 - B2 protected sources remained unchanged.
 
@@ -168,34 +150,81 @@ BC SENTINEL v0.11.0-beta.3 RR-4A REVERSIBLE TRANSACTION CORE - PASS
 BC SENTINEL v0.11.0-beta.3 RR-4A BOOTSTRAP - PASS
 ```
 
-## RR-4B — Portable Repair Engine — current
-Goal: package the accepted RR-4A transaction semantics into a portable Rescue tool without weakening any safety boundary.
+Frozen RR-4A checkpoint:
+
+```text
+checkpoint/v011-beta3-rr4a-pass
+55d7dbbfedce76ea02f42ec0e661c63b8bef9f14
+```
+
+## RR-4B — Portable Repair Engine — accepted
+RR-4B packages the RR-4A reversible transaction semantics into a portable onedir Rescue repair tool without weakening the safety boundary.
+
+Accepted scope:
+- standard-user PyInstaller `onedir` build; no installer/service/driver installation;
+- separate `plan`, `execute` and `rollback` phases;
+- exact target fingerprint, evidence reference, pre/post SHA-256 and plan SHA-256;
+- execute requires exact operator confirmation token bound to the plan hash;
+- wrong confirmation produces zero mutation;
+- replacement source remains outside the offline target and provenance-verified;
+- rollback copy remains outside target and hash-verified before write;
+- stale target/replacement change fails closed;
+- manual rollback performs a complete preflight of expected post-state and backup hashes before touching any target file;
+- changed post-repair state causes rollback refusal before mutation;
+- no live-host repair, registry/boot/BCD/firmware mutation, arbitrary command execution or automatic repair;
+- no recovery certification; RR-6 owns certification;
+- B2 protected sources remain byte-identical.
+
+Authoritative FULL Windows evidence:
+- RR-0 through RR-4B regression: **97 tests PASS**;
+- deterministic RR-0/RR-1/RR-2/RR-3/RR-4A/RR-4B acceptance: **PASS**;
+- RR-4B deterministic checks all PASS, including wrong-confirmation zero mutation, execute/rollback roundtrip and post-repair-change rollback refusal;
+- PyInstaller onedir portable repair build: **PASS**;
+- portable repair binary SHA-256 `b748d6eae43cfd1152b269de30c152ffda89fdedd20532e1041867ceaaa634a5`;
+- live plan SHA-256 `1e2bf6c3ce444c7a441b0d99f14f7fb47c560569c907a9a3d8a492cc90dfc0f3`;
+- built EXE live flow: plan PASS, wrong-confirmation zero-mutation PASS, repair PASS, verified manual rollback PASS, changed-post-state rollback refusal PASS;
+- no Rescue Repair Windows service registered;
+- live-host repair, automatic repair, registry write, boot write and recovery certification remained disabled;
+- B2 Protection Service/realtime/EDR protected sources remained unchanged.
+
+Final gates:
+
+```text
+BC SENTINEL v0.11.0-beta.3 RR-4B PORTABLE REPAIR ENGINE - PASS
+BC SENTINEL v0.11.0-beta.3 RR-4B BOOTSTRAP - PASS
+```
+
+## RR-5 — Safe Data Rescue — current
+Goal: extract user data from compromised/offline Windows into a clean Rescue destination without executing content or silently carrying active threats into the clean environment.
 
 Required first acceptance scope:
-- PyInstaller `onedir` portable build, no installer/service/driver installation;
-- normal standard-user execution on harmless offline fixtures;
-- separate `plan`, `execute` and `rollback` phases;
-- portable plan file contains exact target fingerprint, operation list, evidence references, pre/post SHA-256 and plan hash;
-- execute requires the exact operator confirmation token derived from the accepted plan hash;
-- wrong/missing confirmation must produce zero mutation;
-- replacement sources remain external to the offline target and provenance-verified;
-- rollback store remains outside the offline target and is verified before write;
-- stale target or changed replacement source fails closed;
-- manual rollback requires the same exact plan-bound confirmation and refuses rollback if post-repair state has changed unexpectedly;
-- no live-host repair, registry-hive mutation, boot/BCD/firmware mutation, arbitrary command execution or automatic repair;
-- no recovery certification; RR-6 owns certification;
-- preserve RR-0 through RR-4A regression gates and B2 protected sources byte-identical.
+- source is a validated offline Windows root and remains read-only;
+- destination must be outside the source tree and may not be a symlink/reparse point;
+- copy only explicit user-selected data roots/files; no whole-disk blind copy by default;
+- bounded file count, total bytes, per-file size and traversal depth;
+- never follow symlink/reparse targets;
+- calculate SHA-256 before/after copy and require exact equality;
+- generate a deterministic rescue manifest with source path, destination path, size, SHA-256 and disposition;
+- classify potentially active content by extension/location and isolate it from ordinary rescued documents instead of placing it directly in the clean-data tree;
+- executable/script/shortcut content must never be auto-executed or trusted merely because it was copied;
+- optional local IOC/YARA checks may mark data for quarantine/review but must not execute source content;
+- suspected/active content goes to a clearly separated containment area with metadata, never into normal restored-user-data output;
+- destination collisions, unsafe names, path traversal and case-insensitive aliases must fail closed;
+- source file changes during extraction must be detected through pre/post hash/stat checks and reported, not silently accepted;
+- copy errors are contained per item and surfaced in audit output;
+- structured logs include stage/status/reason/source/destination/hash/bytes/duration/session/correlation IDs;
+- no delete from source, no repair mutation, no registry/boot writes and no recovery certification;
+- preserve RR-0 through RR-4B regression gates and keep B2 protected sources byte-identical.
 
-RR-4B acceptance uses harmless synthetic offline fixtures only. Real-machine repair remains blocked until the portable engine passes deterministic and built-binary Windows gates.
+RR-5 acceptance uses harmless synthetic offline user-data fixtures containing normal documents plus inert executable/script test markers. Real malware samples are not required.
 
-## Future Rescue milestones
-- RR-5 Safe Data Rescue: bounded data extraction from compromised systems without carrying active threats into clean environments.
-- RR-6 Integrity Verification & Recovery Certification: multi-signal integrity validation; refuse certification when trust cannot be demonstrated.
+## RR-6 — Integrity Verification & Recovery Certification — future
+Goal: multi-signal integrity validation after rescue/repair and explicit refusal to certify recovery when trust cannot be demonstrated.
 
 Formatting/reimaging remains the last-resort recovery option and may never be suppressed when system integrity cannot be demonstrated.
 
 ## Safety invariants carried through Beta3
-- B2 Protection Service/realtime/EDR sources are not modified by RR-0/RR-1/RR-2/RR-3/RR-4 work;
+- B2 Protection Service/realtime/EDR sources are not modified by RR-0/RR-1/RR-2/RR-3/RR-4/RR-5 work;
 - no single heuristic HIGH;
 - no heuristic-only destructive response;
 - no automatic process kill or host isolation;
@@ -205,6 +234,6 @@ Formatting/reimaging remains the last-resort recovery option and may never be su
 - frozen service performance thresholds `25 / 10 / 250` are not weakened.
 
 ## Codex reasoning policy
-- **Extra High**: Rescue architecture, trust boundaries, offline/boot parsing, repair transactions and integrity certification.
+- **Extra High**: Rescue architecture, trust boundaries, offline/boot parsing, repair transactions, safe data extraction and integrity certification.
 - **High**: ordinary implementation/test/integration after the relevant security boundary is frozen.
-- milestone-by-milestone only; no future repair capability may be pulled forward merely to make a demo appear complete.
+- milestone-by-milestone only; no future capability may be pulled forward merely to make a demo appear complete.
