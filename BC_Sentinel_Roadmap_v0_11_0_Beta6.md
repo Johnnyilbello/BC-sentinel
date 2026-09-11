@@ -10,6 +10,29 @@ checkpoint/v011-beta5-b57-pass
 
 The accepted Beta3/Beta4/Beta5 rescue engines and checkpoints are immutable predecessors. Beta6 is a technician UX/orchestration layer and must not weaken trust precedence, refusal semantics, rollback requirements, certification outcomes, protected B2 sources or accepted performance/safety thresholds.
 
+## Accepted Beta6 checkpoints
+
+### B6-0 — Technician UX Foundation — ACCEPTED / FROZEN
+
+```text
+checkpoint/v011-beta6-b60-pass
+cf82b062ee8a95a116a449a0daf03bebd0b67cea
+```
+
+Authoritative Windows acceptance on 2026-09-11:
+- accepted B5-7 predecessor gate PASS;
+- 16 B6-0 tests PASS;
+- Qt offscreen shell PASS;
+- exact frozen Beta5 command surface preserved;
+- startup dispatch disabled;
+- workflow actions disabled at foundation startup;
+- no destructive authority, service or B2 source change.
+
+B6-0 is immutable. B6-1 and later milestones extend it through new layers rather than rewriting the accepted foundation.
+
+## Current milestone
+**B6-1 — Target Discovery & Selection UX**
+
 ## Goal
 Turn the accepted Beta5 Portable Technician Release into a field-usable graphical technician workflow without changing the rescue trust model.
 
@@ -45,7 +68,7 @@ The UI must make safe behavior easier and unsafe assumptions harder. It must exp
 
 ## Milestones
 
-### B6-0 — Technician UX Foundation
+### B6-0 — Technician UX Foundation ✅ FROZEN
 Create the read-only UI contract and application shell.
 
 Acceptance:
@@ -59,7 +82,7 @@ Acceptance:
 - deterministic UI-model tests;
 - protected B2 sources unchanged.
 
-### B6-1 — Target Discovery & Selection UX
+### B6-1 — Target Discovery & Selection UX 🟡 CURRENT
 Wrap accepted B5-0 discovery in a guided target picker.
 
 Acceptance:
@@ -67,7 +90,11 @@ Acceptance:
 - READY/LOCKED/ACCESS_DENIED/INCOMPLETE/UNSUPPORTED/ERROR represented distinctly;
 - no unlock or mount action offered;
 - fingerprint and source visible for READY targets;
-- selection requires explicit operator action.
+- only a READY target with valid RR-6 fingerprint can become selected;
+- discovery and target selection require explicit operator action;
+- startup performs no target discovery or selection;
+- controlled target fixtures remain byte-identical;
+- protected B2 sources unchanged.
 
 ### B6-2 — Guided Session Workflow
 Guide plan → scan → health/stress → resume/decision while preserving exact engine outcomes.
