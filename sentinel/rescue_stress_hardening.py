@@ -22,6 +22,7 @@ STATE_COMPLETE: Final[str] = "COMPLETE"
 STATE_PARTIAL_FILE_LIMIT: Final[str] = "PARTIAL_FILE_LIMIT"
 STATE_PARTIAL_BYTE_LIMIT: Final[str] = "PARTIAL_BYTE_LIMIT"
 STATE_PARTIAL_TIME_LIMIT: Final[str] = "PARTIAL_TIME_LIMIT"
+STATE_PARTIAL_DEPTH_LIMIT: Final[str] = "PARTIAL_DEPTH_LIMIT"
 STATE_CANCELLED: Final[str] = "CANCELLED"
 STATE_DEGRADED: Final[str] = "DEGRADED"
 STATE_REFUSED: Final[str] = "REFUSED"
@@ -330,7 +331,6 @@ def stress_probe_target(
             for future in list(pending):
                 future.cancel()
 
-        # Collect already-running bounded work. No target writes occur, and cancelled queued work is not replayed.
         for future, (seq, _reserved) in list(pending.items()):
             if future.cancelled():
                 continue
@@ -374,7 +374,10 @@ def stress_probe_target(
         tracemalloc.stop()
 
     records = [records_by_seq[k] for k in sorted(records_by_seq)]
-    if completion_state == STATE_COMPLETE and (
+    if completion_state == STATE_COMPLETE and enum_stats["depth_pruned"] > 0:
+        completion_state = STATE_PARTIAL_DEPTH_LIMIT
+        completion_reason = "depth_budget_reached"
+    elif completion_state == STATE_COMPLETE and (
         counters["access_denied"] > 0
         or counters["io_errors"] > 0
         or counters["probe_errors"] > 0
