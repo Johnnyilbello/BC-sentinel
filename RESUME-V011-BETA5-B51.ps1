@@ -21,7 +21,7 @@ try {
     if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run B5-1 from normal non-elevated PowerShell.' }
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) { throw '.venv not available' }
 
-    $PatchRef = '53ffda59a9023e2f3f25038e7f24a7549e0a68fc'
+    $PatchRef = '44e9166df298cbc47e61fab8c8773ec362908c59'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.5 - B5-1 HOSTILE / DAMAGED SYSTEM SCENARIOS BOOTSTRAP' -ForegroundColor Cyan
