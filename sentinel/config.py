@@ -131,6 +131,21 @@ def _existing_unique(paths: list[Path]) -> list[Path]:
     return result
 
 
+def _merge_path_strings(configured: list[str], required: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for raw in [*configured, *required]:
+        text = str(raw).strip()
+        if not text:
+            continue
+        key = os.path.normcase(os.path.normpath(text))
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(text)
+    return result
+
+
 def _default_root_candidates(
     home: Path,
     *,
@@ -200,6 +215,16 @@ class Settings:
             monitored_dirs=[str(path) for path in candidates],
             ransomware_dirs=[str(path) for path in ransomware_candidates],
         )
+
+
+def ensure_service_profile_roots(settings: Settings) -> Settings:
+    """Preserve configured roots while guaranteeing real-user coverage for service identities."""
+    if os.name != "nt" or not _service_identity_needs_local_profiles(Path.home()):
+        return settings
+    required = Settings.defaults()
+    settings.monitored_dirs = _merge_path_strings(settings.monitored_dirs, required.monitored_dirs)
+    settings.ransomware_dirs = _merge_path_strings(settings.ransomware_dirs, required.ransomware_dirs)
+    return settings
 
 
 def ensure_dirs() -> None:
