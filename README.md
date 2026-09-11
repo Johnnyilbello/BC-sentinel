@@ -1,117 +1,130 @@
 # BC Sentinel
 
-> **Windows endpoint security under active development:** antivirus, antispyware, reversible persistence response, advanced antimalware correlation, behavioral protection, managed firewall, Web Protection, incident response and signed threat intelligence.
+BC Sentinel is a Windows endpoint-security and recovery project under active development. The repository includes the accepted Rescue Technician backend, the stable Beta6 Technician UI foundation, deterministic acceptance gates, packaging scripts, and historical roadmap/report evidence.
 
-## Development status
+> BC Sentinel is still a development build. It should not replace Microsoft Defender, Windows Firewall, or a production EDR on an everyday workstation.
 
-**Frozen line:** `v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening`
+## Current stable version
 
-BC Sentinel remains a development preview. It is **not production-ready** and should not replace Microsoft Defender, Windows Firewall or a production EDR/NGFW. Keep the native Windows security stack enabled while testing.
-
-The v0.9 line has completed its release-candidate freeze on the target Windows machine. The RC1 baseline passed the complete Python suite, native foundation acceptance, native build, upgrade, live-service acceptance, repair, service-hardening benchmark and post-reboot live acceptance.
-
-### v0.9 Beta1 — Antispyware foundation
-
-Beta1 introduced spyware/persistence discovery and conservative multi-signal scoring across Run/RunOnce, Startup, Scheduled Tasks, automatic services, WMI permanent persistence, browser policy/forced-extension surfaces, proxy/DNS configuration and executable provenance.
-
-### v0.9 Beta2 — Reversible persistence response
-
-Beta2 added HMAC-authenticated remediation plans with exact pre-mutation revalidation, explicit approval, reversible restoration and one-action UAC integration for selected persistence surfaces. WMI, proxy and DNS remain review-only where equivalent restore guarantees are not yet available.
-
-Safety remains strict:
+The latest Windows-accepted stable source checkpoint is:
 
 ```text
-automatic_remediation          = false
-automatic_destructive_action   = false
-service_process_termination    = false
+v0.11.0-beta.6 B6-0 — Technician UX Foundation
+checkpoint/v011-beta6-b60-pass
+cf82b062ee8a95a116a449a0daf03bebd0b67cea
 ```
 
-### v0.9 Beta3 — Advanced Antimalware & Fileless Correlation
+The stable Rescue backend underneath the UI is the frozen Beta5 Portable Technician Release. B6-0 adds the validated PySide6 technician shell without changing the accepted Rescue trust model or exposing new destructive authority.
 
-Beta3 added the `AdvancedAntimalwareEngine` for explainable correlation of PowerShell/script-host command context, bounded encoded/dynamic and in-memory indicators, Windows LOLBins, Office/browser/script-host parent-child relationships, short-lived same-PID process → network chains and deterministic file/IOC evidence that may strengthen an existing behavioral chain.
+`main` contains that accepted B6-0 source plus launch-only convenience files. Development beyond B6-0 remains on feature branches until the corresponding Windows gate passes.
 
-A single dual-use Windows tool is **not malware by identity**. One evidence family cannot qualify HIGH on its own. Stronger outcomes require converging independent evidence or qualified deterministic evidence.
+## Start the stable build on Windows
 
-### v0.9 RC1 — Consolidation & Native Hardening
+The simplest method after cloning/downloading the repository is to double-click:
 
-RC1 freezes the v0.9 Beta1→Beta3 model and adds explicit false-positive hardening for administrative/script-heavy workloads. It preserves the existing protected response boundaries and introduces no automatic process termination, file deletion, quarantine or persistence mutation from the Advanced Antimalware layer.
+```text
+START-BC-SENTINEL-STABLE.bat
+```
+
+or run from PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1
+```
+
+The launcher:
+
+1. verifies that the stable Technician UI and frozen Technician engine files are present;
+2. creates a local `.venv` with Python 3.12+ if needed;
+3. installs `requirements.txt` only when dependencies are missing;
+4. runs the passive B6-0 self-check;
+5. launches the stable Rescue Technician UI.
+
+Self-check only:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1 -SelfCheckOnly
+```
+
+If dependencies are already installed and setup must stay offline:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1 -NoInstall
+```
+
+Direct Python entrypoint:
+
+```powershell
+.\.venv\Scripts\python.exe -m sentinel.rescue_technician_ui
+```
+
+## Stable safety contract
+
+B6-0 starts passively and preserves the frozen Beta5/Beta3 trust boundaries:
+
+```text
+automatic rescue dispatch      = false
+automatic repair               = false
+automatic quarantine           = false
+repair-execute exposed         = false
+unlock exposed                 = false
+mount-write exposed            = false
+format execution               = false
+reimage execution              = false
+registry/boot write authority  = false
+target execution               = false
+```
+
+RR-6 remains authoritative. `RECOVERED`, `NOT_RECOVERED`, and `INDETERMINATE_REFUSED` are preserved exactly; refusal is never transformed into success.
+
+## Accepted Rescue line
+
+The current stable Rescue line includes:
+
+- offline target discovery and validation;
+- hostile/damaged-system assessment;
+- bounded large-scale stress probing;
+- crash-safe session journal and resume logic;
+- advisory recovery decision engine;
+- technician report and SHA-256 evidence package;
+- controlled real-PC acceptance framework;
+- portable Technician Release;
+- Beta6 PySide6 Technician UX foundation.
+
+The accepted Beta5 final gate reached 321 cumulative tests. B6-0 added 16 UI-foundation tests and passed its Windows acceptance gate, for 337 cumulative covered tests at the current stable checkpoint.
+
+## Stable and development branches
+
+Stable references:
+
+```text
+checkpoint/v011-beta6-b60-pass
+stable/v011-beta6-b60
+```
+
+Current development work after the stable checkpoint is kept separate. B6-1 Target Discovery & Selection UX is not part of the stable release until its Windows acceptance gate is completed and frozen.
+
+## Repository entrypoints
+
+Important files for the stable build:
+
+```text
+START-BC-SENTINEL-STABLE.bat
+START-BC-SENTINEL-STABLE.ps1
+requirements.txt
+sentinel/rescue_technician_ui.py
+sentinel/rescue_technician_ui_model.py
+sentinel/rescue_technician_portable.py
+packaging/rescue_technician_ui_entry.py
+STABLE-RELEASE.md
+```
+
+For the exact stable checkpoint, launch instructions, and safety state, see `STABLE-RELEASE.md`.
 
 ## Existing protection stack
 
-BC Sentinel currently includes:
-
-- realtime and on-demand malware scanning;
-- SHA-256 identity, YARA and PE-aware inspection;
-- ransomware and behavior shields;
-- encrypted quarantine and Threat Decision workflows;
-- hardened Windows Protection Service;
-- authenticated Named Pipe IPC and one-action UAC broker;
-- ETW process/file/network attribution;
-- persistent incident timelines and behavioral correlation;
-- BC Sentinel-owned Windows Firewall BLOCK-only controls;
-- firewall drift/reconciliation and conflict analysis;
-- Ed25519-signed IOC and threat-content packages;
-- key rotation/revocation and anti-rollback state;
-- signed reputation as advisory evidence;
-- DNS/process-correlated Web Protection without HTTPS MITM;
-- browser/download provenance and Web Incident Chain;
-- signed remote threat index and content-addressed threat cache;
-- crash-consistent staged threat-content activation;
-- antispyware/persistence discovery and reversible remediation;
-- advisory advanced-antimalware/fileless correlation.
-
-## Core security principles
-
-- deterministic protection does not depend on AI or cloud availability;
-- AI remains advisory/explanatory rather than the sole enforcement authority;
-- private signing keys are never distributed with release artifacts;
-- no HTTPS MITM or injected root CA in the current Web Protection architecture;
-- heuristic-only evidence cannot perform destructive response;
-- firewall management is BC-owned and BLOCK-only;
-- signed IOC evidence has precedence over local trust;
-- remote retrieval does not imply staging or activation;
-- all privileged mutations remain behind authenticated service/UAC boundaries;
-- dual-use administration tools are not classified as malware by executable name alone.
-
-## v0.9 RC1 verification
-
-Target Windows validation completed on 2026-09-07:
-
-```text
-pytest                         482 / 482 PASS
-RC1 acceptance                 PASS
-Windows foundation             PASS
-native build                   PASS
-upgrade                        PASS
-live-service acceptance        PASS
-repair                         PASS
-service-hardening benchmark    PASS
-post-reboot live acceptance    PASS
-```
-
-Release SHA-256:
-
-```text
-8a4a2c3e1cc7c9c411d7e25c189d016b29994311a4d991caba30dfa5bc23b350
-```
-
-See:
-
-- `RELEASE-NOTES-v0.9.0-rc.1.md`
-- `BC_SENTINEL_V090_RC1_CONSOLIDATION_REPORT.md`
-- `BC_Sentinel_Roadmap_v0_9_0_RC1_Updated.md`
-- `TEST-STATUS-v0.9.0-rc.1.md`
-- `WINDOWS-ACCEPTANCE-v0.9.0-rc.1.md`
-- `RELEASE-SHA256-v0.9.0-rc.1.txt`
-- `DEVELOPMENT_STATUS.md`
-- `ROADMAP.md`
-
-## Next milestone
-
-**`v0.10.0-beta.1` — Web Protection / Anti-Phishing / Anti-Scam Mature Expansion Foundation**
-
-The v0.10 line builds on the existing v0.7 DNS/process-correlated Web Protection instead of replacing it. New heuristic/deception signals remain explainable and bounded below destructive-response thresholds unless stronger deterministic evidence exists.
+The wider BC Sentinel codebase also contains realtime/on-demand scanning, SHA-256/YARA/PE inspection, ransomware and behavior shields, encrypted quarantine workflows, Windows Protection Service components, ETW process/file/network attribution, firewall controls, signed threat intelligence, Web Protection, antispyware/persistence analysis, and reversible remediation foundations.
 
 ## Responsible testing
 
-Use harmless fixtures, TEST-NET addresses and disposable VMs. Do not expose an everyday workstation to live malware solely to test a development build.
+Use harmless fixtures, disposable VMs, and controlled offline targets. Do not deliberately expose an everyday workstation to live malware solely to test a development build.
