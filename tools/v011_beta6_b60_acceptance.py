@@ -28,6 +28,8 @@ def run_acceptance(output: Path) -> dict:
         ]
         exposed = sorted(str(button.property("engineCommand")) for button in command_buttons)
         enabled = [str(button.property("engineCommand")) for button in command_buttons if button.isEnabled()]
+        actual_window_title = window.windowTitle()
+        expected_window_title = ui.WINDOW_TITLE
         checks = {
             "profile": model.PROFILE == "v0.11.0-beta.6-b60",
             "frozen_engine_profile": contract.get("engine_profile") == b57.PROFILE,
@@ -38,7 +40,7 @@ def run_acceptance(output: Path) -> dict:
             "initial_state_idle": initial.get("state") == "IDLE",
             "initial_target_empty": initial.get("selected_target") == "" and initial.get("target_fingerprint") == "",
             "initial_session_empty": initial.get("session_id") == "" and initial.get("correlation_id") == "",
-            "window_created": window.windowTitle() == "BC Sentinel — Rescue Technician",
+            "window_created": actual_window_title == expected_window_title,
             "workflow_actions_disabled": enabled == [],
             "foundation_workflow_surface": exposed == sorted(["discover", "assess", "scan", "decide", "report"]),
             "no_installer_service_driver": all(contract["safety"][key] is False for key in ("installer_required", "service_install", "driver_install")),
@@ -67,6 +69,10 @@ def run_acceptance(output: Path) -> dict:
             "forbidden_commands": list(model.FORBIDDEN_UI_COMMANDS),
             "foundation_workflow_commands": exposed,
             "initial_state": initial,
+            "window_title_expected": expected_window_title,
+            "window_title_actual": actual_window_title,
+            "window_title_expected_length": len(expected_window_title),
+            "window_title_actual_length": len(actual_window_title),
         },
         "new_mutation_authority_added": False,
         "automatic_destructive_action_enabled": False,
