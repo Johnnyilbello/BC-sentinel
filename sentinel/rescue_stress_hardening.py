@@ -149,14 +149,7 @@ def _iter_regular_files(root: Path, *, max_depth: int, enum_stats: dict) -> Iter
             enum_stats["enumeration_errors"] += 1
 
 
-def _probe_one(
-    path: Path,
-    rel: str,
-    depth: int,
-    size: int,
-    sample_bytes: int,
-    reader: Callable[[Path, int], bytes] | None,
-) -> dict:
+def _probe_one(path: Path, rel: str, depth: int, size: int, sample_bytes: int, reader: Callable[[Path, int], bytes] | None) -> dict:
     started = time.perf_counter()
     status = "readable"
     reason = "ok"
@@ -300,27 +293,18 @@ def stress_probe_target(
                     record = future.result()
                 except Exception as exc:
                     record = {
-                        "relative_path": "<worker>",
-                        "depth": -1,
-                        "file_size": 0,
-                        "status": "probe_error",
-                        "reason": f"worker_exception:{type(exc).__name__}:{exc}",
-                        "sampled_bytes": 0,
-                        "sha256_sample": "",
-                        "elapsed_ms": 0.0,
+                        "relative_path": "<worker>", "depth": -1, "file_size": 0, "status": "probe_error",
+                        "reason": f"worker_exception:{type(exc).__name__}:{exc}", "sampled_bytes": 0,
+                        "sha256_sample": "", "elapsed_ms": 0.0,
                     }
                 records_by_seq[seq] = record
                 counters["probed"] += 1
                 sampled_bytes_actual += int(record.get("sampled_bytes", 0))
                 status = str(record.get("status", ""))
-                if status == "readable":
-                    counters["readable"] += 1
-                elif status == "access_denied":
-                    counters["access_denied"] += 1
-                elif status == "io_error":
-                    counters["io_errors"] += 1
-                else:
-                    counters["probe_errors"] += 1
+                if status == "readable": counters["readable"] += 1
+                elif status == "access_denied": counters["access_denied"] += 1
+                elif status == "io_error": counters["io_errors"] += 1
+                else: counters["probe_errors"] += 1
                 if float(record.get("elapsed_ms", 0.0)) >= float(limits.slow_read_ms):
                     counters["slow_reads"] += 1
                     record["slow_read"] = True
@@ -338,27 +322,18 @@ def stress_probe_target(
                 record = future.result(timeout=max(0.1, min(5.0, float(limits.max_elapsed_sec))))
             except Exception as exc:
                 record = {
-                    "relative_path": "<worker>",
-                    "depth": -1,
-                    "file_size": 0,
-                    "status": "probe_error",
-                    "reason": f"worker_finalize_exception:{type(exc).__name__}:{exc}",
-                    "sampled_bytes": 0,
-                    "sha256_sample": "",
-                    "elapsed_ms": 0.0,
+                    "relative_path": "<worker>", "depth": -1, "file_size": 0, "status": "probe_error",
+                    "reason": f"worker_finalize_exception:{type(exc).__name__}:{exc}", "sampled_bytes": 0,
+                    "sha256_sample": "", "elapsed_ms": 0.0,
                 }
             records_by_seq[seq] = record
             counters["probed"] += 1
             sampled_bytes_actual += int(record.get("sampled_bytes", 0))
             status = str(record.get("status", ""))
-            if status == "readable":
-                counters["readable"] += 1
-            elif status == "access_denied":
-                counters["access_denied"] += 1
-            elif status == "io_error":
-                counters["io_errors"] += 1
-            else:
-                counters["probe_errors"] += 1
+            if status == "readable": counters["readable"] += 1
+            elif status == "access_denied": counters["access_denied"] += 1
+            elif status == "io_error": counters["io_errors"] += 1
+            else: counters["probe_errors"] += 1
             if float(record.get("elapsed_ms", 0.0)) >= float(limits.slow_read_ms):
                 counters["slow_reads"] += 1
                 record["slow_read"] = True
@@ -378,23 +353,16 @@ def stress_probe_target(
         completion_state = STATE_PARTIAL_DEPTH_LIMIT
         completion_reason = "depth_budget_reached"
     elif completion_state == STATE_COMPLETE and (
-        counters["access_denied"] > 0
-        or counters["io_errors"] > 0
-        or counters["probe_errors"] > 0
-        or enum_stats["enumeration_access_denied"] > 0
-        or enum_stats["enumeration_errors"] > 0
+        counters["access_denied"] > 0 or counters["io_errors"] > 0 or counters["probe_errors"] > 0
+        or enum_stats["enumeration_access_denied"] > 0 or enum_stats["enumeration_errors"] > 0
     ):
         completion_state = STATE_DEGRADED
         completion_reason = "read_or_enumeration_errors_observed"
 
     stable_records = [
         {
-            "relative_path": r["relative_path"],
-            "depth": r["depth"],
-            "file_size": r["file_size"],
-            "status": r["status"],
-            "reason": r["reason"],
-            "sampled_bytes": r["sampled_bytes"],
+            "relative_path": r["relative_path"], "depth": r["depth"], "file_size": r["file_size"],
+            "status": r["status"], "reason": r["reason"], "sampled_bytes": r["sampled_bytes"],
             "sha256_sample": r["sha256_sample"],
         }
         for r in records
@@ -412,20 +380,15 @@ def stress_probe_target(
         "sampled_bytes": sampled_bytes_actual,
         "records": stable_records,
         "safety": {
-            "target_read_only": True,
-            "write_attempted": False,
-            "target_execution": False,
-            "repair_execution": False,
-            "quarantine_execution": False,
-            "file_delete": False,
-            "registry_write": False,
-            "boot_write": False,
-            "automatic_action": False,
-            "network_required": False,
-            "cloud_required": False,
+            "target_read_only": True, "write_attempted": False, "target_execution": False,
+            "repair_execution": False, "quarantine_execution": False, "file_delete": False,
+            "registry_write": False, "boot_write": False, "automatic_action": False,
+            "network_required": False, "cloud_required": False,
         },
     }
-    probe_sha256 = hashlib.sha256(_canonical_json(stable_core)).hexdigest()
+    hash_core = dict(stable_core)
+    hash_core["counters"] = {k: v for k, v in counters.items() if k != "slow_reads"}
+    probe_sha256 = hashlib.sha256(_canonical_json(hash_core)).hexdigest()
     return {
         **stable_core,
         "created_utc": _utc_now(),
@@ -460,10 +423,8 @@ def write_probe(result: dict, output_path: Path, target_root: Path) -> Path:
         temp.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(temp, output)
     finally:
-        try:
-            temp.unlink(missing_ok=True)
-        except OSError:
-            pass
+        try: temp.unlink(missing_ok=True)
+        except OSError: pass
     return output
 
 
@@ -482,14 +443,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         limits = StressLimits(
-            max_files=args.max_files,
-            max_total_sample_bytes=args.max_total_sample_bytes,
-            max_elapsed_sec=args.max_elapsed_sec,
-            max_depth=args.max_depth,
-            sample_bytes=args.sample_bytes,
-            max_workers=args.max_workers,
-            max_inflight=args.max_inflight,
-            slow_read_ms=args.slow_read_ms,
+            max_files=args.max_files, max_total_sample_bytes=args.max_total_sample_bytes,
+            max_elapsed_sec=args.max_elapsed_sec, max_depth=args.max_depth, sample_bytes=args.sample_bytes,
+            max_workers=args.max_workers, max_inflight=args.max_inflight, slow_read_ms=args.slow_read_ms,
         )
         result = stress_probe_target(Path(args.target_root), limits=limits)
         if args.output:
