@@ -92,73 +92,82 @@ checkpoint/v011-beta5-b54-pass
 f93e7d044b96bac9e72a31ee131d9c37ab18367b
 ```
 
-## B5-5 — Technician Report & Evidence Package — current
-Purpose: turn the accepted B5-4 advisory result and its evidence index into a field-ready, independently verifiable technician package without adding mutation authority.
-
-Package layout:
-- `technician-report.json` — machine-readable technician result;
-- `technician-report.md` — human-readable result;
-- `evidence-index.json` — trust/copy/provenance index;
-- `package-manifest.json` — package-wide file/hash manifest;
-- `evidence/` — SHA-256 verified copies of trusted source evidence.
-
-Trust / provenance rules:
-- B5-4 decision profile/schema/state/internal `decision_sha256` revalidated before export;
-- decision must bind to the exact current offline-target fingerprint;
-- every evidence item marked trusted by B5-4 must still exist outside target and match its bound SHA-256;
-- trusted evidence drift/missing/reparse -> build refusal;
-- evidence marked untrusted by B5-4 is never promoted or copied as trusted;
-- untrusted evidence remains visible as unresolved risk in report/index;
-- decision, evidence and existing package paths are checked for symlink/reparse before path resolution;
-- post-export verification refuses manifest-listed symlink/reparse substitution and unlisted files.
-
-Hard bounds:
-- max 64 evidence entries;
-- max 256 MiB per copied evidence file;
-- max 1 GiB copied package evidence budget;
-- output only outside target;
-- no network/cloud dependency.
-
-Report requirements:
-- target fingerprint;
-- RR-6 outcome/certification flag preserved exactly;
-- B5-4 advisory state/reasons and next action;
-- unresolved risks/refusals;
-- data-rescue summary when available;
-- evidence counts and provenance;
-- report-only safety contract;
-- stable report/index/manifest SHA-256 values.
-
-B5-5 acceptance must include:
-- complete accepted B5-4 predecessor gate first, preserving **270 cumulative predecessor tests covered**;
-- **15 new B5-5 tests**, giving **285 cumulative tests covered**;
-- deterministic trusted/untrusted evidence package PASS;
-- human + JSON report PASS;
-- evidence hash index PASS;
-- package manifest and independent verify PASS;
+## B5-5 — Technician Report & Evidence Package — accepted / frozen
+Authoritative Windows acceptance:
+- complete B5-4 predecessor gate PASS;
+- **15 B5-5 tests PASS**, giving **285 cumulative tests covered**;
+- human + JSON technician report PASS;
+- evidence hash index and package manifest PASS;
+- independent package verify PASS;
 - exported-evidence tamper detection PASS;
 - listed-file reparse substitution detection PASS;
 - trusted source drift refusal PASS;
-- untrusted risk preservation PASS;
-- separate-process CLI `build` and `verify` PASS;
-- target byte-identical;
-- no repair/quarantine/data-rescue/reimage execution;
+- untrusted evidence remains explicit risk and is not copied as trusted PASS;
+- live `RECOVERED -> MANUAL_REVIEW` report preservation PASS;
+- target unchanged; no repair/quarantine/data-rescue/reimage execution; no service; B2 sources unchanged.
+
+Frozen checkpoint:
+```text
+checkpoint/v011-beta5-b55-pass
+26bc2a365403658bb33881fb605101245cf87b5c
+```
+
+## B5-6 — Controlled Real-PC Acceptance — current
+Purpose: validate the accepted Beta5 workflow on an actual Windows host while keeping simulated damage clearly separated from real-hardware evidence.
+
+Environment labels:
+- `REAL_HARDWARE`;
+- `CONTROLLED_OFFLINE_FIXTURE`;
+- `OPERATOR_SUPPLIED`.
+
+Required normal-gate scenarios:
+1. `known_good_control` — must be `REAL_HARDWARE`;
+2. `damaged_offline_windows` — controlled offline fixture;
+3. `persistence_fixture` — controlled offline fixture;
+4. `resource_constrained` — controlled bounded/stress fixture;
+5. `locked_encrypted_refusal` — controlled refusal proof, no unlock/mount mutation;
+6. `interrupted_session_resume` — controlled B5-3-backed resume proof.
+
+Optional field scenario:
+- `problematic_pc_optional` — remains `NOT_RUN` until a genuinely problematic PC can be tested safely;
+- it must never be replaced by a fixture merely to obtain PASS;
+- a later field run may explicitly require it.
+
+Evidence / trust rules:
+- every scenario has profile/schema/environment/status;
+- every scenario has a host fingerprint and before/after target/control fingerprint;
+- every evidence file has exact size + SHA-256 binding;
+- scenario records have stable `scenario_sha256`;
+- symlink/reparse scenario/evidence paths are refused;
+- duplicate/missing/tampered scenario records fail closed;
+- `known_good_control` cannot pass unless labeled `REAL_HARDWARE`;
+- fixture labels remain explicit in the final summary;
+- refusal scenarios require explicit refusal reasons;
+- safety contract forbids new repair/quarantine/format/reimage/registry/boot authority.
+
+Predecessor evidence reused by B5-6:
+- B5-0 locked/refusal acceptance;
+- B5-1 damage + persistence acceptance;
+- B5-2 stress/bounded-resource acceptance;
+- B5-3 interruption/resume acceptance;
+- B5-4 decision acceptance;
+- B5-5 technician package acceptance.
+
+B5-6 acceptance must include:
+- complete accepted B5-5 predecessor gate first, preserving **285 cumulative predecessor tests covered**;
+- **16 new B5-6 tests**, giving **301 cumulative tests covered**;
+- real Windows host control record PASS;
+- at least five explicitly labeled controlled fixture records PASS/accepted refusal;
+- same-host coverage binding PASS;
+- locked/encrypted candidate refusal with no unlock/mount mutation PASS;
+- fixture-not-real-hardware labeling PASS;
+- problematic PC remains `NOT_RUN` in the standard gate;
+- persistent acceptance evidence directory generated;
+- no automatic destructive authority;
 - no service;
 - B2 protected sources unchanged.
 
-## B5-6 — Controlled Real-PC Acceptance
-Purpose: validate Beta5 on real hardware under controlled conditions.
-
-Required scenarios:
-- known-good control PC/disk;
-- intentionally damaged test Windows installation;
-- simulated malware/persistence fixture;
-- slow or resource-constrained system;
-- locked/encrypted candidate refusal;
-- interrupted session/resume;
-- real problematic PC when safely available.
-
-No milestone passes on anecdotal success. Every run requires before/after integrity evidence and acceptance logs.
+Passing B5-6 does not claim that every real infected PC is recoverable without reimage. It proves the controlled real-host validation framework and preserves a separate slot for a genuine problematic-PC field case.
 
 ## B5-7 — Portable Technician Release
 Purpose: package the accepted Beta5 field-hardened workflow as the technician release.
@@ -175,6 +184,8 @@ Acceptance must prove:
 
 ## Beta5 closure condition
 Beta5 closes only after B5-0 through B5-7 pass deterministic tests, Windows built-artifact gates and controlled real-hardware acceptance. No threshold may be weakened merely to obtain PASS.
+
+A genuine problematic-PC field case remains separately traceable and must never be fabricated. If it is not safely available during the standard B5-6 gate, it remains `NOT_RUN` and can be required in a later field validation.
 
 ## Logging / observability policy
 Critical failures must expose enough information to identify root cause immediately:
