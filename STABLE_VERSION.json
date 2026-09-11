@@ -1,0 +1,18 @@
+{
+  "product": "BC Sentinel",
+  "channel": "stable",
+  "version": "v0.11.0-beta.6",
+  "milestone": "B6-0 Technician UX Foundation",
+  "profile": "v0.11.0-beta.6-b60",
+  "accepted_source_checkpoint": "checkpoint/v011-beta6-b60-pass",
+  "accepted_source_commit": "cf82b062ee8a95a116a449a0daf03bebd0b67cea",
+  "stable_branch": "stable/v011-beta6-b60",
+  "ui_entrypoint": "python -m sentinel.rescue_technician_ui",
+  "windows_launcher": "START-BC-SENTINEL-STABLE.bat",
+  "powershell_launcher": "START-BC-SENTINEL-STABLE.ps1",
+  "requirements": "requirements.txt",
+  "cumulative_covered_tests": 337,
+  "startup_dispatch_enabled": false,
+  "automatic_destructive_action_enabled": false,
+  "development_after_stable": "feature/v011-beta6-b61-target-discovery-selection-ux"
+}
