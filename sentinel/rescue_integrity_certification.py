@@ -459,18 +459,38 @@ def certify_recovery(
 
     refused = sorted(set(refused))
     not_recovered = sorted(set(not_recovered))
-    if not_recovered:
-        outcome = OUTCOME_NOT_RECOVERED
-        certified = False
-        reason = "positive_unresolved_integrity_or_security_problem"
-    elif refused:
+
+    # Trust failures take precedence over positive findings. If the evidence set is
+    # stale, tampered, incomplete or otherwise unverifiable, RR6 cannot reliably
+    # distinguish the current target state and must refuse certification rather
+    # than assert NOT_RECOVERED from evidence whose trust chain has already failed.
+    if refused:
         outcome = OUTCOME_REFUSED
         certified = False
         reason = "required_trust_evidence_missing_stale_or_unverifiable"
+        decision_precedence = "trust_refusal_over_security_finding"
+    elif not_recovered:
+        outcome = OUTCOME_NOT_RECOVERED
+        certified = False
+        reason = "positive_unresolved_integrity_or_security_problem"
+        decision_precedence = "trusted_positive_security_finding"
     else:
         outcome = OUTCOME_RECOVERED
         certified = True
         reason = "all_mandatory_independent_integrity_gates_passed"
+        decision_precedence = "all_trust_and_security_gates_passed"
+
+    audit(
+        "certification_decision",
+        "ok" if certified else ("refused" if outcome == OUTCOME_REFUSED else "fail"),
+        reason,
+        outcome=outcome,
+        decision_precedence=decision_precedence,
+        refusal_count=len(refused),
+        not_recovered_count=len(not_recovered),
+        refusal_reasons=refused,
+        not_recovered_reasons=not_recovered,
+    )
 
     report_without_hash = {
         "schema": REPORT_SCHEMA,
@@ -482,6 +502,7 @@ def certify_recovery(
         "outcome": outcome,
         "certified_recovered": certified,
         "reason": reason,
+        "decision_precedence": decision_precedence,
         "refusal_reasons": refused,
         "not_recovered_reasons": not_recovered,
         "checks": checks,
