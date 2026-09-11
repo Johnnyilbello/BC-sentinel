@@ -36,7 +36,7 @@ Reads use a bounded `ThreadPoolExecutor`. At any moment both the worker count an
 Large files are sampled up to `sample_bytes`; they are not loaded into memory in full. The result records both real file size and sampled bytes.
 
 ## Directory traversal
-Traversal is iterative using an explicit stack rather than recursive Python calls. Depth is measured and bounded. Paths beyond the configured depth are pruned and counted.
+Traversal is iterative using an explicit stack rather than recursive Python calls. Depth is measured and bounded. Paths beyond the configured depth are pruned and counted, and any pruning makes the result explicitly partial rather than complete.
 
 ## Partial-result semantics
 A partial run is never represented as a complete run.
@@ -47,6 +47,7 @@ Possible states:
 - `PARTIAL_FILE_LIMIT` — file budget reached;
 - `PARTIAL_BYTE_LIMIT` — sample-byte budget reached;
 - `PARTIAL_TIME_LIMIT` — elapsed-time budget reached;
+- `PARTIAL_DEPTH_LIMIT` — configured traversal depth pruned one or more subtrees;
 - `CANCELLED` — cancellation requested;
 - `REFUSED` — preflight or contract failure.
 
@@ -81,7 +82,7 @@ Acceptance thresholds:
 - Python traced peak <= 192 MiB;
 - workers <= 4;
 - observed in-flight <= 64;
-- explicit file-limit, time-limit and cancellation states;
+- explicit file-limit, time-limit, depth-limit and cancellation states;
 - target byte-identical;
 - no new mutation authority.
 
