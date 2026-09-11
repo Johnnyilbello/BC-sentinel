@@ -44,7 +44,7 @@ try {
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
 
     $Py = '.\.venv\Scripts\python.exe'
-    $PatchRef = '7d10def3c3d5cf4f8e655fe7b35c893d625be2eb'
+    $PatchRef = '9bf8cdf4f4abe7aa2b17cae081a175dc23bb50e0'
     $PatchBranch = 'fix/v011-beta2-b2-interactive-temp-watchdog'
     $ResumeRef = '1cfc20346c77148b5497b2a4dd2794ce06cc273e'
     $ResumeBranch = 'checkpoint/v011-beta2-b2-current-1cfc203'
@@ -54,27 +54,50 @@ try {
     Write-Host 'Fixes persisted LocalSystem root migration, runtime/realtime settings ownership, TEMP/AppData classification and EDR timestamps.' -ForegroundColor Yellow
     Write-Host 'No timeout or 25/10/250 threshold relaxation. Continuous File ETW remains dormant.' -ForegroundColor Yellow
 
-    $downloads = @(
-        @('.\tools\v011_beta2_b2_temp_root_compat.py','tools/v011_beta2_b2_temp_root_compat.py'),
-        @('.\tests\test_v011_beta2_b2_temp_root_compat.py','tests/test_v011_beta2_b2_temp_root_compat.py'),
-        @('.\sentinel\edr_adapter.py','sentinel/edr_adapter.py'),
-        @('.\tests\test_v011_beta1_edr_adapter.py','tests/test_v011_beta1_edr_adapter.py'),
-        @('.\sentinel\config.py','sentinel/config.py'),
-        @('.\tests\test_v011_beta2_b2_service_profile_roots.py','tests/test_v011_beta2_b2_service_profile_roots.py'),
-        @('.\tools\v011_beta2_b2_service_settings_compat.py','tools/v011_beta2_b2_service_settings_compat.py'),
-        @('.\tests\test_v011_beta2_b2_service_settings_compat.py','tests/test_v011_beta2_b2_service_settings_compat.py')
-    )
-    foreach ($item in $downloads) {
-        Download-RequiredFile `
-            $item[0] `
-            ($RepoRaw + $PatchRef + '/' + $item[1]) `
-            ($RepoRaw + $PatchBranch + '/' + $item[1])
-    }
+    Download-RequiredFile `
+        '.\tools\v011_beta2_b2_temp_root_compat.py' `
+        ($RepoRaw + $PatchRef + '/tools/v011_beta2_b2_temp_root_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tools/v011_beta2_b2_temp_root_compat.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta2_b2_temp_root_compat.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_temp_root_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta2_b2_temp_root_compat.py')
+
+    Download-RequiredFile `
+        '.\sentinel\edr_adapter.py' `
+        ($RepoRaw + $PatchRef + '/sentinel/edr_adapter.py') `
+        ($RepoRaw + $PatchBranch + '/sentinel/edr_adapter.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta1_edr_adapter.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta1_edr_adapter.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta1_edr_adapter.py')
+
+    Download-RequiredFile `
+        '.\sentinel\config.py' `
+        ($RepoRaw + $PatchRef + '/sentinel/config.py') `
+        ($RepoRaw + $PatchBranch + '/sentinel/config.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta2_b2_service_profile_roots.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_service_profile_roots.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta2_b2_service_profile_roots.py')
+
+    Download-RequiredFile `
+        '.\tools\v011_beta2_b2_service_settings_compat.py' `
+        ($RepoRaw + $PatchRef + '/tools/v011_beta2_b2_service_settings_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tools/v011_beta2_b2_service_settings_compat.py')
+
+    Download-RequiredFile `
+        '.\tests\test_v011_beta2_b2_service_settings_compat.py' `
+        ($RepoRaw + $PatchRef + '/tests/test_v011_beta2_b2_service_settings_compat.py') `
+        ($RepoRaw + $PatchBranch + '/tests/test_v011_beta2_b2_service_settings_compat.py')
 
     $realtimePath = Join-Path $PSScriptRoot 'sentinel\realtime.py'
-    $corePath = Join-Path $PSScriptRoot 'sentinel\protection_service_core.py'
-    $realtimeBeforeHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
-    $coreBeforeHash = (Get-FileHash -LiteralPath $corePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $serviceCorePath = Join-Path $PSScriptRoot 'sentinel\protection_service_core.py'
+    $beforeHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $serviceBeforeHash = (Get-FileHash -LiteralPath $serviceCorePath -Algorithm SHA256).Hash.ToLowerInvariant()
 
     Write-Host 'Applying account-independent TEMP/AppData watchdog root classification...' -ForegroundColor DarkCyan
     & $Py -m tools.v011_beta2_b2_temp_root_compat
@@ -82,12 +105,12 @@ try {
 
     Write-Host 'Applying persisted service-root migration and settings ownership repair...' -ForegroundColor DarkCyan
     & $Py -m tools.v011_beta2_b2_service_settings_compat
-    if ($LASTEXITCODE -ne 0) { throw 'Service settings ownership compatibility migration failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Protection service settings ownership migration failed' }
 
-    $realtimeAfterHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
-    $coreAfterHash = (Get-FileHash -LiteralPath $corePath -Algorithm SHA256).Hash.ToLowerInvariant()
-    Write-Host (('Realtime source: {0} -> {1}' -f $realtimeBeforeHash,$realtimeAfterHash)) -ForegroundColor Green
-    Write-Host (('Service core source: {0} -> {1}' -f $coreBeforeHash,$coreAfterHash)) -ForegroundColor Green
+    $afterHash = (Get-FileHash -LiteralPath $realtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $serviceAfterHash = (Get-FileHash -LiteralPath $serviceCorePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-Host (('Realtime source: {0} -> {1}' -f $beforeHash,$afterHash)) -ForegroundColor Green
+    Write-Host (('Service core source: {0} -> {1}' -f $serviceBeforeHash,$serviceAfterHash)) -ForegroundColor Green
 
     Write-Host 'Running focused regression tests with isolated neutral basetemp...' -ForegroundColor DarkCyan
     $FocusedPytestBase = Join-Path $env:USERPROFILE 'BCSentinel-TestTemp'
@@ -110,11 +133,11 @@ try {
     }
 
     & $Py -m compileall -q sentinel tools tests
-    if ($LASTEXITCODE -ne 0) { throw 'compileall failed after service settings ownership repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'compileall failed after service-settings ownership repair' }
 
-    Write-Host 'Building a fresh Protection Service with migrated persisted roots and aligned settings ownership...' -ForegroundColor Cyan
+    Write-Host 'Building a fresh Protection Service with migrated service settings...' -ForegroundColor Cyan
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\BUILD-SERVIZIO-PROTEZIONE.ps1'
-    if ($LASTEXITCODE -ne 0) { throw 'Fresh Protection Service build failed after service settings ownership repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'Fresh Protection Service build failed after service-settings ownership repair' }
 
     $distService = Join-Path $PSScriptRoot 'dist\BC-Sentinel-Protection\BC-Sentinel-Protection.exe'
     if (-not (Test-Path -LiteralPath $distService)) { throw 'Corrected Protection Service executable missing after build' }
@@ -146,9 +169,9 @@ try {
         ($RepoRaw + $ResumeRef + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1') `
         ($RepoRaw + $ResumeBranch + '/RESUME-V011-BETA2-B2-AFTER-IDLE-STABILIZATION.ps1')
 
-    Write-Host 'Launching unchanged stabilized B2 acceptance against the corrected settings-ownership build...' -ForegroundColor Yellow
+    Write-Host 'Launching unchanged stabilized B2 acceptance against the corrected service-settings build...' -ForegroundColor Yellow
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $resume
-    if ($LASTEXITCODE -ne 0) { throw 'Stabilized B2 resume still failed after service settings ownership repair' }
+    if ($LASTEXITCODE -ne 0) { throw 'Stabilized B2 resume still failed after service-settings ownership repair' }
 
     Write-Host 'BC SENTINEL v0.11.0-beta.2 B2 SERVICE-SETTINGS OWNERSHIP REPAIR - PASS' -ForegroundColor Green
     exit 0
