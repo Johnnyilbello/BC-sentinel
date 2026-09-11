@@ -23,6 +23,7 @@ try {
 
     $PatchRef = '4809bf66816b5dca15352b73309efc695e039706'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
+    $RepoRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 
     Write-Host 'BC Sentinel v0.11.0-beta.3 - RR-6 INTEGRITY CERTIFICATION BOOTSTRAP' -ForegroundColor Cyan
     Write-Host 'Read-only certification. RECOVERED requires complete independent proof; incomplete/tampered evidence is refused.' -ForegroundColor Yellow
@@ -73,9 +74,24 @@ try {
     }
     Write-Host 'Protected B2 service/realtime/EDR sources unchanged after RR6 bootstrap download.' -ForegroundColor Green
 
+    $OldPythonPath = $env:PYTHONPATH
+    if ([string]::IsNullOrWhiteSpace($OldPythonPath)) {
+        $env:PYTHONPATH = $RepoRoot
+    }
+    else {
+        $env:PYTHONPATH = $RepoRoot + ';' + $OldPythonPath
+    }
+    Write-Host ('RR6 BOOTSTRAP PYTHONPATH_ROOT=' + $RepoRoot) -ForegroundColor DarkGray
+
     Write-Host 'Launching RR6 regression + deterministic + built-binary Windows acceptance...' -ForegroundColor DarkCyan
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\TEST-V011-BETA3-RR6.ps1'
-    if ($LASTEXITCODE -ne 0) { throw 'RR6 acceptance failed' }
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\TEST-V011-BETA3-RR6.ps1'
+        $AcceptanceExitCode = $LASTEXITCODE
+    }
+    finally {
+        $env:PYTHONPATH = $OldPythonPath
+    }
+    if ($AcceptanceExitCode -ne 0) { throw ('RR6 acceptance failed exit_code=' + $AcceptanceExitCode) }
 
     foreach ($path in $Protected) {
         $after = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
