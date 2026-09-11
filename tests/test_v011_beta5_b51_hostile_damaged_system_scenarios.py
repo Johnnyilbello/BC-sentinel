@@ -137,7 +137,7 @@ def test_symlink_root_refused_when_supported(tmp_path: Path) -> None:
         link.symlink_to(root, target_is_directory=True)
     except OSError:
         pytest.skip("symlink unavailable")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="symlink/reparse refused before resolution"):
         b51.assess_target(link)
 
 
