@@ -37,13 +37,13 @@ try {
     if (-not (Test-Path -LiteralPath '.\AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1')) { throw 'AGGIORNA-RIPARA-SERVIZIO-PROTEZIONE.ps1 missing' }
 
     $Py = '.\.venv\Scripts\python.exe'
-    $PatchRef = 'b7bd22d40a67a2c6b82b7786dd07158a94968653'
+    $PatchRef = 'b9d35716a86682979322e7cc914718a4f797ad4a'
     $PatchBranch = 'fix/v011-beta2-b2-interactive-temp-watchdog'
     $PinnedRef = '6d833d08912b64bd0d14d4f21d7838a3718c40f7'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.2 - B2 STABILIZED WATCHDOG FILE OBSERVATION' -ForegroundColor Cyan
-    Write-Host 'Adds non-destructive filesystem observation after watchdog stabilization with bounded per-directory EDR admission.' -ForegroundColor Yellow
+    Write-Host 'Accepts the canonical migrated TEMP-root realtime lineage and adds bounded per-directory EDR admission.' -ForegroundColor Yellow
     Write-Host 'No File ETW re-enable, no timeout relaxation, no 25/10/250 threshold relaxation.' -ForegroundColor Yellow
 
     $patchFiles = @(
