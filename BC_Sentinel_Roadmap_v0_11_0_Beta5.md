@@ -15,7 +15,7 @@ Move BC Sentinel Rescue from technically accepted synthetic/offline workflows to
 
 Beta5 is hardening, observability and field validation. It is not permission to add automatic destructive behavior.
 
-## B5-0 — Real-World Target Discovery — accepted
+## B5-0 — Real-World Target Discovery — accepted / frozen
 Authoritative Windows acceptance:
 - Beta3 + complete Beta4 + B5-0 regression: **212 tests PASS**;
 - deterministic multi-volume fixture PASS;
@@ -33,64 +33,73 @@ checkpoint/v011-beta5-b50-pass
 385ba83a483f6a894dd7048cc2d3cec9c11e3a8e
 ```
 
-## B5-1 — Hostile / Damaged System Scenarios — current
-Purpose: harden the Rescue workflow against realistic damage and hostile filesystem conditions while remaining read-only.
-
-Required coverage:
-- missing/corrupt critical files;
-- broken ACLs and unreadable paths;
-- partial directory trees;
-- simulated persistent malware/startup artifacts;
-- slow I/O;
-- intermittent read failures;
-- reparse/symlink traps;
-- bounded file/byte/time budgets;
-- output outside target;
-- explicit reason/state for every refusal or degraded condition.
-
-Allowed assessment states:
-- `HEALTHY`;
-- `REVIEW_REQUIRED`;
-- `DAMAGED`;
-- `ACCESS_RESTRICTED`;
-- `IO_DEGRADED`;
-- `REFUSED`.
-
-Rules:
-- no state automatically triggers repair, quarantine, delete, restore or certification;
-- target code is never executed/loaded;
-- uncertainty never becomes success;
-- critical target-contract failure is `DAMAGED`;
-- suspicious persistence is operator review only;
-- permission/I/O failures are preserved as explicit degraded states;
-- no network/cloud requirement.
-
-B5-1 Windows acceptance must include:
-- complete Beta3 + Beta4 + B5-0 regression;
-- 14 new B5-1 tests, expected cumulative **226 tests**;
-- clean fixture -> `HEALTHY`;
+## B5-1 — Hostile / Damaged System Scenarios — accepted / frozen
+Authoritative Windows acceptance:
+- Beta3 + complete Beta4 + B5-0..B5-1 regression: **226 tests PASS**;
+- clean target -> `HEALTHY`;
 - missing critical file -> `DAMAGED`;
 - persistence fixture -> `REVIEW_REQUIRED`;
 - deterministic permission case -> `ACCESS_RESTRICTED`;
 - deterministic I/O failure -> `IO_DEGRADED`;
-- target byte-identical;
+- symlink/reparse root refused before resolution;
+- target unchanged;
 - no repair/quarantine/write;
-- no service;
+- no service registration;
 - B2 protected sources unchanged.
 
-## B5-2 — Large-Scale & Stress Hardening
-Purpose: prove bounded behavior under real technician workloads.
+Frozen checkpoint:
+```text
+checkpoint/v011-beta5-b51-pass
+32bce8ccdeb65c266ef651a1dfb0849950d0f0e5
+```
+
+## B5-2 — Large-Scale & Stress Hardening — current
+Purpose: prove bounded behavior under real technician workloads without adding mutation authority.
 
 Required coverage:
 - tens/hundreds of thousands of files;
 - deep directory trees;
 - large individual files;
 - CPU/RAM/I/O pressure;
-- bounded workers/queues;
+- bounded workers and in-flight work;
 - cancellation and timeout safety;
 - deterministic partial-result semantics;
 - no unbounded memory growth;
 - explicit performance metrics and regression thresholds.
+
+B5-2 implementation contract:
+- profile `v0.11.0-beta.5-b52`;
+- read-only offline target probe validated through the existing RR-6 target contract;
+- hard ceilings: 200,000 files, 8 GiB sampled-byte budget, 120 s elapsed budget, depth 256, workers 8, in-flight 512, sample 1 MiB;
+- normal defaults remain lower than hard ceilings;
+- bounded `ThreadPoolExecutor` with explicit `max_workers` and `max_inflight`;
+- samples files rather than loading large files fully;
+- iterative directory walk, no recursive Python call stack;
+- symlink/reparse paths skipped and root symlink/reparse refused before resolution;
+- partial states are not success: `PARTIAL_FILE_LIMIT`, `PARTIAL_BYTE_LIMIT`, `PARTIAL_TIME_LIMIT`, `CANCELLED`;
+- complete probe with read/enumeration errors becomes `DEGRADED`;
+- stable SHA-256 probe hash excludes volatile timing metrics;
+- performance report includes elapsed ms, files/s, sampled MiB/s, Python peak memory and in-flight peak;
+- output only outside target using atomic replace;
+- no repair, quarantine, delete, registry/boot write, target execution, network or cloud requirement.
+
+B5-2 Windows acceptance must include:
+- complete Beta3 + Beta4 + B5-0..B5-1 regression;
+- **13 new B5-2 tests, expected cumulative 239 tests**;
+- deterministic fixture with 12,000 bulk files plus Windows markers, deep tree and large file;
+- full stress state `COMPLETE`;
+- file-limit state `PARTIAL_FILE_LIMIT`;
+- cancellation state `CANCELLED`;
+- time-limit state `PARTIAL_TIME_LIMIT`;
+- deep-tree coverage at 40 levels without reliance on Windows Long Paths policy;
+- large 8 MiB file sampled with bounded 64-byte sample;
+- throughput floor >= 100 files/s on deterministic local fixture;
+- Python peak-memory ceiling <= 192 MiB;
+- worker bound <= 4 and in-flight peak <= 64 for deterministic acceptance;
+- live CLI fixture with 1,500 additional files;
+- target byte-identical;
+- no service;
+- B2 protected sources unchanged.
 
 ## B5-3 — Session Resume & Crash Recovery
 Purpose: allow interrupted Rescue sessions to continue without duplicating actions or losing evidence trust.
