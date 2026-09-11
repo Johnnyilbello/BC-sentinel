@@ -61,7 +61,10 @@ try{
         if($LASTEXITCODE -ne 0){Fail 'qt-smoke' ('offscreen Qt smoke exit='+$LASTEXITCODE)}
         $Smoke=($SmokeRaw -join [Environment]::NewLine)|ConvertFrom-Json
         if(-not[bool]$Smoke.passed -or -not[bool]$Smoke.window_created){Fail 'qt-smoke' 'Qt window did not construct successfully'}
-        if([string]$Smoke.window_title -ne 'BC Sentinel — Rescue Technician'){Fail 'qt-smoke' ('unexpected window title='+[string]$Smoke.window_title)}
+        $ExpectedWindowTitle='BC Sentinel - Rescue Technician'
+        $ActualWindowTitle=[string]$Smoke.window_title
+        Write-Host ('B60 QT TITLE expected="'+$ExpectedWindowTitle+'" actual="'+$ActualWindowTitle+'" expected_len='+$ExpectedWindowTitle.Length+' actual_len='+$ActualWindowTitle.Length) -ForegroundColor DarkGray
+        if($ActualWindowTitle -cne $ExpectedWindowTitle){Fail 'qt-smoke' ('window title mismatch expected="'+$ExpectedWindowTitle+'" actual="'+$ActualWindowTitle+'" expected_len='+$ExpectedWindowTitle.Length+' actual_len='+$ActualWindowTitle.Length)}
 
         $Services=@(Get-CimInstance Win32_Service|Where-Object{([string]$_.PathName).ToLowerInvariant().Contains('rescue_technician_ui') -or ([string]$_.PathName).ToLowerInvariant().Contains('b60')})
         if($Services.Count -ne 0){Fail 'service-check' 'B6-0 unexpectedly registered a Windows service'}
