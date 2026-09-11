@@ -32,7 +32,7 @@ checkpoint/v011-beta5-b50-pass
 Authoritative Windows acceptance:
 - cumulative regression: **226 tests PASS**;
 - `HEALTHY`, `DAMAGED`, `REVIEW_REQUIRED`, `ACCESS_RESTRICTED`, `IO_DEGRADED` PASS;
-- symlink/reparse root refused before resolution;
+- root symlink/reparse refused before resolution;
 - target unchanged; no repair/quarantine/write; no service; B2 sources unchanged.
 
 Frozen checkpoint:
@@ -44,12 +44,11 @@ checkpoint/v011-beta5-b51-pass
 ## B5-2 — Large-Scale & Stress Hardening — accepted / frozen
 Authoritative Windows acceptance:
 - cumulative regression: **239 tests PASS**;
-- deterministic stress fixture: **12,005 files**;
-- throughput about **1,855 files/s** against >= 100 files/s floor;
-- Python traced peak about **19.7 MB** against <= 192 MiB ceiling;
+- deterministic fixture: **12,005 files**;
+- throughput comfortably above >= 100 files/s floor;
+- Python traced peak well below <= 192 MiB ceiling;
 - in-flight peak **64** against <= 64 bound;
-- deep tree, large-file bounded sampling, partial file/time/cancel states PASS;
-- live CLI fixture `COMPLETE`, **1503 files** probed;
+- deep tree, bounded large-file sampling, explicit partial/cancel states PASS;
 - target byte-identical; no repair/quarantine/write; no service; B2 sources unchanged.
 
 Frozen checkpoint:
@@ -60,15 +59,12 @@ d490f91aa16a5a2ae6f4660669f651619f1dd7b1
 
 ## B5-3 — Session Resume & Crash Recovery — accepted / frozen
 Authoritative Windows acceptance:
-- accepted B5-2 predecessor gate rerun: **239 tests PASS** plus all stress thresholds;
+- accepted B5-2 predecessor gate rerun PASS;
 - **16 B5-3 tests PASS**, giving **255 cumulative tests covered**;
-- hash-chained journal PASS;
+- hash-chained journal and evidence binding PASS;
 - read-only resume PASS;
-- repair/data-rescue interruption -> fresh confirmation required PASS;
-- replay refused PASS;
-- tampered evidence refused PASS;
-- changed target fingerprint refused PASS;
-- tampered journal/hash chain refused PASS;
+- interrupted repair/data rescue requires fresh confirmation PASS;
+- replay, changed target, tampered evidence and tampered journal refused PASS;
 - target unchanged; no service; B2 sources unchanged.
 
 Frozen checkpoint:
@@ -77,67 +73,78 @@ checkpoint/v011-beta5-b53-pass
 3d7566b78a636327c103602d418ec1ece37979bc
 ```
 
-## B5-4 — Advanced Recovery Decision Engine — current
-Purpose: turn already-trusted Rescue evidence into a deterministic technician recommendation without replacing RR-6 certification semantics.
+## B5-4 — Advanced Recovery Decision Engine — accepted / frozen
+Authoritative Windows acceptance:
+- complete B5-3 predecessor gate PASS;
+- **15 B5-4 tests PASS**, giving **270 cumulative tests covered**;
+- all advisory states verified: `REPAIRABLE`, `MANUAL_REVIEW`, `DATA_RESCUE_ONLY`, `REIMAGE_RECOMMENDED`, `INDETERMINATE`;
+- RR-6 `INDETERMINATE_REFUSED` precedence PASS;
+- RR-6 outcome can never be overridden;
+- repair/data-rescue/reimage paths PASS;
+- interrupted mutation reconfirmation precedence PASS;
+- tampered evidence fails closed PASS;
+- live `RECOVERED -> MANUAL_REVIEW` technician-signoff behavior PASS;
+- advisory-only; no automatic repair/reimage; no service; B2 sources unchanged.
 
-Allowed advisory states:
-- `REPAIRABLE`;
-- `MANUAL_REVIEW`;
-- `DATA_RESCUE_ONLY`;
-- `REIMAGE_RECOMMENDED`;
-- `INDETERMINATE`.
+Frozen checkpoint:
+```text
+checkpoint/v011-beta5-b54-pass
+f93e7d044b96bac9e72a31ee131d9c37ab18367b
+```
 
-Authority / precedence:
-- B5-4 is advisory-only;
-- RR-6/B4-4 outcome is authoritative and cannot be overridden;
-- untrusted/tampered evidence -> `INDETERMINATE`;
-- RR-6 `INDETERMINATE_REFUSED` -> `INDETERMINATE` even when a repair handoff exists;
-- untrusted B5-3 resume/session -> `INDETERMINATE`;
-- interrupted mutation-capable stage requiring confirmation -> `MANUAL_REVIEW` before any repairability recommendation;
-- RR-6 `RECOVERED` is never translated into repair;
-- later trusted evidence conflicting with `RECOVERED` fails closed;
-- RR-6 `NOT_RECOVERED` + trusted B4-2 handoff may become `REPAIRABLE`;
-- RR-6 `NOT_RECOVERED` + trusted executed B4-3 data rescue and no repair path may become `DATA_RESCUE_ONLY`;
-- RR-6 `NOT_RECOVERED` without trusted recovery path may become `REIMAGE_RECOMMENDED`;
-- reimage remains available when integrity cannot be demonstrated.
+## B5-5 — Technician Report & Evidence Package — current
+Purpose: turn the accepted B5-4 advisory result and its evidence index into a field-ready, independently verifiable technician package without adding mutation authority.
 
-Evidence validation:
-- mandatory B4-4 integrated certification summary;
-- optional B5-1 assessment, B5-2 stress probe, B5-3 resume decision, B4-2 repair handoff, B4-3 data-rescue summary;
-- internal stable SHA-256 verification for B4-4/B5-1/B5-2/B5-3;
-- target fingerprint consistency;
-- B4-2/B4-3 file hashes must match the B4-4 evidence index;
-- evidence must be regular non-reparse files;
-- any trust failure fails closed.
+Package layout:
+- `technician-report.json` — machine-readable technician result;
+- `technician-report.md` — human-readable result;
+- `evidence-index.json` — trust/copy/provenance index;
+- `package-manifest.json` — package-wide file/hash manifest;
+- `evidence/` — SHA-256 verified copies of trusted source evidence.
 
-B5-4 acceptance must include:
-- complete accepted B5-3 predecessor gate rerun first, preserving **255 cumulative predecessor tests covered**;
-- **15 new B5-4 tests**, giving **270 cumulative tests covered**;
-- deterministic acceptance matrix for all five advisory states;
-- RR-6 refusal precedence PASS;
-- repairable/data-rescue/reimage paths PASS;
-- recovered technician-signoff behavior PASS;
-- interrupted-mutation reconfirmation precedence PASS;
-- tampered certification/assessment/binding fail-closed PASS;
-- separate-process CLI live acceptance;
-- advisory-only and RR-6-no-override flags verified;
+Trust / provenance rules:
+- B5-4 decision profile/schema/state/internal `decision_sha256` revalidated before export;
+- decision must bind to the exact current offline-target fingerprint;
+- every evidence item marked trusted by B5-4 must still exist outside target and match its bound SHA-256;
+- trusted evidence drift/missing/reparse -> build refusal;
+- evidence marked untrusted by B5-4 is never promoted or copied as trusted;
+- untrusted evidence remains visible as unresolved risk in report/index;
+- decision, evidence and existing package paths are checked for symlink/reparse before path resolution;
+- post-export verification refuses manifest-listed symlink/reparse substitution and unlisted files.
+
+Hard bounds:
+- max 64 evidence entries;
+- max 256 MiB per copied evidence file;
+- max 1 GiB copied package evidence budget;
+- output only outside target;
+- no network/cloud dependency.
+
+Report requirements:
+- target fingerprint;
+- RR-6 outcome/certification flag preserved exactly;
+- B5-4 advisory state/reasons and next action;
+- unresolved risks/refusals;
+- data-rescue summary when available;
+- evidence counts and provenance;
+- report-only safety contract;
+- stable report/index/manifest SHA-256 values.
+
+B5-5 acceptance must include:
+- complete accepted B5-4 predecessor gate first, preserving **270 cumulative predecessor tests covered**;
+- **15 new B5-5 tests**, giving **285 cumulative tests covered**;
+- deterministic trusted/untrusted evidence package PASS;
+- human + JSON report PASS;
+- evidence hash index PASS;
+- package manifest and independent verify PASS;
+- exported-evidence tamper detection PASS;
+- listed-file reparse substitution detection PASS;
+- trusted source drift refusal PASS;
+- untrusted risk preservation PASS;
+- separate-process CLI `build` and `verify` PASS;
+- target byte-identical;
+- no repair/quarantine/data-rescue/reimage execution;
 - no service;
 - B2 protected sources unchanged.
-
-## B5-5 — Technician Report & Evidence Package
-Purpose: produce a field-ready report and export package.
-
-Required contents:
-- discovered target and fingerprint;
-- scan findings and confidence;
-- repair plans/transactions/rollback state;
-- rescued/contained files and hashes;
-- certification outcome;
-- B5-4 advisory decision and reasons;
-- unresolved risks and refusal reasons;
-- recommended next action;
-- complete evidence hash index and provenance;
-- human-readable summary plus machine-readable JSON.
 
 ## B5-6 — Controlled Real-PC Acceptance
 Purpose: validate Beta5 on real hardware under controlled conditions.
