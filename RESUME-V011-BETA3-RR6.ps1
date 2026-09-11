@@ -21,7 +21,7 @@ try {
     if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run RR6 from normal non-elevated PowerShell.' }
     if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) { throw '.venv not available' }
 
-    $PatchRef = '3dd166cc96024d926bf4299a75bf0a3defb3e85f'
+    $PatchRef = '48344bc0776b148bfee175b1a451ed6a1b038c9f'
     $RepoRaw = 'https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.3 - RR-6 INTEGRITY CERTIFICATION BOOTSTRAP' -ForegroundColor Cyan
