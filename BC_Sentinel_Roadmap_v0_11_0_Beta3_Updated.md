@@ -89,27 +89,76 @@ checkpoint/v011-beta3-rr1-pass
 fbf5be7a9c00fb01d36834f431253b7eae7eb1f3
 ```
 
-## RR-2 — Rescue USB — current
-Goal: turn the accepted RR-1 portable runtime into a trusted removable-media rescue workflow without introducing destructive disk preparation.
+## RR-2 — Rescue USB — accepted
+RR-2 turns the accepted RR-1 portable runtime into a trusted removable-media rescue workflow without destructive disk preparation.
 
-Required first acceptance scope:
-- prepare a Rescue USB payload in a user-selected destination directory/removable volume;
-- never format a disk, modify partition tables, write MBR/GPT/boot sectors, install a bootloader or alter firmware/BCD in RR-2 initial scope;
-- refuse preparation when destination is the Windows system volume or when source/destination overlap unsafely;
-- copy the accepted RR-1 portable payload plus RR-0/RR-1/RR-2 metadata only;
-- generate a deterministic SHA-256 manifest for every prepared Rescue payload file;
-- verify the complete prepared payload after copy and detect corruption/tampering;
-- support read-only discovery of candidate offline Windows installations from mounted volumes/directories without modifying them;
-- bound traversal, file count and resource use; do not follow symlink/reparse targets by default;
-- produce structured audit records with stage, reason, source, destination, counts, duration and correlation/session identifiers;
+Accepted scope:
+- Rescue payload preparation to a selected empty destination;
+- no disk format, partition table mutation, MBR/GPT/boot-sector write, bootloader install, BCD or firmware modification;
+- unsafe source/destination overlap and filesystem-root destinations refused;
+- SHA-256 manifest for every copied payload file;
+- full post-copy verification and deterministic tamper detection;
+- bounded read-only discovery of candidate offline Windows installations;
+- symlink/reparse traversal refused by default;
+- bounded file count/total bytes;
+- structured audit records with stage, reason, source, destination, counts, duration and correlation/session IDs;
 - no network/cloud dependency;
 - no malware repair, quarantine execution, registry write, boot write, target filesystem mutation or recovery certification;
-- preserve RR-0 and RR-1 regression gates and keep B2 Protection Service/realtime/EDR byte-identical.
+- RR-0 and RR-1 regressions preserved and B2 Protection Service/realtime/EDR sources unchanged.
 
-RR-2 acceptance must include a real Windows harmless-media simulation using an isolated directory or non-system removable destination before any future bootable-media work is considered.
+Authoritative FULL Windows evidence:
+- isolated RR-2 pytest root outside problematic `%TEMP%` cleanup path;
+- RR-0 + RR-1 + RR-2 regression: **53 tests PASS**;
+- deterministic RR-0 acceptance: **PASS**;
+- deterministic RR-1 acceptance: **PASS**;
+- deterministic RR-2 acceptance: **PASS**;
+- RR-2 deterministic fixture prepared `2` files / `74` bytes and verified `2/2`;
+- deliberate payload tamper detected as `size_mismatch:BC-Sentinel-Rescue-Portable.exe`;
+- offline Windows candidate discovered with `SYSTEM` hive + `ntoskrnl.exe`, with `write_attempted=false`;
+- RR-1 portable payload rebuilt successfully for the live RR-2 source;
+- live portable source SHA-256 `fbbc2409779b3d8a5b4a87b5b1bd5f2da47a2402cb61d285128d6c1f484b3e62`;
+- live Rescue media simulation prepared **56 files / 19,470,134 bytes**;
+- live post-copy verification checked **56/56**, zero errors;
+- source payload remained unchanged;
+- B2 Protection Service/realtime/EDR protected sources remained unchanged.
+
+Final gates:
+
+```text
+BC SENTINEL v0.11.0-beta.3 RR-2 RESCUE USB - PASS
+BC SENTINEL v0.11.0-beta.3 RR-2 BOOTSTRAP - PASS
+```
+
+Frozen RR-2 checkpoint:
+
+```text
+checkpoint/v011-beta3-rr2-pass
+```
+
+Important boundary: RR-2 does **not** claim bootable-media creation. No formatting or boot-chain write capability is enabled; bootable rescue media remains deferred until a separate trust/safety design explicitly justifies it.
+
+## RR-3 — Offline Threat Scanner — current
+Goal: analyze an offline Windows installation from trusted Rescue media while keeping the target read-only.
+
+Required first acceptance scope:
+- validate an offline Windows root before scanning;
+- bounded read-only filesystem inspection of high-risk executable, driver, script and persistence/startup locations;
+- SHA-256 evidence for inspected files;
+- deterministic IOC/hash matching using locally supplied signed/approved intelligence when available;
+- optional YARA evaluation only when the existing local runtime dependency is available; scanner must remain functional without cloud/network access;
+- inspect offline persistence evidence without loading/executing target binaries;
+- inspect startup folders, services/drivers artifacts and offline registry hive presence/metadata without registry writes;
+- surface suspicious dual-use/LOLBin/script artifacts as evidence, never as a destructive-action trigger by themselves;
+- no execution of target files, no DLL loading from target, no shelling into target, no process kill, delete, quarantine execution, registry/boot write or recovery certification;
+- symlink/reparse traversal refused by default;
+- bounded files/bytes/time and per-file error containment;
+- structured logs with stage/status/reason/path/hash/duration/session/correlation IDs;
+- scanner output must be outside the offline target;
+- preserve RR-0/RR-1/RR-2 regression gates and keep B2 protected sources byte-identical.
+
+RR-3 acceptance must use harmless synthetic offline-Windows fixtures plus deterministic IOC/YARA-safe test markers; real malware samples are not required for acceptance.
 
 ## Future Rescue milestones
-- RR-3 Offline Threat Scanner: deeper offline malware/persistence/boot/startup inspection using accepted intelligence primitives.
 - RR-4 Repair Engine: reversible, provenance-backed repair transactions with operator confirmation and rollback.
 - RR-5 Safe Data Rescue: bounded data extraction from compromised systems without carrying active threats into clean environments.
 - RR-6 Integrity Verification & Recovery Certification: multi-signal integrity validation; refuse certification when trust cannot be demonstrated.
@@ -117,7 +166,7 @@ RR-2 acceptance must include a real Windows harmless-media simulation using an i
 Formatting/reimaging remains the last-resort recovery option and may never be suppressed when system integrity cannot be demonstrated.
 
 ## Safety invariants carried through Beta3
-- B2 Protection Service/realtime/EDR sources are not modified by RR-0/RR-1/RR-2 work;
+- B2 Protection Service/realtime/EDR sources are not modified by RR-0/RR-1/RR-2/RR-3 work;
 - no single heuristic HIGH;
 - no heuristic-only destructive response;
 - no automatic file delete, process kill or host isolation;
