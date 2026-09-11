@@ -22,7 +22,7 @@ try{
     if(-not(Test-Path -LiteralPath '.\.venv\Scripts\python.exe')){throw '.venv not available'}
     if(-not(Test-Path -LiteralPath '.\TEST-V011-BETA5-B57.ps1')){throw 'accepted B5-7 predecessor gate missing; run B5-7 bootstrap first'}
 
-    $PatchRef='2b8092c4d1087da0f9c01f759b84cac4dd9af978'
+    $PatchRef='43c928484c92bba3eb69bf50b63e69a3be3ac0e7'
     $RepoRaw='https://raw.githubusercontent.com/Johnnyilbello/BC-sentinel/'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-0 TECHNICIAN UX FOUNDATION BOOTSTRAP' -ForegroundColor Cyan
