@@ -9,6 +9,7 @@ on:
       - 'sentinel/home_smart_scan.py'
       - 'sentinel/home_smart_scan_ui.py'
       - 'sentinel/home_smart_scan_window.py'
+      - 'sentinel/smart_scan_provider_loader.py'
       - 'tests/test_v011_beta6_b63_*.py'
       - 'tools/v011_beta6_b63_acceptance.py'
       - 'TEST-V011-BETA6-B63.ps1'
@@ -36,11 +37,11 @@ jobs:
       - name: Compile B6-3 and predecessor Home modules
         shell: pwsh
         run: |
-          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py tools/v011_beta6_b62_acceptance.py tools/v011_beta6_b63_acceptance.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py
+          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/smart_scan_provider_loader.py tools/v011_beta6_b62_acceptance.py tools/v011_beta6_b63_acceptance.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py tests/test_v011_beta6_b63_live_provider_loader.py
       - name: B6-0 through B6-3 deterministic regression suite
         shell: pwsh
         run: |
-          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py
+          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py tests/test_v011_beta6_b63_live_provider_loader.py
       - name: B6-2 predecessor deterministic acceptance
         shell: pwsh
         run: python -m tools.v011_beta6_b62_acceptance --output acceptance-v011-beta6-b62-b63-ci.json
