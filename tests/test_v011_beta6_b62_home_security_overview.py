@@ -7,7 +7,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("BC_SENTINEL_REDUCED_MOTION", "1")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from sentinel import home_security_model as model
 from sentinel import home_security_ui as ui
@@ -70,10 +70,7 @@ def test_source_availability_alone_never_becomes_protected() -> None:
     snapshot = model.build_snapshot()
     assert snapshot.posture != model.POSTURE_PROTECTED
     assert snapshot.posture == model.POSTURE_UNVERIFIED
-    runtime_cards = [
-        card for card in snapshot.cards
-        if card.card_id in model.REQUIRED_RUNTIME_LAYERS
-    ]
+    runtime_cards = [card for card in snapshot.cards if card.card_id in model.REQUIRED_RUNTIME_LAYERS]
     assert runtime_cards
     assert all(card.status != model.STATUS_ACTIVE for card in runtime_cards)
     assert all(card.runtime_verified is False for card in runtime_cards)
@@ -268,10 +265,35 @@ def test_all_page_and_viewport_surfaces_own_dark_theme() -> None:
     window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
     try:
         style = window.styleSheet()
-        assert "#SecurityOverviewWindow, #PageScroll, #PageViewport, #SecurityRoot" in style
+        for selector in ("#SecurityOverviewWindow", "#PageViewport", "#SecurityRoot", "#AppShell", "#MainColumn"):
+            assert selector in style
         assert ui.COLOR_TOKENS["canvas"] in style
-        assert "#PageViewport" in style
-        assert "#SecurityRoot" in style
+    finally:
+        window.close()
+
+
+def test_original_sentinel_identity_contract_is_preserved() -> None:
+    _app()
+    window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
+    try:
+        assert ui.COLOR_TOKENS["accent"].lower() == "#10b981"
+        assert tuple(label for _, label in ui.NAV_ITEMS) == (
+            "Dashboard",
+            "Scansione",
+            "Quarantena",
+            "Cronologia",
+            "Protezione",
+            "Impostazioni",
+        )
+        assert set(window.nav_buttons) == set(label for _, label in ui.NAV_ITEMS)
+        assert window.nav_buttons["Dashboard"].isEnabled() is True
+        assert all(not button.isEnabled() for name, button in window.nav_buttons.items() if name != "Dashboard")
+        assert window.sidebar_scan_button.isEnabled() is False
+        root = window.findChild(QWidget, "SecurityRoot")
+        assert root is not None
+        assert root.maximumWidth() == 1280
+        assert "#Sidebar" in window.styleSheet()
+        assert "#RecoveryButton" in window.styleSheet()
     finally:
         window.close()
 
