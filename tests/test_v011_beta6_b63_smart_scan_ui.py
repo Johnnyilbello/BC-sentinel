@@ -220,7 +220,9 @@ def test_explicit_dashboard_click_runs_one_scan_and_renders_real_result() -> Non
         assert window.last_smart_scan_result is not None
         assert window.last_smart_scan_result.state == smart.STATE_COMPLETED_FINDINGS
         assert window.stack.currentIndex() == 1
-        assert window.scan_page.advanced_button.isVisible() is True
+        # The window itself is intentionally not shown in this focused test, so
+        # QWidget.isVisible() would be false even when the control is requested visible.
+        assert window.scan_page.advanced_button.isHidden() is False
         assert "provider_raw" in window.scan_page.advanced_text.toPlainText()
         assert window.smart_scan_button.isEnabled() is True
         assert window.scan_page.quick_scan.isEnabled() is True
