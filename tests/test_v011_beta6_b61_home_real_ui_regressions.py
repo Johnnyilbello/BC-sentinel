@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from sentinel import rescue_home_ui as ui
 from sentinel import rescue_target_discovery as discovery
+from sentinel.ui_design_system import COLORS
 
 
 def _app() -> QApplication:
@@ -31,12 +32,7 @@ def _live_system_payload() -> dict:
                 "markers_present": [],
                 "markers_missing": list(discovery.WINDOWS_MARKERS),
                 "target_fingerprint": "",
-                "bitlocker": {
-                    "provider": "skipped",
-                    "available": False,
-                    "locked": None,
-                    "reason": "live_system_volume",
-                },
+                "bitlocker": {"provider": "skipped", "available": False, "locked": None, "reason": "live_system_volume"},
                 "write_attempted": False,
                 "elapsed_ms": 1.0,
             }
@@ -83,7 +79,7 @@ def test_live_windows_is_presented_as_current_system_not_unsupported() -> None:
         window.close()
 
 
-def test_scroll_surface_uses_explicit_dark_theme_targets() -> None:
+def test_rescue_surface_uses_shared_stitch_dark_theme() -> None:
     _app()
     window = ui.HomeWindow(discovery_provider=_live_system_payload)
     try:
@@ -93,6 +89,25 @@ def test_scroll_surface_uses_explicit_dark_theme_targets() -> None:
         stylesheet = window.styleSheet()
         assert "#TargetViewport" in stylesheet
         assert "#TargetRoot" in stylesheet
-        assert "background: #0b0e12" in stylesheet
+        assert COLORS["canvas"] in stylesheet
+        assert COLORS["accent"] in stylesheet
+        assert "#0b0e12" not in stylesheet
+    finally:
+        window.close()
+
+
+def test_rescue_startup_remains_passive_after_visual_migration() -> None:
+    calls: list[str] = []
+
+    def provider() -> dict:
+        calls.append("discover")
+        return _live_system_payload()
+
+    _app()
+    window = ui.HomeWindow(discovery_provider=provider)
+    try:
+        assert calls == []
+        assert window.discovery_view is None
+        assert window.ui_state.state == "IDLE"
     finally:
         window.close()
