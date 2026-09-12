@@ -1,357 +1,686 @@
-# BC Sentinel — Product & Security Roadmap
+# BC Sentinel — Product, Detection & Innovation Roadmap
 
-Current development line: **v0.11.0-beta.2 — EDR Service Integration, Retrospective Hunting & Root Cause**.
+BC Sentinel is evolving into a unified Windows security and recovery platform designed to be understandable by a normal user while remaining fully inspectable by an expert.
 
-2026-09-10 source-of-record: `v0.11.0-beta.1` EDR Core Foundation has passed its complete one-command Windows gate with 609 pytest tests green, native/admin regression coverage, upgrade/repair, enforced service-performance thresholds and standard-user -> UAC flow. Reboot persistence remains intentionally deferred to final-roadmap validation rather than being silently marked PASS.
+## Current source of truth
 
-BC Sentinel is evolving from an antivirus MVP into an integrated endpoint-security suite. Antivirus, firewall, anti-phishing, EDR, sandbox, IDS/IPS, privacy, identity controls and Rescue & Recovery feed the same explainable event/correlation/incident model. AI remains advisory/explanatory: deterministic protection and recovery must work without a model or mandatory cloud dependency.
+Latest Windows-accepted stable checkpoint:
 
-## Frozen / accepted foundation
+```text
+v0.11.0-beta.6 B6-0 — Technician UX Foundation
+checkpoint/v011-beta6-b60-pass
+stable/v011-beta6-b60
+cf82b062ee8a95a116a449a0daf03bebd0b67cea
+```
 
-### v0.3.1 — Security Hardening
-PID-reuse-safe identity, stronger ETW attribution, path/reparse hardening, quarantine integrity/race protections, allowlists and hash-cache hardening.
+`B6-0` remains frozen. Development beyond it stays on feature branches until the corresponding Windows acceptance gate passes.
 
-### v0.4.x — Reputation, Network Intelligence & Behavioral Correlation
-Local file prevalence, Authenticode context, process→connection attribution, endpoint reputation and bounded multi-signal behavioral correlation.
+The detailed historical milestone documents and git history remain the source of record for previously accepted v0.3–v0.11, Rescue RR, Beta4 and Beta5 work. This roadmap now defines the forward product direction from the accepted Beta6 baseline.
 
-### v0.5.0 — Incident Correlation & Response Foundation
-Consolidated incidents, bounded timelines, persistent response audit, PID-generation/path gates, guarded manual termination and encrypted quarantine.
+---
 
-### v0.6.0 — Windows Protection Service
-Windows service, authenticated local Named Pipe IPC, remote-client rejection, kernel-derived client identity, duplicate-engine guard and service-owned protection runtime.
+# Product principle — one Home, complete Advanced details
 
-### v0.6.1 — Service Hardening & Tamper Resistance
-Program Files deployment, split IPC/integrity secrets, authenticated full-tree manifest, ACL/SCM/config/audit posture, timestamp-restoration tamper detection and reboot persistence architecture.
+BC Sentinel will **not** split into separate Home and Technician products.
 
-### v0.6.2 — Privileged Action Broker + Transactional Upgrade/Repair
-Standard-user GUI → one-action UAC broker → Protection Service, server-side single-use tickets, SID/session/PID binding, replay rejection, protected broker binary, authenticated upgrade baseline, anti-downgrade, same-version repair, staged deployment, rollback journal and integrity re-sealing.
+There is one primary experience:
 
-## v0.7 — Firewall & Network Threat Prevention
+```text
+HOME
+```
 
-### v0.7.1 — Threat Decision Center & Managed Firewall Foundation
-- **Threat Decision Center** for explicit HIGH/CRITICAL decisions and persistent operator acknowledgement;
-- BC-owned firewall policy only;
-- drift detection and reconciliation without mutating unrelated third-party rules;
-- conflict/advisory engine for overlapping external ALLOW rules;
-- signed IOC qualification for temporary reversible containment;
-- Security Center Inbox remains the durable decision surface.
+The default layer explains:
 
-### v0.7.2-beta.1 — Web Protection / Anti-Phishing Foundation — accepted baseline
-- PID-scoped Windows DNS Client ETW correlation;
-- DNS→IP→connection attribution remains short-lived and PID-scoped;
-- signed domain IOC can produce deterministic HIGH/CRITICAL outcomes;
-- structural IDN/Punycode, deep-subdomain, raw-IP and userinfo heuristics;
-- heuristic-only score capped below HIGH;
-- no HTTPS MITM/root CA/TLS proxy/decryption;
-- Web Protection remains observe/recommend rather than autonomous filtering.
+- what is happening;
+- how serious it is;
+- what BC Sentinel recommends;
+- what the user can safely do now.
 
-### v0.7.2-beta.2 — Active Web Protection & DNS Threat Response — accepted baseline
-- persistent `BCW-*` actionable findings;
-- same-PID DNS + observed connection requirements for domain-derived containment;
-- conservative shared-IP/CDN guard;
-- UAC-backed BC-owned temporary outbound BLOCK leases;
-- no heuristic auto-block and no third-party/global firewall mutation.
+Every important area also exposes:
 
-### v0.7.2-beta.3 — Domain Trust, Provenance & Browser Context — accepted baseline
-- exact-domain trust only, no wildcard trust;
-- precedence: active signed IOC > exact-domain trust > local heuristics;
-- trust is audited/revocable and cannot suppress a newer signed IOC;
-- local bounded domain-reputation aggregates;
-- exact known browser executables add browser-family context;
-- provenance is exposed in Web assessments.
+```text
+Advanced details
+```
 
-### v0.7.2-beta.4 — Browser Download Protection & Web Incident Chain — accepted baseline
-- same-PID exact-browser domain/network → file download provenance;
-- persistent `BCD-*` download records with independent origin and file verdicts;
-- realtime scanner verdict linkage without origin-driven auto-quarantine;
-- downloaded-file execution evidence feeds the incident pipeline;
-- no MITM HTTPS or browser extension.
+Advanced details must retain the complete technical evidence available, including where applicable:
 
-## v0.8 — Signed Threat Intelligence & Secure Update Channel
+- full paths;
+- SHA-256 and other identifiers;
+- signer / Authenticode state;
+- PID / PPID and process tree;
+- command/script context;
+- YARA / PE / static evidence;
+- behavioral evidence;
+- persistence evidence;
+- registry/service/task context;
+- network/DNS/domain context;
+- incident timeline;
+- confidence and severity;
+- evidence IDs;
+- action and rollback journal;
+- disk/partition/filesystem state in Rescue.
 
-### v0.8.0-rc.1 — accepted baseline
-Signed threat packages, content-key lifecycle/revocation, signed remote index, pinned controlled retrieval, activation recovery/rollback and release hardening are frozen regression requirements. Remote content remains no-auto-stage/no-auto-activate and deterministic protection remains available offline.
+The product therefore has **two levels of information, not two operating modes**.
 
-## v0.9 — Antispyware & Advanced Antimalware
+---
 
-### v0.9.0-beta.1 — accepted feature baseline
-Read-only persistence/browser/network configuration inventory, stable `BCP-*` findings, Authenticode/context enrichment and conservative multi-signal correlation without automatic destructive remediation.
+# Stable safety contract
 
-### v0.9.0-beta.2 — accepted feature baseline
-HMAC-authenticated reversible remediation plans for selected Run/RunOnce, Startup, Scheduled Task, service and browser-policy states; apply/restore remain privileged and identity/race checked. WMI/DNS/proxy stay review-only.
+The accepted B6-0 trust model remains authoritative until a future milestone explicitly proves and gates a safer capability.
 
-### v0.9.0-beta.3 — accepted feature baseline
-PowerShell/script/LOLBin command context, parent/child and bounded process→network correlation, credential-stealer indicators and conservative false-positive gates. One dual-use tool/evidence family remains below HIGH; no automatic kill/delete/quarantine.
+```text
+automatic rescue dispatch      = false
+automatic repair               = false
+automatic quarantine           = false
+repair-execute exposed         = false
+unlock exposed                 = false
+mount-write exposed            = false
+format execution               = false
+reimage execution              = false
+registry/boot write authority  = false
+target execution               = false
+```
 
-### v0.9.0-rc.1 — Antimalware Consolidation & Native Hardening — historical baseline
-The v0.9 RC1 local/security foundation remains a mandatory regression layer. Later v0.10 Windows validation closed multiple cross-version service/UAC/update paths, but no historical test may infer a production freeze solely from a newer APP_VERSION.
+RR-6 recovery outcomes remain authoritative:
 
-## v0.10 — Web Protection, Anti-Phishing & Anti-Truffa — consolidated baseline
+```text
+RECOVERED
+NOT_RECOVERED
+INDETERMINATE_REFUSED
+```
 
-### v0.10.0-beta.1 — Web Reputation & Phishing Detection Foundation — accepted baseline
-- local/offline URL and domain reputation assessment;
-- IDN/Punycode and mixed-script detection;
-- bounded protected-identity look-alike detection;
-- edit-distance-one typosquatting evidence;
-- brand-token-on-noncanonical-host evidence;
-- explicit separation of declared identity, observed host and canonical identity;
-- userinfo/raw-IP/deep-subdomain/hostname-obfuscation evidence;
-- bounded redirect-chain context;
-- conservative scam/fraud lure families requiring independent structural risk;
-- stable `WDR-*` heuristic fingerprint;
-- signed IOC and exact-domain trust precedence preserved.
+Refusal or uncertainty must never be converted into success.
 
-Mandatory safety invariants retained beyond v0.10:
-- heuristic-only score ≤49;
-- no heuristic-only HIGH/CRITICAL qualification;
-- no heuristic auto-block;
-- no heuristic-only quarantine/delete/process kill/persistence mutation;
-- no HTTPS MITM, root CA, TLS proxy or traffic decryption;
-- no mandatory cloud/external runtime dependency;
-- exact-domain trust cannot override active signed IOC;
-- shared-IP/CDN guard remains fail-closed;
-- high-impact response stays behind protected/UAC-backed workflows.
+Increased autonomy must be earned through measurable detection quality, confidence gates, reversibility, acceptance testing and explicit authority boundaries.
 
-Acceptance gates retained:
-- `web-reputation-v010-beta1-foundation`;
-- `web-reputation-v010-beta1-live`.
+---
 
-### v0.10.0-beta.2 — Reversible Web Response — accepted baseline
-- explicit, reversible network-layer containment only after deterministic qualification;
-- same-PID DNS/network revalidation;
-- no heuristic-only address blocking;
-- shared-IP/CDN safeguards;
-- bounded TTL, deduplication, audit, restart recovery and stale-rule cleanup.
+# Accepted foundation — summary
 
-### v0.10.0-beta.3 — Clone Site & Scam/Fraud Detection Expansion — accepted baseline
-- protected-brand impersonation evidence;
-- noncanonical credential-form detection;
-- cross-origin sensitive-form destination analysis;
-- bounded support/investment/payment scam families;
-- multi-signal structural requirement;
-- no page-context auto-block and no heuristic destructive response.
+The accepted codebase already contains or has validated foundations for:
 
-### v0.10.0-rc.1 — Web Protection Consolidation — accepted development baseline
-- Beta1→Beta3 regression freeze;
-- 300+ benign-site/enterprise compatibility matrix;
-- local page-assessment performance thresholds;
-- normal-user master launcher automatically requests UAC for the privileged phase;
-- native/admin, service-live, upgrade, repair and standard-user→UAC paths covered by the orchestrated validation;
-- reboot persistence deliberately deferred to the final roadmap gate.
+- realtime and on-demand scanning;
+- SHA-256, YARA and PE inspection;
+- ransomware and behavior shields;
+- local reputation and signed threat intelligence;
+- Windows Protection Service and privileged action broker;
+- ETW process/file/network attribution;
+- firewall controls and reversible containment foundations;
+- Web Protection, anti-phishing and scam detection;
+- antispyware and persistence analysis;
+- EDR telemetry, process ancestry and incident correlation;
+- reversible remediation foundations;
+- encrypted quarantine workflows;
+- portable/offline Rescue & Recovery;
+- target discovery and hostile-system assessment;
+- crash-safe session journal/resume;
+- safe data rescue;
+- integrity verification and recovery certification;
+- portable Technician Release;
+- Beta6 PySide6 UX foundation.
 
-Historical profile IDs remain frozen even on v0.11+:
-- deception: `v0.10.0-beta.1`;
-- reversible response: `v0.10.0-beta.2`;
-- clone/scam: `v0.10.0-beta.3`;
-- consolidation: `v0.10.0-rc.1`.
+Historical milestone documents remain authoritative for their individual acceptance criteria and safety invariants.
 
-## v0.11 — EDR Core
+---
 
-### v0.11.0-beta.1 — EDR Core Foundation — accepted baseline
-Goal: add a durable endpoint telemetry and incident-correlation layer without weakening the deterministic safety boundaries already accepted in v0.10.
+# Beta6 — Unified Home UX
 
-Implemented Beta1 foundation:
-- durable local endpoint telemetry store;
-- process/file/network/persistence event ingestion;
-- PID/PPID process-tree reconstruction;
-- same-chain download → execution → network → persistence correlation;
-- stable event deduplication;
-- per-PID/window flood guard;
-- queryable retrospective event history;
-- persistent explainable EDR incidents;
-- bounded local performance acceptance;
-- EDR profile surfaced independently from the frozen v0.10 web profiles.
+## B6-0 — Technician UX Foundation ✅ STABLE
 
-Mandatory Beta1 safety invariants:
-- no single heuristic may independently qualify HIGH;
-- no automatic process kill;
-- no automatic file delete;
-- no automatic host isolation;
-- no mandatory cloud dependency;
-- v0.10 anti-phishing/shared-IP/containment invariants remain unchanged;
-- legacy regression gates must accept newer product versions while continuing to verify their historical frozen profile IDs and security behavior.
+Accepted PySide6 foundation over the frozen Beta5 Portable Technician backend.
 
-Beta1 acceptance:
-- full pytest regression suite;
-- `tools.v011_edr_acceptance`;
-- v0.10 Beta1/Beta2/Beta3/RC1 local regressions;
-- compileall;
-- fresh Protection Service and UAC Broker build;
-- native/admin targeted regression;
-- transactional upgrade/repair;
-- service-live v0.10 regressions;
-- Windows acceptance and hardening benchmark;
-- standard-user → one-action UAC broker acceptance;
-- reboot persistence deferred to final roadmap validation.
+Acceptance status: Windows gate passed.
 
-### v0.11.0-beta.2 — Service Integration, Retrospective Hunt & Root Cause — **current**
-- indexed IOC hunting over durable telemetry;
-- process ancestry/descendant root-cause views;
-- time-window and indicator search;
-- incident-to-telemetry evidence navigation;
-- bounded retention/compaction tests and false-positive stress matrices;
-- Protection Service ownership of the EDR telemetry lifecycle;
-- continuous native process/file/network/DNS/download/persistence ingestion;
-- authenticated Named Pipe query endpoints for timeline, process tree, incidents and hunts;
-- Security Center Inbox integration for qualified EDR incidents;
-- no autonomous destructive response.
+## B6-1 — Target Discovery & Selection UX — NEXT
 
-### Planned v0.11.0-beta.3 — Reversible EDR Response Foundation
-- explicitly approved reversible endpoint/network response only;
-- exact incident/entity revalidation before action;
-- rollback/TTL/audit/restart recovery;
-- no autonomous destructive remediation.
+**Goal:** make target discovery understandable to any user without losing expert evidence.
 
-### Planned v0.11.0-rc.1 — EDR Consolidation
-- Beta1→Beta3 regression freeze;
-- high-volume telemetry and compatibility tests;
-- service/native evidence for advertised EDR behavior;
-- final cross-version lifecycle review before v0.12.
+Required outcomes:
 
-## v0.12 — Sandbox & Dynamic Analysis
+- automatic discovery of disks, volumes, Windows installations and supported Rescue targets;
+- clear human-readable target cards;
+- recommendation of the most likely Windows system target;
+- visible warnings for ambiguity, encryption, unsupported state or unsafe selection;
+- read-only-first target validation;
+- no target code execution;
+- no new destructive authority;
+- `Advanced details` for physical disk ID, partition table, volume/filesystem, mount state, encryption/BitLocker state, discovery confidence and evidence metadata;
+- deterministic tests for ambiguous and damaged targets;
+- Windows acceptance gate before stabilization.
+
+## B6-2 — Home / Security Overview
+
+Create the main everyday BC Sentinel surface:
+
+- overall protection state;
+- realtime protection state;
+- web protection;
+- ransomware protection;
+- firewall/network protection;
+- privacy status;
+- Rescue readiness;
+- recent incidents;
+- unresolved risks;
+- primary `Scan PC` action;
+- one clear recommended action when intervention is required;
+- Advanced details available without changing modes.
+
+## B6-3 — One-Click Smart Scan
+
+Unify existing scanners behind a simple action while retaining technical visibility.
+
+BC Sentinel should choose appropriate scan depth using system state, scope, telemetry and risk instead of requiring the user to understand scanner internals.
+
+The user sees the result and recommendation; Advanced details exposes what was scanned, why, which engines/signals participated and what evidence was produced.
+
+## B6-4 — Threat Cards + Advanced Details
+
+Every relevant detection follows a two-level contract.
+
+### Default card
+
+```text
+What happened?
+How serious is it?
+What does BC Sentinel recommend?
+Is the recommended action reversible?
+```
+
+### Advanced details
+
+Expose the full evidence chain and reasoning available.
+
+No important technical evidence may be removed merely to simplify the default UI.
+
+## B6-5 — Guided Resolution
+
+Create a unified safe response flow:
+
+```text
+Detect
+-> Explain
+-> Contain
+-> Repair
+-> Verify
+-> Report
+```
+
+High-impact or irreversible actions remain gated. Unsupported or ambiguous remediation remains report-only.
+
+## B6-6 — Rescue for Everyone
+
+Expose the accepted Rescue stack as a guided recovery experience understandable to a non-technical user.
+
+The user should not need to understand partitions, hives, boot state or evidence chains to start a safe analysis. Those details remain fully available under Advanced details.
+
+## B6-7 — Advanced Details Everywhere
+
+Apply the same technical drill-down model across:
+
+- scans;
+- detections;
+- EDR incidents;
+- ransomware;
+- Web Protection;
+- firewall/network;
+- persistence;
+- remediation;
+- Rescue;
+- reports;
+- future innovation features.
+
+## B6-8 — History, Evidence & Reports
+
+Unify:
+
+- incidents;
+- evidence;
+- actions;
+- containment state;
+- remediation state;
+- rollback state;
+- Rescue sessions;
+- verification results;
+- final reports.
+
+The history must be understandable at user level and auditable at technical level.
+
+## B6-9 — Tray, Notifications, Onboarding & Settings
+
+Finish the daily-use desktop experience:
+
+- tray integration;
+- low-noise native notifications;
+- onboarding;
+- accessibility;
+- safe defaults;
+- clear protection controls;
+- startup behavior;
+- understandable privacy/security settings.
+
+## B6-10 — Consumer + Expert Acceptance Gate
+
+Validate that the same product can be used safely by a non-technical user while remaining trustworthy and inspectable for an expert.
+
+Acceptance must include usability, false-positive handling, accessibility, performance, regression and safety testing.
+
+---
+
+# Continuous Program A — Detection & Attack Coverage
+
+**Status: PERMANENT — applies to every future milestone and release.**
+
+BC Sentinel must never treat the existence of a feature as proof that an attack is covered.
+
+The engineering target is to maximize measurable ability to:
+
+```text
+Detect
+Correlate
+Interrupt
+Explain
+Recover
+Verify
+```
+
+across known, unknown, behavioral, fileless, multi-stage and offline attack paths.
+
+BC Sentinel must not claim impossible 100% malware or attack detection. Gaps must be measured and turned into engineering work.
+
+## Coverage domains
+
+The program must progressively validate at least:
+
+- malicious files and payloads;
+- unknown / low-prevalence binaries;
+- process abuse;
+- memory/injection indicators where safely observable;
+- PowerShell, CMD, WMI, JavaScript/VBS and script abuse;
+- living-off-the-land behavior;
+- persistence mechanisms;
+- ransomware behavior;
+- credential-access / credential-theft indicators;
+- privilege-escalation indicators;
+- defense evasion;
+- security-control tampering;
+- malicious/suspicious network behavior;
+- command-and-control indicators;
+- DNS/domain/web threats;
+- phishing/scam chains;
+- download -> execution chains;
+- lateral-movement indicators where endpoint-visible;
+- fileless and multi-stage attacks;
+- boot/offline persistence detectable through Rescue;
+- damaged or hostile Windows environments.
+
+## Mandatory metrics
+
+Each relevant campaign should measure, where applicable:
+
+```text
+Coverage
+Precision
+Detection speed
+Correlation rate
+Blocking / interruption rate
+False-positive rate
+Recovery success
+Verification success
+Explainability completeness
+Evidence completeness
+Resource cost
+```
+
+## MITRE ATT&CK mapping
+
+Scenarios should be mapped to MITRE ATT&CK techniques/sub-techniques when useful.
+
+ATT&CK coverage is an engineering map, not proof of overall product quality. A technique only counts as meaningfully covered when the detection/response behavior is reproducible and passes its acceptance criteria.
+
+## Attack-chain testing
+
+Testing must increasingly validate full chains, not only isolated events.
+
+Example:
+
+```text
+browser
+-> download
+-> script interpreter
+-> child process
+-> persistence
+-> outbound connection
+-> destructive/encryption behavior
+```
+
+For a chain, BC Sentinel should record whether it:
+
+1. observed the relevant signals;
+2. detected suspicious/malicious behavior;
+3. correlated the events into one incident;
+4. identified likely root cause;
+5. interrupted the harmful objective when safely possible;
+6. preserved evidence;
+7. recovered or rolled back supported damage;
+8. verified the result.
+
+## Coverage ledger
+
+A machine-readable coverage ledger must be introduced and maintained.
+
+Minimum fields:
+
+```text
+scenario_id
+technique
+subtechnique
+scenario
+detected
+correlated
+blocked
+recovered
+verified
+false_positive_status
+time_to_detection
+time_to_interruption
+evidence_quality
+last_verified_build
+platform/profile
+notes
+```
+
+A failed or missing scenario becomes an explicit engineering gap.
+
+## Release rule
+
+No release may claim a protection capability unless the advertised behavior has current acceptance evidence on the target platform.
+
+Regression coverage must preserve previously accepted detection behavior unless an intentional security decision explicitly changes it.
+
+## Testing safety
+
+Use harmless fixtures, simulations, controlled emulation, disposable VMs and controlled offline targets.
+
+Do not deliberately expose an everyday workstation to uncontrolled live malware merely to increase a coverage number.
+
+---
+
+# Continuous Program B — BC Sentinel Innovation Program
+
+**Status: PERMANENT — cross-cuts future protection, EDR, Rescue and UX work.**
+
+BC Sentinel should not become only a conventional antivirus with additional modules. Innovation must improve how an attack is understood, predicted, interrupted, explained and recovered from.
+
+## I1 — Sentinel Security Graph
+
+Build a causal graph that links, when available:
+
+```text
+processes
+files
+scripts
+registry
+services
+scheduled tasks
+persistence
+network/DNS/domains
+identity/context
+detections
+containment actions
+remediation actions
+Rescue evidence
+```
+
+Goal: treat an attack as a connected incident rather than unrelated alerts.
+
+The graph must preserve provenance, timestamps, confidence and evidence IDs.
+
+## I2 — Confidence Gate
+
+Every autonomous or recommended security action should be evaluated against:
+
+```text
+Confidence
+Severity
+Reversibility
+Potential damage
+Evidence strength
+```
+
+Temporary observation/containment may use a lower authority threshold than destructive or system-critical mutation.
+
+High-impact irreversible actions require explicit stronger evidence and acceptance gates.
+
+The Confidence Gate must be inspectable in Advanced details.
+
+## I3 — Attack Prediction Engine
+
+Use the evolving Security Graph and temporal evidence to estimate whether behavior is converging toward objectives such as:
+
+- ransomware;
+- persistence;
+- credential theft;
+- command-and-control;
+- defense evasion;
+- security-control tampering;
+- destructive behavior.
+
+Prediction must be evidence-driven, confidence-scored and measurable.
+
+It must never be presented as certainty when the evidence is incomplete.
+
+Primary objective: interrupt an attack **before** its damaging objective when confidence and safety permit.
+
+## I4 — Reversible Self-Healing
+
+Extend the existing reversible-remediation foundations.
+
+Supported repair lifecycle:
+
+```text
+Detect
+-> Understand
+-> Contain
+-> Snapshot / Journal
+-> Repair
+-> Verify
+-> Roll back if verification fails
+```
+
+Where technically possible, preserve enough pre-action state to restore affected configuration or artifacts safely.
+
+No broad destructive cleanup to manufacture a successful result.
+
+## I5 — Rescue Continuity
+
+Make a live incident portable into the Rescue environment.
+
+If the running Windows instance can no longer be trusted, Rescue should continue the same incident instead of starting from zero.
+
+Carry forward relevant evidence such as:
+
+- incident ID;
+- process tree;
+- suspicious files and hashes;
+- script/command context;
+- persistence findings;
+- registry/configuration changes;
+- network/DNS/domain indicators;
+- attack-chain hypothesis;
+- containment/remediation actions already performed;
+- evidence IDs;
+- journal/rollback state.
+
+Target flow:
+
+```text
+Live Protection
+-> Detection / EDR
+-> Rescue
+-> Recovery
+-> Verification
+```
+
+as one continuous incident lifecycle.
+
+## I6 — Deception Mesh
+
+Research and implement safe local deception signals such as canary resources and controlled decoys that legitimate software should not normally access or mutate.
+
+A deception event is a signal, not an automatic malware verdict.
+
+It must feed the Security Graph and Confidence Gate together with independent evidence.
+
+## I7 — Adaptive Local Intelligence
+
+Develop local intelligence capable of combining:
+
+- static evidence;
+- behavior;
+- temporal sequence;
+- graph relationships;
+- local reputation/prevalence;
+- signer/provenance;
+- system context;
+- historical incident context.
+
+AI/ML output must remain:
+
+- inspectable;
+- confidence-scored;
+- explainable enough to support a security decision;
+- optional for core deterministic protection where feasible;
+- subordinate to hard safety policy for privileged/destructive operations.
+
+## I8 — Explainable Security
+
+Every significant security decision should be answerable in two forms.
+
+### User explanation
+
+Example structure:
+
+```text
+BC Sentinel blocked this activity because a program launched a script interpreter,
+created a persistence entry and contacted a previously unseen remote endpoint.
+These events together strongly resemble a malicious persistence chain.
+```
+
+### Advanced explanation
+
+Expose the underlying evidence, timeline, graph edges, confidence inputs, deterministic rules and actions.
+
+The explanation must describe evidence, not invent certainty.
+
+---
+
+# Forward protection roadmap
+
+The previously planned macro-areas remain valid, but all future work now inherits the Unified Home, Detection Coverage and Innovation requirements above.
+
+## Dynamic Analysis / Sandbox
+
 - isolated suspicious-file execution;
 - pre/post filesystem, registry, process and network diff;
-- behavioral scoring;
-- detonation evidence ingestion into incident correlation;
+- behavioral evidence into the Security Graph;
 - strict resource/time/network controls;
-- no execution of unknown samples on the host OS.
+- no unknown-sample execution on the host OS.
 
-## v0.13 — IDS/IPS & Brute-Force Protection
-- Windows Filtering Platform flow/packet research;
-- signature + behavioral intrusion detection;
-- explicit prevention safety gates;
-- brute-force/password-spray/credential-stuffing detection;
-- adaptive throttling/rate limiting;
-- IP/ASN/account/device/network correlation;
-- RDP/remote-service protection.
+## IDS/IPS & Credential Attack Protection
 
-## v0.14 — Privacy Protection & Safe Banking
-- webcam/microphone monitoring and alerts;
-- per-application policy where supported;
-- privacy-access correlation with EDR;
-- protected-session/Safe Banking design;
-- browser/process interference detection;
-- keylogger/injection protections where safely supportable.
+- network intrusion research and detection;
+- brute-force/password-spray/credential-stuffing indicators;
+- RDP/remote-service protection;
+- adaptive containment only behind explicit safety gates;
+- correlation with endpoint identity/process/network context.
 
-## v0.15 — Identity Protection, Password Manager & 2FA
-- encrypted local vault;
-- password health/reuse checks;
-- privacy-preserving breach-monitoring integration;
-- TOTP/2FA;
-- clipboard/credential-access hardening;
-- identity-risk events feeding incident correlation.
+## Privacy Protection & Safe Banking
 
-## v0.16 — VPN & Untrusted-Network Protection
-- integrated or tightly controlled companion VPN;
-- kill switch and secure DNS;
-- untrusted Wi-Fi protection;
-- per-application routing/policy where supported;
-- VPN state integrated with firewall and incident engine.
+- webcam/microphone monitoring where platform support is trustworthy;
+- per-application privacy context;
+- keylogger/injection indicators;
+- protected-session research;
+- privacy events integrated with the Security Graph.
 
-## BC Sentinel Rescue & Recovery — cross-product recovery track
+## Identity Protection
 
-Goal: recover severely infected Windows PCs even when the installed operating system is too slow, unstable or compromised to install or normally execute BC Sentinel. The objective is to make formatting/reimaging the **last resort**, never to claim recovery when system integrity cannot be demonstrated.
+- secure local credential/vault research;
+- password health and reuse checks;
+- TOTP/2FA support where appropriate;
+- credential-access hardening;
+- identity-risk evidence correlated with endpoint incidents.
 
-This track may reuse accepted Antivirus, Antimalware, Threat Intelligence, EDR and integrity primitives, but must remain operationally separable from the installed product. Every milestone requires automatic tests, compromised-PC scenarios, measurable acceptance criteria and preservation of all existing protection invariants.
+## VPN & Untrusted-Network Protection
 
-### RR-0 — Rescue Architecture & Recovery Safety Model
-**Codex reasoning: Extra High.**
-- define trust boundaries for running from compromised Windows versus independent boot media;
-- define read-only-first acquisition, evidence preservation and rollback model;
-- define supported Windows/UEFI/Secure Boot/storage/encryption scenarios without bypassing platform security controls;
-- define signed rescue artifacts, update provenance and offline threat-package trust chain;
-- define a recovery-state model: `recoverable`, `recovered_with_warnings`, `integrity_unproven`, `reimage_required`;
-- define resource budgets and benchmark methodology before implementation.
+- tightly controlled VPN/secure-DNS integration or companion architecture;
+- kill-switch research;
+- untrusted-network policy;
+- integration with firewall and incident context.
 
-Acceptance: architecture/threat-model review complete; destructive operations impossible without an explicit repair plan; every repair action has precondition, evidence, audit and rollback/backup strategy; unsupported encrypted/locked volumes fail closed.
+## Production Packaging
 
-### RR-1 — BC Sentinel Portable
-**Codex reasoning: High for implementation; Extra High for security boundary changes.**
-- portable launcher from USB/removable storage with no MSI/service installation requirement;
-- minimal-resources mode focused on triage, scan, threat intelligence and evidence collection;
-- optional elevation only for capabilities that genuinely require it;
-- no dependency on the health of the installed BC Sentinel service;
-- signed/offline threat package support and local report export.
+- signed Windows binaries;
+- service/broker/UI packaging;
+- secure installer upgrade/repair/uninstall;
+- secure updater bootstrap;
+- release provenance;
+- reproducible release checks;
+- compatibility and rollback runbooks.
 
-Acceptance: launches from removable media on supported Windows without installation; leaves no persistent service/startup entry after exit; idle CPU target <=5% of one core and working-set target <=250 MB in minimal mode on the reference test machine; scan results match the same deterministic engine/rules used by the installed product for the same fixture set.
+---
 
-### RR-2 — BC Sentinel Rescue USB
-**Codex reasoning: Extra High for architecture/security; High for ordinary implementation.**
-- bootable recovery environment independent from the installed Windows instance;
-- signed and integrity-verified rescue image/build pipeline;
-- safe storage discovery and explicit system-volume selection;
-- read-only mount by default; write access only when entering an explicit repair workflow;
-- offline threat intelligence update import from trusted removable/network source when available.
+# Rescue & Recovery — permanent cross-product track
 
-Acceptance: boots independently on the defined UEFI/Secure Boot compatibility matrix; can identify supported Windows installations without executing code from them; verifies its own image/rules before scan; refuses repair if rescue-image integrity is invalid or target-volume state is ambiguous.
+The accepted Rescue & Recovery line remains a core BC Sentinel differentiator.
 
-### RR-3 — Offline Threat Scanner
-**Codex reasoning: Extra High for parser/security architecture; High for implementation.**
-- scan files and alternate persistence-relevant locations without executing target binaries;
-- inspect offline registry hives, services, drivers, startup entries, scheduled tasks and persistence points;
-- inspect browser configuration/artifacts and offline network/proxy/DNS/firewall configuration where safely parseable;
-- inspect boot configuration and boot-critical drivers/components;
-- correlate findings with signed IOC/YARA/file verdicts and the existing explainable incident model;
-- read-only by default and bounded against malformed/corrupt offline data.
+Goal: recover severely compromised Windows systems even when installed Windows is too slow, unstable or untrustworthy to install or normally execute BC Sentinel.
 
-Acceptance: deterministic synthetic compromised images cover each advertised persistence family; malformed hives/configuration cannot crash the scanner or trigger writes; benign Windows compatibility matrix remains within the defined false-positive budget; every HIGH/CRITICAL offline finding contains reproducible evidence.
+Formatting/reimaging remains the **last resort**, but BC Sentinel must never claim a trustworthy recovery when integrity cannot be demonstrated.
 
-### RR-4 — Repair Engine
-**Codex reasoning: Extra High for architecture/security and any boot/registry/system repair primitive; High for ordinary implementation.**
-- generate an explicit repair plan before any mutation;
-- remove/disable qualified malicious persistence while preserving unrelated configuration;
-- restore selected Windows security/network/service/startup configuration altered by malware;
-- support system-component verification/repair using trusted local or Microsoft-supported sources where available;
-- repair boot configuration only through narrowly scoped, validated operations;
-- transaction journal, backup, audit and rollback for every reversible action;
-- never use broad destructive cleanup merely to make a test pass.
+Future Rescue work inherits:
 
-Acceptance: every supported repair has before/after evidence and rollback/backup; power-loss/interrupted-repair simulations recover to a known state; unrelated services/tasks/registry values remain unchanged in compatibility fixtures; ambiguous/high-risk repairs require operator confirmation or remain report-only.
+- read-only-first acquisition;
+- evidence preservation;
+- explicit repair plans;
+- rollback/backup strategy;
+- safe data rescue;
+- integrity verification;
+- fail-closed handling of ambiguous/locked/encrypted targets;
+- Detection & Attack Coverage;
+- Security Graph integration;
+- Confidence Gate;
+- Rescue Continuity.
 
-### RR-5 — Safe Data Rescue
-**Codex reasoning: Extra High for trust/integrity model; High for implementation.**
-- copy user-selected data before invasive recovery operations;
-- source volume treated read-only whenever possible;
-- exclude or quarantine known malicious executables/scripts according to an explicit policy rather than silently copying them into clean systems;
-- preserve metadata where safe and calculate hashes/manifests for copied data;
-- resumable copy with error accounting and destination-capacity checks;
-- clear separation between rescued user data and executable/system artifacts.
+---
 
-Acceptance: byte/hash verification for successfully copied files; interrupted copies resume without silently corrupting prior output; malicious fixture files are flagged according to policy; source data is never deleted or modified by Data Rescue; final manifest lists copied, skipped, suspicious and unreadable items.
+# v1.0 release principle
 
-### RR-6 — Integrity Verification & Recovery Certification
-**Codex reasoning: Extra High.**
-- rescan after repair using independent/offline evidence where possible;
-- verify Windows system/security configuration, services, drivers, startup, scheduled tasks, persistence, browser/network configuration and boot state;
-- verify repaired files/components against trusted hashes/signatures/sources where available;
-- compare pre-repair and post-repair state and explain every residual warning;
-- produce a signed/tamper-evident final report with recovery decision.
+BC Sentinel reaches production status only when every advertised capability has current native acceptance evidence and the product demonstrates:
 
-Acceptance: the system may be marked `recoverable/recovered` only when all mandatory integrity checks pass; unresolved boot/system-component ambiguity must produce `integrity_unproven` or `reimage_required`; no “clean” verdict from scan results alone; final report contains evidence, actions, rollback records, unresolved findings and recommended next step.
+- protected service lifecycle;
+- secure updates;
+- bounded false-positive rate;
+- compatibility validation;
+- measurable detection/attack coverage;
+- deterministic safety boundaries;
+- reversible remediation where advertised;
+- trustworthy Rescue outcomes;
+- usable Home experience;
+- complete Advanced details for expert inspection;
+- release provenance and rollback/runbooks.
 
-### Rescue & Recovery integrated validation
-Before this macro-area can be advertised as production recovery capability:
-- validate representative lightly, moderately and severely compromised Windows images/VMs;
-- include broken/disabled antivirus, high CPU/low-memory, damaged startup/services, offline persistence, malicious driver/boot fixtures and corrupt configuration scenarios;
-- prove Portable and Rescue USB operate independently of a broken installed service;
-- prove Safe Data Rescue before invasive operations;
-- prove repair does not weaken existing BC Sentinel safeguards;
-- run cross-version regression, fuzz/malformed-input tests, resource benchmarks and interrupted-repair/restart scenarios;
-- keep reimage/formatting as an explicit last-resort outcome when trustworthy recovery cannot be established.
+---
 
-### Codex execution policy for Rescue & Recovery
-- **Reasoning: Extra High** for architecture, threat modeling, trust boundaries, boot/offline parsing, repair primitives, integrity certification and security reviews.
-- **Reasoning: High** for ordinary implementation, tests, tooling and incremental integration once the security design is frozen.
-- Implement one milestone/checkpoint at a time; do not advance when acceptance criteria are red.
-- Do not weaken existing antivirus, EDR, firewall, web, update, UAC, integrity or performance gates to make Rescue tests pass.
+# Long-term product objective
 
-## Later platform/product milestones
+BC Sentinel should evolve toward a security system that can:
 
-### macOS Native Protection Foundation
-Only after a real native backend using supported Apple security APIs and signed/notarized helper lifecycle.
+> understand an attack while it develops, correlate its evidence, estimate where it is heading, interrupt dangerous behavior when confidence and safety permit, repair reversible damage, verify the result, and continue the same incident through offline Rescue when the running operating system can no longer be trusted.
 
-### Production Packaging
-Signed Windows GUI/service/broker binaries, installer upgrade/repair/uninstall, secure updater bootstrap, release provenance and reproducible release checks.
+The default user experience may simply say:
 
-### v1.0 — Production Endpoint Protection Suite
-Production only after protected service, secure updates, false-positive/compatibility testing, rollback/runbooks and every advertised capability has native acceptance evidence.
+```text
+Your PC is protected.
+```
+
+The evidence behind that statement must remain measurable, explainable and available under **Advanced details**.
