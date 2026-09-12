@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-3 Implementation Status
 
-Status: **B6-3.0 ORCHESTRATION FOUNDATION CI GREEN / B6-3.1 LIVE PROVIDER BOUNDARY CI GREEN / COMPLETE WINDOWS RUNTIME ADAPTER PENDING**
+Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / REAL WINDOWS LIVE ACCEPTANCE PENDING**
 
 Development branch: `feature/v011-beta6-b63-smart-scan`
 
@@ -30,86 +30,137 @@ Implemented:
 - Full Scan remains disabled;
 - no automatic quarantine, repair, process termination, file deletion, registry/boot write, unlock, write mount, format or reimage authority.
 
-Deterministic provider fixtures prove clean, findings, incomplete, failed and cancelled outcomes. `CLEAN` cannot be produced when planned coverage is missing.
+`CLEAN` cannot be produced when planned coverage is missing.
 
 ## B6-3.1 — Live provider boundary
 
-Implemented fail-closed loader:
-
-```text
-sentinel.smart_scan_provider_loader
-```
-
-The Home looks only for the fixed adapter module:
+The Home loads only the fixed adapter module:
 
 ```text
 sentinel.smart_scan_live_provider
 ```
 
-with factory:
+through:
 
 ```text
-create_provider()
+sentinel.smart_scan_provider_loader
 ```
 
-Loader guarantees:
+The loader remains fail-closed and never starts a scan during import/factory validation.
 
-- importing/loading the adapter does not plan or run a scan;
-- missing adapter fails closed;
-- missing adapter dependency fails closed;
-- missing/failing factory fails closed;
-- available-but-unaccepted provider is rejected;
-- provider requesting destructive authority is rejected;
-- accepted provider may enable Smart Scan only after capability validation;
-- no dynamic arbitrary plugin path is accepted.
+## B6-3.2 — Pinned historical StaticScanner adapter
 
-The normal B6-3 Home now uses this loader automatically when no provider is explicitly injected. If the complete Windows source tree supplies a conforming `sentinel.smart_scan_live_provider`, Smart Scan can be enabled without changing the Home or weakening its authority contract.
+The runtime audit of the full Windows package established the real on-demand API:
 
-## Why the real provider is not fabricated in GitHub
+```text
+sentinel.scanner.StaticScanner.scan_paths(...)
+sentinel.scanner.StaticScanner.scan_file(...)
+```
 
-The synchronized GitHub repository is historically a delta tree rather than the complete Windows runtime source-of-record. The repository does not currently expose the complete live scanner API required to implement a truthful adapter. Existing historical/synchronized files refer to runtime components that are absent from the GitHub delta.
+and confirmed that the historical UI itself used `scan_paths(...)` for Quick/Full Scan.
 
-For that reason BC Sentinel deliberately reports the default provider as unavailable instead of inventing a scanner API or reusing the offline Rescue scanner as a live-PC scanner.
+Implemented adapter:
 
-The optional adapter must be implemented against the complete local Windows source/runtime package and then synchronized back once its actual API is verified.
+```text
+sentinel.smart_scan_live_provider
+```
 
-## Current automated evidence
+Architecture:
 
-Latest B6-3 Windows CI including the fail-closed live-provider loader:
+```text
+Home / SmartScanCoordinator
+        -> fixed live-provider loader
+        -> SHA-256-pinned external full runtime
+        -> isolated Python subprocess
+        -> sentinel.scanner.StaticScanner.scan_paths
+```
 
-- workflow: `B6-3 Smart Scan Gate`;
-- run: `34710390958`;
-- result: **PASS**;
-- deterministic regression suite: **92 passed**;
-- loader tests cover missing module, missing dependency, missing/failing factory, accepted provider, destructive-authority rejection and available-but-unaccepted rejection;
-- B6-2 predecessor deterministic acceptance: PASS;
-- B6-3 deterministic acceptance: PASS with zero failures;
-- B6-3 passive self-check: PASS;
-- Qt offscreen smoke: PASS;
-- six-page Home shell preserved;
-- Dashboard and Scan horizontal overflow: 0;
-- default GitHub-delta provider load: `loaded=false`, `accepted=false`, reason `live_provider_module_not_synchronized`;
-- Smart Scan remains disabled by default when that accepted live adapter is absent;
-- Full Scan remains disabled;
-- automatic destructive authority remains false.
+The historical FULL runtime is not copied over the current B6 code and no security engine file is rewritten. The adapter runs the old scanner in its own Python package context, preventing accidental mixing of the modern Home package with historical scanner-relative dependencies.
 
-## Next gate — complete local Windows runtime adapter
+### Runtime acceptance requirements
 
-B6-3 is not complete and not stable until the complete local source/runtime supplies and proves `sentinel.smart_scan_live_provider`.
+The adapter is unavailable unless all of these are true:
 
-Required next evidence:
+1. `BC_SENTINEL_FULL_RUNTIME_ROOT` points to a runtime containing `sentinel/scanner.py`;
+2. `BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256` contains the exact SHA-256 of that file;
+3. the selected Python executable can import `sentinel.scanner.StaticScanner`;
+4. `StaticScanner.scan_paths` is callable;
+5. at least one configured Smart Scan root exists.
 
-1. inspect the real full-runtime scanner/service API;
-2. implement the adapter without changing the underlying scanner authority;
-3. prove adapter capability metadata and exact scan scope;
-4. explicit user start only;
-5. visible real progress;
-6. harmless known fixtures only;
-7. correct clean/findings/incomplete/failure/cancel behavior;
-8. no automatic remediation;
-9. responsive UI during scan;
-10. predecessor B6-0/B6-1/B6-2 gates remain green;
-11. real supported Windows acceptance evidence committed before checkpoint stabilization.
+Optional:
+
+```text
+BC_SENTINEL_FULL_RUNTIME_PYTHON
+BC_SENTINEL_SMART_SCAN_ROOTS
+```
+
+Without an explicit root override, the adapter uses the existing `Settings.defaults().monitored_dirs` scope.
+
+### Safety semantics
+
+- no scan at module import or provider factory time;
+- external runtime path alone is not trusted: scanner SHA-256 pin is mandatory;
+- the provider calls only `StaticScanner.scan_paths`;
+- cancellation is relayed through the scanner's existing `cancelled=` callback using a cancellation marker;
+- no automatic quarantine;
+- no automatic repair;
+- no process kill/remediation authority;
+- no registry/boot write;
+- no unlock/write mount/format/reimage;
+- unknown/unrecognized historical report shapes fail to `INCOMPLETE`, never `CLEAN`;
+- subprocess/import failure fails closed;
+- progress is check/root based and monotonic.
+
+### Local helper / preflight
+
+Configure and pin the FULL runtime for the current PowerShell session:
+
+```powershell
+.\PIN-V011-BETA6-B63-FULL-RUNTIME.ps1 -RuntimeRoot "<FULL_RUNTIME_ROOT>"
+```
+
+Then run capability/import preflight only:
+
+```powershell
+.\.venv\Scripts\python.exe -m tools.v011_beta6_b63_live_runtime_probe
+```
+
+Only after preflight acceptance, explicitly run a live Smart Scan:
+
+```powershell
+.\.venv\Scripts\python.exe -m tools.v011_beta6_b63_live_runtime_probe --execute --output .\acceptance-v011-beta6-b63-live.json
+```
+
+## Automated evidence
+
+The deterministic B6-3 gate now includes dedicated adapter tests for:
+
+- missing runtime pin -> unavailable;
+- scanner SHA mismatch -> unavailable;
+- valid pinned runtime -> accepted;
+- clean StaticScanner result -> complete clean;
+- explicit detection -> preserved finding;
+- unknown report schema -> incomplete, never clean;
+- runtime import failure -> unavailable;
+- exact configured root scope.
+
+The normal B6-3 gate deliberately clears live-runtime environment variables before offscreen smoke, proving that the default/unpinned application remains fail-closed.
+
+A fresh Windows CI pass is required after this B6-3.2 implementation before calling its deterministic gate green.
+
+## Remaining B6-3 stabilization gate
+
+B6-3 is not stable until real Windows evidence proves the pinned FULL runtime path:
+
+1. B6-3 deterministic CI PASS with adapter tests;
+2. local FULL-runtime preflight reports `accepted=true`;
+3. explicit live scan on harmless controlled fixtures;
+4. correct real report-shape translation;
+5. clean/findings/incomplete/cancel behavior confirmed;
+6. UI remains responsive during real scan;
+7. no target mutation/remediation;
+8. B6-0/B6-1/B6-2 predecessors remain green;
+9. supported Windows acceptance evidence committed.
 
 ## Stable state
 
