@@ -44,7 +44,7 @@ try{
     $OldQt=$env:QT_QPA_PLATFORM
     $env:QT_QPA_PLATFORM='offscreen'
     try{
-        & $Py -m compileall -q sentinel\rescue_home_ui_model.py sentinel\rescue_home_ui.py packaging\rescue_home_ui_entry.py tools\v011_beta6_b60_acceptance.py tools\v011_beta6_b61_acceptance.py tests\test_v011_beta6_b60_technician_ux_foundation.py tests\test_v011_beta6_b61_unified_home_target_discovery.py
+        & $Py -m compileall -q sentinel\rescue_home_ui_model.py sentinel\rescue_home_ui.py packaging\rescue_home_ui_entry.py tools\v011_beta6_b60_acceptance.py tools\v011_beta6_b61_acceptance.py tests\test_v011_beta6_b60_technician_ux_foundation.py tests\test_v011_beta6_b61_unified_home_target_discovery.py tests\test_v011_beta6_b61_home_real_ui_regressions.py
         if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-0/B6-1 compileall failed'}
 
         Write-Host 'B61 PREDECESSOR CONTRACT: validating accepted B6-0 deterministic acceptance...' -ForegroundColor DarkCyan
@@ -56,7 +56,7 @@ try{
         if(-not[bool]$B60.checks.startup_dispatch_disabled){Fail 'predecessor-b60' 'B6-0 startup-dispatch contract changed'}
 
         Write-Host ('B61 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
-        & $Py -m pytest -q --basetemp $PytestTemp tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py
+        & $Py -m pytest -q --basetemp $PytestTemp tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py
         if($LASTEXITCODE -ne 0){Fail 'pytest-b61' 'B6-0/B6-1 regression tests failed'}
 
         & $Py -m tools.v011_beta6_b61_acceptance --output '.\acceptance-v011-beta6-b61.json'
@@ -86,7 +86,7 @@ try{
             if($after -ne $BeforeProtected[$path]){Fail 'protected-source' ('B6-1 modified frozen/predecessor source during gate: '+$path)}
         }
 
-        Write-Host 'B61 LOCAL: B6-0 deterministic predecessor PASS | B6-0/B6-1 tests PASS | synthetic acceptance PASS | Home Qt smoke PASS | passive startup PASS | no destructive authority added' -ForegroundColor Green
+        Write-Host 'B61 LOCAL: B6-0 deterministic predecessor PASS | B6-0/B6-1 tests PASS | real Home UX regressions PASS | synthetic acceptance PASS | Home Qt smoke PASS | passive startup PASS | no destructive authority added' -ForegroundColor Green
         Write-Host 'B61 STATUS: LOCAL IMPLEMENTATION GATE PASS. Real Windows target/multi-disk/BitLocker acceptance is still REQUIRED before checkpoint stabilization.' -ForegroundColor Yellow
         Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-1 UNIFIED HOME TARGET DISCOVERY - LOCAL PASS / WINDOWS GATE PENDING' -ForegroundColor Green
         exit 0
