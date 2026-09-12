@@ -25,6 +25,21 @@ from sentinel import rescue_home_ui_model as model
 
 PROFILE: Final[str] = model.PROFILE
 WINDOW_TITLE: Final[str] = "BC Sentinel - Home"
+LIVE_SYSTEM_REASON: Final[str] = "live_system_volume_refused"
+
+
+def _is_live_system_card(card: model.HomeTargetCard) -> bool:
+    return card.reason == LIVE_SYSTEM_REASON
+
+
+def _visible_title(card: model.HomeTargetCard) -> str:
+    return "This PC" if _is_live_system_card(card) else card.friendly_label
+
+
+def _visible_status(card: model.HomeTargetCard) -> str:
+    if _is_live_system_card(card):
+        return "Current system"
+    return card.status.replace("_", " ").title()
 
 
 class TargetCardWidget(QFrame):
@@ -42,7 +57,7 @@ class TargetCardWidget(QFrame):
         top = QHBoxLayout()
         copy = QVBoxLayout()
         copy.setSpacing(4)
-        title = QLabel(card.friendly_label)
+        title = QLabel(_visible_title(card))
         title.setObjectName("TargetTitle")
         title.setWordWrap(True)
         location = QLabel(card.location_label)
@@ -52,9 +67,9 @@ class TargetCardWidget(QFrame):
         copy.addWidget(location)
         top.addLayout(copy, 1)
 
-        status = QLabel(card.status.replace("_", " ").title())
+        status = QLabel(_visible_status(card))
         status.setObjectName("TargetStatus")
-        status.setProperty("status", card.status)
+        status.setProperty("status", "CURRENT_SYSTEM" if _is_live_system_card(card) else card.status)
         status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         status.setMinimumHeight(28)
         top.addWidget(status, 0, Qt.AlignmentFlag.AlignTop)
@@ -69,14 +84,15 @@ class TargetCardWidget(QFrame):
         self.details_button = QPushButton("Advanced details")
         self.details_button.setObjectName("DetailsButton")
         self.details_button.setCheckable(True)
-        self.details_button.setAccessibleName(f"Advanced details for {card.friendly_label} {card.location_label}")
+        self.details_button.setAccessibleName(f"Advanced details for {_visible_title(card)} {card.location_label}")
         actions.addWidget(self.details_button)
         actions.addStretch(1)
 
-        self.select_button = QPushButton("Select")
+        action_text = "Rescue unavailable" if _is_live_system_card(card) else "Select"
+        self.select_button = QPushButton(action_text)
         self.select_button.setObjectName("PrimaryButton" if card.selectable else "InactiveAction")
         self.select_button.setEnabled(card.selectable)
-        self.select_button.setAccessibleName(f"Select {card.friendly_label} {card.location_label}")
+        self.select_button.setAccessibleName(f"Select {_visible_title(card)} {card.location_label} for offline Rescue")
         self.select_button.clicked.connect(lambda: on_select(card.target_id))
         actions.addWidget(self.select_button)
         outer.addLayout(actions)
@@ -92,7 +108,7 @@ class TargetCardWidget(QFrame):
         self.details_text.setReadOnly(True)
         self.details_text.setPlainText(json.dumps(card.advanced_details, indent=2, sort_keys=True, default=str))
         self.details_text.setMinimumHeight(190)
-        self.details_text.setAccessibleName(f"Technical evidence for {card.friendly_label} {card.location_label}")
+        self.details_text.setAccessibleName(f"Technical evidence for {_visible_title(card)} {card.location_label}")
         panel_layout.addWidget(panel_title)
         panel_layout.addWidget(self.details_text)
         self.details_panel.setVisible(False)
@@ -128,6 +144,7 @@ class HomeWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         root = QWidget()
+        root.setObjectName("HomeRoot")
         outer = QVBoxLayout(root)
         outer.setContentsMargins(28, 24, 28, 24)
         outer.setSpacing(18)
@@ -135,9 +152,9 @@ class HomeWindow(QMainWindow):
         header = QVBoxLayout()
         eyebrow = QLabel("BC SENTINEL / HOME")
         eyebrow.setObjectName("Eyebrow")
-        title = QLabel("Choose the Windows system to analyze")
+        title = QLabel("Windows systems")
         title.setObjectName("Title")
-        subtitle = QLabel("BC Sentinel identifies supported Windows installations without changing them. Technical evidence is always available under Advanced details.")
+        subtitle = QLabel("BC Sentinel identifies this PC and supported offline Windows installations without changing them. Technical evidence is always available under Advanced details.")
         subtitle.setObjectName("Subtitle")
         subtitle.setWordWrap(True)
         header.addWidget(eyebrow)
@@ -149,9 +166,9 @@ class HomeWindow(QMainWindow):
         safety.setObjectName("SafetyBanner")
         safety_layout = QHBoxLayout(safety)
         safety_layout.setContentsMargins(16, 12, 16, 12)
-        safety_title = QLabel("Read-only step")
+        safety_title = QLabel("Read-only discovery")
         safety_title.setObjectName("SafetyTitle")
-        safety_text = QLabel("No repair, unlock, write mount, format or reimage action is available here.")
+        safety_text = QLabel("This step never repairs, unlocks, write-mounts, formats or reimages a disk.")
         safety_text.setObjectName("SafetyText")
         safety_text.setWordWrap(True)
         safety_layout.addWidget(safety_title)
@@ -159,18 +176,18 @@ class HomeWindow(QMainWindow):
         outer.addWidget(safety)
 
         controls = QHBoxLayout()
-        self.discovery_button = QPushButton("Find Windows installations")
+        self.discovery_button = QPushButton("Find Windows systems")
         self.discovery_button.setObjectName("PrimaryButton")
-        self.discovery_button.setAccessibleName("Find Windows installations")
+        self.discovery_button.setAccessibleName("Find Windows systems")
         self.discovery_button.clicked.connect(self._run_discovery)
         controls.addWidget(self.discovery_button)
         controls.addStretch(1)
-        self.state_label = QLabel("Ready to search")
+        self.state_label = QLabel("Ready")
         self.state_label.setObjectName("StateLabel")
         controls.addWidget(self.state_label)
         outer.addLayout(controls)
 
-        self.summary_label = QLabel("BC Sentinel has not searched for offline Windows targets yet.")
+        self.summary_label = QLabel("Search for Windows systems connected to this PC.")
         self.summary_label.setObjectName("SummaryLabel")
         self.summary_label.setWordWrap(True)
         outer.addWidget(self.summary_label)
@@ -179,7 +196,11 @@ class HomeWindow(QMainWindow):
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll.setObjectName("TargetScroll")
+        self.scroll.viewport().setObjectName("TargetViewport")
+        self.scroll.viewport().setAutoFillBackground(False)
         self.target_root = QWidget()
+        self.target_root.setObjectName("TargetRoot")
+        self.target_root.setAutoFillBackground(False)
         self.target_layout = QVBoxLayout(self.target_root)
         self.target_layout.setContentsMargins(0, 0, 8, 0)
         self.target_layout.setSpacing(12)
@@ -188,14 +209,14 @@ class HomeWindow(QMainWindow):
         outer.addWidget(self.scroll, 1)
 
         footer = QHBoxLayout()
-        self.selection_label = QLabel("No Windows target selected.")
+        self.selection_label = QLabel("No offline Windows target selected.")
         self.selection_label.setObjectName("FooterText")
         self.selection_label.setWordWrap(True)
         footer.addWidget(self.selection_label, 1)
         self.next_button = QPushButton("Continue")
         self.next_button.setObjectName("InactiveAction")
         self.next_button.setEnabled(False)
-        self.next_button.setAccessibleName("Continue with selected Windows target")
+        self.next_button.setAccessibleName("Continue with selected offline Windows target")
         footer.addWidget(self.next_button)
         outer.addLayout(footer)
 
@@ -214,7 +235,7 @@ class HomeWindow(QMainWindow):
         self.ui_state.last_reason = "explicit_user_discovery"
         self.state_label.setText("Searching…")
         self.discovery_button.setEnabled(False)
-        self.summary_label.setText("Reading target metadata. BC Sentinel is not changing any target state.")
+        self.summary_label.setText("Reading Windows system metadata. BC Sentinel is not changing any target state.")
         self._clear_targets()
         QApplication.processEvents()
 
@@ -227,27 +248,41 @@ class HomeWindow(QMainWindow):
             self.ui_state.state = "DISCOVERY_ERROR"
             self.ui_state.last_reason = f"{type(exc).__name__}:{exc}"
             self.state_label.setText("Search failed")
-            self.summary_label.setText("BC Sentinel could not safely complete target discovery. No target action was started.")
+            self.summary_label.setText("BC Sentinel could not safely complete Windows system discovery. No target action was started.")
         finally:
             self.discovery_button.setEnabled(True)
 
     def _render_discovery_view(self, view: model.HomeDiscoveryView) -> None:
-        self.state_label.setText(self.ui_state.state.replace("_", " ").title())
+        live_targets = [target for target in view.targets if _is_live_system_card(target)]
+        offline_targets = [target for target in view.targets if not _is_live_system_card(target)]
+
         if not view.targets:
-            self.summary_label.setText("No supported Windows targets were found. You can search again after connecting the required disk or recovery media.")
+            self.state_label.setText("No Windows systems found")
+            self.summary_label.setText("No Windows systems were found. You can search again after connecting the required disk or recovery media.")
             return
 
         selectable = sum(1 for target in view.targets if target.selectable)
-        if view.recommended_target_id:
-            self.summary_label.setText("BC Sentinel found one clearly validated Windows target and marked it as Recommended. Review it before selecting.")
+        if live_targets and not offline_targets:
+            self.state_label.setText("This PC detected")
+            self.summary_label.setText("BC Sentinel detected the Windows system currently running on this PC. It is available to the normal Home protection workflow, but it is intentionally not selectable as an offline Rescue target in this step.")
+        elif view.recommended_target_id:
+            self.state_label.setText("Offline target found")
+            if live_targets:
+                self.summary_label.setText("BC Sentinel detected this PC and one clearly validated offline Windows target. The offline target is marked Recommended; review it before selecting.")
+            else:
+                self.summary_label.setText("BC Sentinel found one clearly validated offline Windows target and marked it as Recommended. Review it before selecting.")
         elif selectable > 1:
-            self.summary_label.setText("BC Sentinel found more than one valid Windows installation. Choose the one you want to analyze; none was selected automatically.")
+            self.state_label.setText("Multiple offline targets")
+            self.summary_label.setText("BC Sentinel found more than one valid offline Windows installation. Choose the one you want to analyze; none was selected automatically.")
         elif any(target.status == model.STATUS_AMBIGUOUS for target in view.targets):
+            self.state_label.setText("Target needs review")
             self.summary_label.setText("BC Sentinel found ambiguous target evidence. Selection is blocked until the ambiguity is resolved.")
         elif selectable == 0:
-            self.summary_label.setText("Windows-related targets were found, but none can be selected safely in their current state.")
+            self.state_label.setText("No selectable Rescue target")
+            self.summary_label.setText("Windows-related targets were found, but no offline Rescue target can be selected safely in its current state.")
         else:
-            self.summary_label.setText("Review the available Windows target and select it when ready.")
+            self.state_label.setText("Offline target available")
+            self.summary_label.setText("Review the available offline Windows target and select it when ready.")
 
         for target in view.targets:
             widget = TargetCardWidget(target, self._select_target)
@@ -280,7 +315,7 @@ class HomeWindow(QMainWindow):
             app.setFont(QFont("Segoe UI", 10))
         self.setStyleSheet(
             """
-            #HomeWindow { background: #0b0e12; }
+            #HomeWindow, #HomeRoot, #TargetScroll, #TargetViewport, #TargetRoot { background: #0b0e12; border: none; }
             QLabel { color: #e9edf2; }
             #Eyebrow { color: #7f8a98; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
             #Title { color: #f7f9fb; font-size: 30px; font-weight: 650; }
@@ -296,7 +331,6 @@ class HomeWindow(QMainWindow):
             #DetailsButton:hover { background: #151c22; }
             #InactiveAction { background: #151b21; color: #65717d; border: 1px solid #232d36; border-radius: 8px; padding: 8px 12px; }
             #AdvancedText { background: #0c1116; color: #c9d3da; border: 1px solid #202b34; border-radius: 8px; font-family: Consolas, monospace; font-size: 11px; }
-            QScrollArea { background: transparent; }
             QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
             QScrollBar::handle:vertical { background: #29343e; border-radius: 4px; min-height: 30px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
