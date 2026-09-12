@@ -1,18 +1,11 @@
-# BC Sentinel v0.11.0-beta.6 — B6-2 Implementation Checkpoint 1
+# BC Sentinel v0.11.0-beta.6 — B6-2 Complete Stitch UI Migration
 
-Status: **IMPLEMENTED ON FEATURE BRANCH / LOCAL GATE DEFINED / REAL WINDOWS VISUAL ACCEPTANCE PENDING**
+Status: **IMPLEMENTED ON FEATURE BRANCH / STATIC AUDIT COMPLETE / WINDOWS LOCAL + VISUAL GATE PENDING**
 
 Branch:
 
 ```text
 feature/v011-beta6-b62-home-security-overview
-```
-
-Parent development checkpoint:
-
-```text
-B6-1 Unified Home Target Discovery
-ff52bb3d79e0b2a6f71a80dc874d5990186c51ae
 ```
 
 Stable release remains unchanged:
@@ -23,50 +16,82 @@ stable/v011-beta6-b60
 cf82b062ee8a95a116a449a0daf03bebd0b67cea
 ```
 
-## Implemented
+## Sources of truth
 
-B6-2 now contains the first primary consumer-facing BC Sentinel Home foundation:
+Functional truth remains the existing BC Sentinel code, engine contracts and accepted safety gates.
 
-- `Security overview` Home surface;
-- conservative protection-posture hero;
-- four protection cards:
-  - Malware protection
-  - Behavior & EDR
-  - Web protection
-  - System & Recovery
-- technical evidence through **Advanced details** on every card;
-- passive `Refresh status`;
-- visible but disabled `Smart Scan` placeholder for B6-3;
-- `System & Recovery` navigation into the accepted B6-1 Home without automatic target discovery;
-- honest `Recent activity` unavailable state instead of invented incident data;
-- deterministic design tokens for spacing, motion and colors;
-- premium dark surface ownership for page, viewport, cards and evidence panels;
-- reduced-motion override through `BC_SENTINEL_REDUCED_MOTION`;
-- subtle page/card opacity entrance and Advanced-details expansion;
-- B6-2 deterministic pytest coverage;
-- B6-2 deterministic acceptance tool;
-- B6-2 Windows local gate;
-- standalone packaging entry.
-
-## Runtime truth model
-
-B6-2 deliberately separates capability presence from current protection state.
-
-The default passive provider may prove that a source/engine is available, but it does **not** promote this to `Active` or `Protected`.
+Visual truth is the complete product-owner bundle:
 
 ```text
-module exists           -> ENGINE_AVAILABLE
-accepted runtime proof  -> may become ACTIVE
-missing runtime proof   -> neutral / UNVERIFIED posture
-verified OFF/ATTENTION  -> ATTENTION posture
-all required verified ACTIVE -> PROTECTED posture
+stitch_bc_sentinel_antivirus_ui.zip
 ```
 
-This is a safety and product-trust requirement. A green protected state must always be supported by current runtime evidence.
+All 15 files in the bundle were reviewed. Detailed evidence is recorded in `BC_SENTINEL_STITCH_UI_AUDIT.md` and the persistent visual rules in `BC_SENTINEL_UI_SOURCE_OF_TRUTH.md`.
 
-## Safety state
+## Migration completed
 
-B6-2 adds no mutation or protection-control authority.
+B6-2 now uses one shared Sentinel Elite design system across the Home shell and secondary consumer-security surfaces:
+
+- persistent BC Sentinel shell;
+- Dashboard;
+- Scansione;
+- Quarantena;
+- Cronologia;
+- Protezione;
+- Impostazioni;
+- System & Recovery entry surface;
+- reusable threat-alert dialog for real detection events;
+- shared vector Sentinel mark;
+- shared Material-like line icon renderer;
+- shared color, spacing, radius, motion and breakpoint tokens;
+- shared table, empty-state, panel, toggle and action language.
+
+`sentinel/home_security_ui.py` is the single public application-shell entry. The internal `home_security_ui_impl.py` is retained only as the Dashboard presentation component; navigation, responsive behavior, shared styling and secondary surfaces are owned by the public shell and shared design-system modules. It is not a second user-facing UI.
+
+## Stitch mapping
+
+| ZIP reference | Runtime surface |
+| --- | --- |
+| `dashboard_*` | Dashboard/Home shell, status hero, KPI row, protection modules |
+| `scansione_*` | Scan task surface and scan action hierarchy |
+| `quarantena_*` | Quarantine management/table surface |
+| `cronologia_*` | Dense event-history/command-center table |
+| `impostazioni_*` | Protection/general/folders/allowlist settings composition |
+| `minaccia_rilevata_*` | Critical threat modal component |
+| `bc_sentinel_app_icon/*` | Vector Sentinel shield/S mark direction |
+| `sentinel_elite/DESIGN.md` | Canonical app shell, typography, palette, spacing and rounded surfaces |
+| `brutalist_luxe_command/DESIGN.md` | Scoped data-density language for History/evidence only |
+
+## Runtime truth preserved
+
+The visual migration does not promote capability presence to active protection.
+
+```text
+module exists                -> ENGINE_AVAILABLE
+accepted runtime proof       -> may become ACTIVE
+missing runtime proof        -> UNVERIFIED
+verified OFF/ATTENTION       -> ATTENTION
+all required verified ACTIVE -> PROTECTED
+```
+
+No green `Protected` state is allowed without current accepted runtime evidence.
+
+## No fabricated operational data
+
+The Stitch screenshots contain example security data, but the real application does not copy those fixtures into runtime screens.
+
+Until real providers are connected:
+
+- Dashboard KPI values use unavailable/neutral values;
+- Quarantine shows an explicit empty state;
+- History shows an explicit empty state;
+- Settings do not invent stored configuration;
+- Scan does not simulate progress;
+- threat modal appears only when instantiated with a real detection payload.
+
+## Safety boundary unchanged
+
+B6-2 adds no security mutation authority.
 
 ```text
 startup scan dispatch       = false
@@ -82,78 +107,89 @@ registry/boot write          = false
 target execution            = false
 ```
 
-`Refresh status` rebuilds passive status evidence only.
+System & Recovery still opens the accepted B6-1 flow in `IDLE`; discovery remains explicit.
 
-Opening `System & Recovery` constructs the B6-1 UI in `IDLE` state and does not run discovery.
+## Responsive contract
 
-## Visual contract implemented
+The new shell is intentionally responsive rather than a compressed desktop screenshot:
 
-The current B6-2 source fixes the visual direction as a product contract rather than a later polish pass:
+- large desktop: 260 px sidebar, horizontal hero, 3 KPI columns, 2 × 2 module grid;
+- standard laptop: 220 px sidebar, stacked hero/actions, single-column KPI/module layout when required;
+- tablet/narrow window: 76 px icon rail, single-column content;
+- minimum supported narrow window: outer page remains free of horizontal scrolling;
+- secondary screens have explicit compact reflow;
+- tables remain contained inside their own surface rather than widening the application shell.
+
+The page host is synchronized to the actual `QScrollArea` viewport width. The previous one-third-width and 229 px overflow regressions are now explicit gate failures.
+
+## Typography and tokens
+
+Canonical core values:
 
 ```text
-typography: Segoe UI Variable -> Segoe UI -> system fallback
-spacing:    4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
-page pad:   32 px desktop foundation
-motion:     140 / 200 / 250 / 300 ms + restrained stagger
-canvas:     explicit near-black ownership
-surfaces:   layered dark neutrals
-accent:     restrained cool ice/cyan
-success:    used only for proven positive state
-warning:    used only for verified attention state
-unknown:    neutral, never green
+canvas             #0f1412
+surface            #1c211f
+surface high       #262b29
+border             #3c4a42
+text               #dde4dd
+text secondary     #bbcabf
+accent             #10b981
+verified accent    #4edea3
+warning            amber
+critical           coral/red
+spacing            4 / 8 / 16 / 24 / 32 / 48
+motion             140 / 200 / 250 / 300 ms
 ```
 
-No white/native Qt viewport should be able to appear through an unowned background surface.
+Preferred typography follows Stitch (`Hanken Grotesk` display, `Plus Jakarta Sans` body) with Windows-safe fallback to `Segoe UI Variable Text` / `Segoe UI`. Dense evidence/history may use Cascadia Mono / Consolas.
 
-## Gate
+## Validation gate
 
-Run:
+Run from normal, non-elevated PowerShell:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TEST-V011-BETA6-B62.ps1
 ```
 
-The gate:
+The gate now verifies:
 
-1. runs the complete B6-1 local gate first;
-2. compiles B6-2 model/UI/packaging/tests/acceptance;
-3. runs B6-0 + B6-1 + B6-2 deterministic regression tests;
-4. runs B6-2 deterministic acceptance;
-5. runs Home self-check;
-6. runs offscreen Qt smoke;
-7. verifies four Home cards and disabled Smart Scan;
-8. verifies conservative runtime-truth behavior;
-9. verifies visual token and dark-surface contracts;
-10. checks hashes of predecessor/security source files to prove the gate did not mutate them.
+1. complete B6-1 predecessor gate;
+2. compileall of shared design system, all migrated UI modules, tests and acceptance tooling;
+3. B6-0/B6-1/B6-2 pytest regression suite;
+4. conservative runtime truth;
+5. six-page Stitch shell;
+6. shared iconography/tokens;
+7. disabled Smart Scan and Full Scan execution in B6-2;
+8. no fabricated Quarantine/History rows;
+9. large-desktop geometry;
+10. laptop responsive reflow;
+11. tablet icon-rail reflow;
+12. zero outer horizontal overflow;
+13. Qt offscreen application construction;
+14. unchanged hashes for security/predecessor sources during the gate;
+15. presence/compilation of the internal Dashboard presentation component while the public shell remains `sentinel.home_security_ui`.
 
 ## Acceptance boundary
 
-B6-2 must **not** be called an accepted checkpoint merely because the implementation and gate exist in Git.
+The migration must not be called stable until the updated branch passes the Windows local gate and a real visual review confirms:
 
-Before checkpoint acceptance, the real Windows Home must be visually reviewed for:
-
-- typography quality;
-- spacing rhythm;
-- card alignment;
-- hierarchy;
-- color/contrast;
-- no white/native theme leaks;
-- motion quality;
-- Advanced-details expansion;
-- minimum-window layout;
-- passive System & Recovery navigation;
+- no clipping or overflow;
+- faithful Stitch proportions;
+- typography and spacing quality;
+- correct desktop/laptop/narrow reflow;
+- no native-white Qt leaks;
+- correct focus/disabled/hover states;
+- passive System & Recovery behavior;
 - no false `Protected` claim.
 
-The non-fatal PySide6 `QFontDatabase` warning observed during B6-1 remains a packaging issue to resolve before release packaging; B6-2 does not treat it as proof of a UI failure when Qt construction and tests pass.
+B6-1 real offline multi-disk / locked-BitLocker hardware acceptance remains separately pending.
 
-B6-1 real offline multi-disk and locked-BitLocker hardware edge-case acceptance remains separately pending and is not waived by B6-2.
+## Next milestone
 
-## Next boundary
-
-If B6-2 passes its local and real-Windows visual gate, the next roadmap block is:
+Only after the B6-2 Windows gate and visual acceptance:
 
 ```text
 B6-3 — One-Click Smart Scan
 ```
 
-B6-3 may connect an actual scan action only after defining a truthful scan-state contract, cancellation/progress behavior, safe concurrency, result semantics and Detection & Attack Coverage measurement. No B6-3 execution authority is introduced in this checkpoint.
+No B6-3 scan execution authority is introduced by this migration.
