@@ -37,11 +37,11 @@ jobs:
       - name: Compile migrated UI
         shell: pwsh
         run: |
-          python -m compileall -q sentinel/home_security_model.py sentinel/ui_design_system.py sentinel/ui_styles.py sentinel/ui_pages.py sentinel/home_security_ui_impl.py sentinel/home_security_ui.py sentinel/rescue_home_ui.py tools/v011_beta6_b62_acceptance.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py
+          python -m compileall -q sentinel/home_security_model.py sentinel/ui_design_system.py sentinel/ui_styles.py sentinel/ui_pages.py sentinel/home_security_ui_impl.py sentinel/home_security_ui.py sentinel/rescue_home_ui.py tools/v011_beta6_b62_acceptance.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py
       - name: Deterministic regression suite
         shell: pwsh
         run: |
-          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py
+          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py
       - name: Stitch deterministic acceptance
         shell: pwsh
         run: python -m tools.v011_beta6_b62_acceptance --output acceptance-v011-beta6-b62-ci.json
