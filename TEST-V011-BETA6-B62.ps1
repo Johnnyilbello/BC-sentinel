@@ -4,7 +4,7 @@ Set-Location -LiteralPath $PSScriptRoot
 
 function Fail([string]$Stage,[string]$Message){
     Write-Host ('B62 FAIL STAGE='+$Stage+' | '+$Message) -ForegroundColor Red
-    Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-2 STITCH UI MIGRATION - FAIL' -ForegroundColor Red
+    Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-2 VISUAL CONSISTENCY REFINEMENT - FAIL' -ForegroundColor Red
     exit 1
 }
 
@@ -16,11 +16,11 @@ try{
     if(-not(Test-Path -LiteralPath '.\TEST-V011-BETA6-B61.ps1')){Fail 'preflight' 'B6-1 local regression gate missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b62_acceptance.py')){Fail 'preflight' 'B6-2 acceptance tool missing'}
     if(-not(Test-Path -LiteralPath '.\BC_SENTINEL_STITCH_UI_AUDIT.md')){Fail 'preflight' 'Stitch audit/source-of-truth evidence missing'}
-    if(-not(Test-Path -LiteralPath '.\sentinel\home_security_ui_impl.py')){Fail 'preflight' 'Stitch dashboard presentation component missing'}
+    if(-not(Test-Path -LiteralPath '.\sentinel\home_security_ui_impl.py')){Fail 'preflight' 'Dashboard presentation component missing'}
     $Py='.\.venv\Scripts\python.exe'
 
-    Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-2 COMPLETE STITCH UI MIGRATION' -ForegroundColor Cyan
-    Write-Host 'Functional truth remains in BC Sentinel. Visual truth comes from stitch_bc_sentinel_antivirus_ui.zip.' -ForegroundColor Yellow
+    Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-2 DASHBOARD VISUAL CONSISTENCY REFINEMENT' -ForegroundColor Cyan
+    Write-Host 'Dashboard remains the visual source of truth. Secondary pages must extend it without changing security semantics.' -ForegroundColor Yellow
 
     $Protected=@(
         '.\sentinel\advanced_antimalware.py',
@@ -46,7 +46,7 @@ try{
 
     $Base=Join-Path $env:USERPROFILE 'BCSentinel-TestTemp'
     New-Item -ItemType Directory -Path $Base -Force|Out-Null
-    $PytestTemp=Join-Path $Base ('b62-stitch-pytest-'+[guid]::NewGuid().ToString('N'))
+    $PytestTemp=Join-Path $Base ('b62-visual-pytest-'+[guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $PytestTemp -Force|Out-Null
     $OldQt=$env:QT_QPA_PLATFORM
     $OldMotion=$env:BC_SENTINEL_REDUCED_MOTION
@@ -64,26 +64,31 @@ try{
             packaging\home_security_ui_entry.py `
             tools\v011_beta6_b62_acceptance.py `
             tests\test_v011_beta6_b62_home_security_overview.py `
+            tests\test_v011_beta6_b62_visual_consistency_refinement.py `
             tests\test_v011_beta6_b61_home_real_ui_regressions.py
-        if($LASTEXITCODE -ne 0){Fail 'compileall' 'Stitch UI migration compileall failed'}
+        if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-2 visual consistency compileall failed'}
 
         Write-Host ('B62 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
         & $Py -m pytest -q --basetemp $PytestTemp `
             tests/test_v011_beta6_b60_technician_ux_foundation.py `
             tests/test_v011_beta6_b61_unified_home_target_discovery.py `
             tests/test_v011_beta6_b61_home_real_ui_regressions.py `
-            tests/test_v011_beta6_b62_home_security_overview.py
-        if($LASTEXITCODE -ne 0){Fail 'pytest-b62' 'B6-0/B6-1/B6-2 regression tests failed'}
+            tests/test_v011_beta6_b62_home_security_overview.py `
+            tests/test_v011_beta6_b62_visual_consistency_refinement.py
+        if($LASTEXITCODE -ne 0){Fail 'pytest-b62' 'B6-0/B6-1/B6-2 regression or visual consistency tests failed'}
 
         & $Py -m tools.v011_beta6_b62_acceptance --output '.\acceptance-v011-beta6-b62.json'
-        if($LASTEXITCODE -ne 0){Fail 'acceptance-b62' 'B6-2 Stitch deterministic acceptance failed'}
+        if($LASTEXITCODE -ne 0){Fail 'acceptance-b62' 'B6-2 deterministic acceptance failed'}
         $A=Get-Content -Raw -LiteralPath '.\acceptance-v011-beta6-b62.json' -Encoding UTF8|ConvertFrom-Json
         if(-not[bool]$A.passed){Fail 'acceptance-b62' ('B6-2 acceptance failures: '+(($A.failures|ForEach-Object{[string]$_}) -join ', '))}
         $Required=@(
             'parent_b61_contract_green','startup_scan_dispatch_false','startup_rescue_dispatch_false','no_destructive_authority',
             'default_never_claims_active','missing_runtime_proof_blocks_protected','smart_scan_disabled_in_ui','six_stitch_pages_present',
-            'all_nav_icons_present','large_no_horizontal_overflow','large_hero_fluid','laptop_compact_reflow','laptop_no_horizontal_overflow',
-            'tablet_icon_rail','tablet_no_horizontal_overflow','quarantine_no_fake_rows','history_no_fake_rows'
+            'all_nav_icons_present','dark_surface_contract','secondary_dark_surface_contract','dashboard_structure_preserved',
+            'large_no_horizontal_overflow','large_hero_fluid','laptop_compact_reflow','laptop_no_horizontal_overflow',
+            'tablet_icon_rail','tablet_no_horizontal_overflow','scan_empty_composition_bounded',
+            'quarantine_empty_composition_bounded','history_empty_composition_bounded','quarantine_no_fake_rows','history_no_fake_rows',
+            'protection_hierarchy_present','settings_four_sections_present'
         )
         foreach($name in $Required){if(-not[bool]$A.checks.$name){Fail 'acceptance-b62' ('required check failed: '+$name)}}
 
@@ -106,13 +111,13 @@ try{
 
         foreach($path in $Protected){
             $after=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-            if($after -ne $BeforeProtected[$path]){Fail 'protected-source' ('UI migration modified security/predecessor source during gate: '+$path)}
+            if($after -ne $BeforeProtected[$path]){Fail 'protected-source' ('visual refinement modified security/predecessor source during gate: '+$path)}
         }
 
-        Write-Host 'B62 LOCAL: B6-1 predecessor PASS | regressions PASS | Stitch source-of-truth PASS | six-page shell PASS | responsive geometry PASS | overflow PASS | no fake operational data PASS | runtime truth PASS | Smart Scan disabled | no destructive authority added' -ForegroundColor Green
+        Write-Host 'B62 LOCAL: predecessor PASS | regressions PASS | dark surface PASS | typography contrast PASS | intentional empty states PASS | Protection/Settings hierarchy PASS | responsive overflow PASS | runtime truth PASS | no protected security source changed' -ForegroundColor Green
         Write-Host 'B62 STATUS: LOCAL IMPLEMENTATION GATE PASS. Real Windows visual acceptance remains REQUIRED before checkpoint stabilization.' -ForegroundColor Yellow
         Write-Host 'NOTE: B6-1 offline multi-disk/locked-BitLocker hardware edge cases remain separately pending.' -ForegroundColor Yellow
-        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-2 COMPLETE STITCH UI MIGRATION - LOCAL PASS / WINDOWS VISUAL GATE PENDING' -ForegroundColor Green
+        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-2 DASHBOARD VISUAL CONSISTENCY - LOCAL PASS / WINDOWS VISUAL GATE PENDING' -ForegroundColor Green
         exit 0
     }
     finally{
