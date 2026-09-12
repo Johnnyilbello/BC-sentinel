@@ -1,79 +1,131 @@
 # BC Sentinel UI Source of Truth
 
-Status: ACTIVE VISUAL CONTRACT
+Status: **ACTIVE VISUAL CONTRACT**  
 Applies to: Beta6 Home and all future desktop UI milestones unless explicitly superseded by an approved redesign.
 
-## Primary evidence
+## Primary rule
 
-The complete original product-owner Stitch bundle has been audited file-by-file. The detailed inventory and findings live in `BC_SENTINEL_STITCH_UI_AUDIT.md`.
+**The current accepted Dashboard is the visual source of truth for the entire product.**
 
-Primary visual reference for Home: `dashboard_bc_sentinel_v0.1.x`.
-Supporting references: scan, quarantine, history, settings, threat-detected and app-icon screens, plus the `Sentinel Elite` and `Brutalist Luxe Command` design documents.
+Secondary pages must feel like extensions of the Dashboard, not independently designed templates. The Dashboard must not be redesigned without a functional or responsive necessity.
 
-## Visual-language decision
+The original product-owner Stitch bundle remains supporting design evidence and historical reference. Its detailed inventory lives in `BC_SENTINEL_STITCH_UI_AUDIT.md`, but it no longer overrides the visual decisions already consolidated in the current Dashboard.
 
-`Sentinel Elite` is the canonical application shell and consumer-security language.
+Practical rule:
 
-Use it for:
+```text
+Current Dashboard -> primary visual contract
+Current BC Sentinel runtime/model -> functional/security truth
+Stitch bundle -> supporting visual evidence
+```
+
+## Unified product language
+
+Use the Dashboard language for:
 - Dashboard / Home;
-- scan surfaces;
-- quarantine;
-- settings;
+- Scansione;
+- Quarantena;
+- Cronologia;
+- Protezione;
+- Impostazioni;
 - threat overlays;
-- ordinary protection cards and controls.
+- System & Recovery where it is exposed from Home.
 
-`Brutalist Luxe Command` is a scoped expert/data-density sublanguage for event history, evidence tables, technical logs and other operator-heavy surfaces. Its zero-radius/monospace rules must not replace the Home shell.
+Dense History/evidence/log surfaces may use monospace typography and a slightly more technical density, but they must retain the same app background, semantic colors, borders, spacing system and shell.
+
+There is one application shell, not a Dashboard template plus a separate internal-page template.
 
 ## Core identity
 
-- Persistent 260 px desktop sidebar on Home.
-- Navigation order: Dashboard, Scansione, Quarantena, Cronologia, Protezione, Impostazioni.
-- Compact 56 px application top bar.
-- Deep green-charcoal canvas and layered surfaces.
-- Emerald `#10b981` is the primary brand/action accent.
-- No hacker/neon aesthetic and no arbitrary blue SaaS-dashboard look.
-- Tonal layering and subtle 1 px borders provide depth; heavy shadows are avoided.
-- Main Home content uses the full available desktop canvas with about 24 px internal margins.
-- Do not center the page with equal stretch spacers around the root. That pattern caused the real B6-2 clipping regression.
-- Normal Home must not require horizontal scrolling.
+- persistent 260 px desktop sidebar, compacting intentionally at narrower widths;
+- navigation order: Dashboard, Scansione, Quarantena, Cronologia, Protezione, Impostazioni;
+- compact application top bar;
+- deep green-charcoal app background with layered dark surfaces;
+- emerald `#10b981` as brand/action accent;
+- no accidental white/light surfaces;
+- no hacker/neon aesthetic and no generic blue SaaS-dashboard language;
+- subtle borders and tonal layering instead of heavy shadows;
+- full available desktop canvas with coherent gutters;
+- no horizontal scrolling in normal Home or secondary pages.
 
-## Dashboard composition
+## Dashboard preservation rule
 
-Canonical order:
+Canonical Dashboard composition remains:
 
-1. fixed sidebar + compact top bar;
+1. sidebar + compact top bar;
 2. status hero with Sentinel mark;
 3. Quick Scan / Full Scan actions;
 4. three KPI cards;
-5. one outer `Moduli Protezione` panel;
-6. 2 × 2 module cards inside that panel;
-7. optional compact recent-activity strip;
+5. `Moduli Protezione` outer panel;
+6. 2 × 2 module cards on wide desktop;
+7. compact recent-activity strip;
 8. Advanced details available without dominating the consumer view.
 
-The hero is horizontal on ordinary desktop widths and may reflow vertically only at smaller supported widths.
+Allowed Dashboard changes are limited to:
+- extracting or reusing shared components;
+- centralizing design tokens;
+- fixing responsive/overflow defects;
+- correcting technical inconsistencies required for global coherence.
+
+Do not restyle it merely to make it different.
+
+## Semantic design tokens
+
+Canonical token ownership lives in `sentinel/ui_design_system.py`.
+
+### Surfaces
+
+- `bg_app`: `#0f1412`
+- `bg_sidebar`: `#1c211f`
+- `bg_header`: `#0f1412`
+- `surface_1`: `#1c211f`
+- `surface_2`: `#262b29`
+- `surface_3`: `#313634`
+- `surface_nested`: `#131916`
+- `surface_lowest`: `#0a0f0d`
+- `border_subtle`: `#314038`
+- `border_strong`: `#46564d`
+
+### Text
+
+- `text_primary`: `#edf2ee`
+- `text_secondary`: `#c6d2ca`
+- `text_muted`: `#9aa89f`
+
+Secondary/muted text must remain readable on the Dashboard-derived dark surfaces. Automated contrast checks protect the normal text roles at WCAG-AA-level contrast where applicable.
+
+### Semantic colors
+
+- accent: `#10b981`
+- verified success: `#4edea3`
+- warning/unverified: `#f0b766`
+- critical/failure: `#ff8b82`
+- secondary information: `#adc6ff`
+- keyboard focus: `#6ffbbe`
+
+Warning and critical colors are state semantics, never decoration. A green/accent state must never imply active protection without accepted runtime evidence.
 
 ## Typography
 
-Stitch direction:
-- Hanken Grotesk for display/headlines where available;
-- Plus Jakarta Sans for body/labels where available;
-- technical evidence may use Cascadia Mono / Consolas.
+Application fallback:
 
-PySide fallback:
-`Plus Jakarta Sans` → `Segoe UI Variable Text` → `Segoe UI`.
+`Plus Jakarta Sans` -> `Segoe UI Variable Text` -> `Segoe UI`
 
-Desktop hierarchy:
-- major headline about 24–32 px;
-- module titles 15–18 px;
-- body 13–16 px;
-- labels 11–13 px.
+Technical evidence may use `Cascadia Mono` / `Consolas`.
 
-Body and secondary text must never be shrunk merely to force more content into the viewport.
+Central roles:
+- caption: 11 px;
+- body/bodyStrong: 13 px;
+- subtitle: 14 px;
+- section title: 18 px;
+- page title: 30 px;
+- metric: 24 px.
 
-## Spacing
+Body and secondary copy must never be made tiny or low-contrast simply to fit more content.
 
-Canonical Stitch rhythm:
-- base: 4 px;
+## Spacing and shape
+
+Canonical spacing rhythm:
 - xs: 4 px;
 - sm: 8 px;
 - md: 16 px;
@@ -81,43 +133,87 @@ Canonical Stitch rhythm:
 - xl: 32 px;
 - xxl: 48 px.
 
-Home canvas margin: about 24 px.
+Shape hierarchy:
+- controls/navigation: ~8 px radius;
+- cards/secondary panels: ~12–16 px;
+- hero/major panels: ~24 px;
+- toggles/pills: pill-shaped.
 
-## Shape hierarchy
+All pages share the same horizontal origin, gutter logic, page-header rhythm and section spacing.
 
-Home / Sentinel Elite:
-- nav and compact buttons: ~8 px radius;
-- KPI and inner cards: ~16 px;
-- hero and major panels: ~24 px;
-- toggles: pill-shaped.
+## Shared secondary-page structure
 
-Brutalist zero-radius styling is reserved for dense history/log/evidence views.
+Every internal page uses the same shell and shared primitives where appropriate:
+- AppShell;
+- Sidebar;
+- TopBar;
+- scroll-safe PageContainer;
+- PageHeader;
+- SectionHeader;
+- Panel/Card;
+- reusable EmptyState;
+- reusable SettingsRow;
+- semantic StatusBadge.
 
-## Color semantics
+PageHeader consists of a clear page title plus readable concise subtitle. Secondary pages must not start from a different visual origin than Dashboard content.
 
-Core Home palette:
-- canvas `#0f1412`;
-- panel `#1c211f`;
-- higher surface `#262b29`;
-- border `#3c4a42`;
-- primary text `#dde4dd`;
-- secondary text `#bbcabf`;
-- brand emerald `#10b981`;
-- verified secure emerald `#4edea3`.
+## Empty states
 
-Semantic use:
-- emerald = verified safe state or allowed primary action;
-- amber = warning/unverified;
-- coral/red = active threat/failure;
-- blue = secondary information only.
+Empty states are intentional states, not placeholders and not full-screen voids.
 
-A brand color must never imply active protection without current runtime evidence.
+Rules:
+- do not invent threats, scans, history events, settings values or metrics;
+- use the single shared `EmptyState` pattern where the same semantic applies;
+- bound the empty-state height so the page does not become a small header followed by an arbitrary empty screen;
+- show only actions/providers that really exist;
+- if a real provider is absent, say so plainly.
 
-## Iconography
+Scan uses a bounded task-state panel because its action hierarchy differs from data-list empty states.
 
-- Use coherent line icons matching the Stitch/Material-symbol direction.
-- Do not use emoji/unicode text glyphs as production navigation icons; Windows fallback fonts make them inconsistent.
-- The brand mark is the emerald nested Sentinel shield/S motif. A single-letter placeholder is not the final identity.
+## Protection hierarchy
+
+Every protection module must communicate separately:
+1. icon / identity;
+2. module name;
+3. concise description;
+4. engine/status badge;
+5. runtime verification state;
+6. read-only enabled/off indicator when applicable;
+7. real manual action only when authorized by the current contract.
+
+Engine/source availability is never equivalent to runtime verification.
+
+## Settings hierarchy
+
+Settings are grouped into:
+- Protezione;
+- Generale;
+- Cartelle monitorate;
+- Esclusioni / Allowlist.
+
+Reusable `SettingsRow` structure:
+
+```text
+[optional icon]  Setting title                 [control]
+                 Description
+                 Secondary/runtime metadata
+```
+
+No control may visually imply a functional setting if its provider/runtime authority is not connected.
+
+## Sidebar and Topbar
+
+Sidebar:
+- preserve the current green active state;
+- inactive items remain clearly readable but subordinate;
+- Quick Scan has more hierarchy than Supporto/Account;
+- footer separator, alignment and spacing must feel part of the same design system.
+
+Topbar:
+- keep the current structure;
+- `BC SENTINEL · Sezione` remains compact and secondary to page content;
+- `Aggiorna stato` is a subtle/ghost secondary action with visible hover/focus;
+- it must not compete with primary security actions.
 
 ## Runtime truth rule
 
@@ -125,51 +221,75 @@ Visual fidelity never overrides security truthfulness.
 
 - Engine/source availability is not proof of active protection.
 - `Protected` requires accepted current runtime evidence.
-- Unverified state must remain visually distinct from protected state.
+- Unverified state remains visually distinct from protected state.
 - Controls not implemented in the current milestone stay disabled rather than being mocked as functional.
 - Rescue/discovery remains explicit and passive at startup.
+- No UI refinement may add repair/quarantine/unlock/write/format/reimage authority.
 
-## Module cards
+## Responsive contract
 
-- One outer modules container, as in the original Dashboard.
-- Inner module cards use icon, title, concise description and read-only state indicator/toggle.
-- `Dettagli avanzati` remains available on every relevant protection layer.
-- Runtime switches become interactive only after their controlling engine contract is implemented and accepted.
-- System & Recovery may expose its accepted B6-1 entry action while retaining all B6-1 fail-closed behavior.
+BC Sentinel is desktop-first but must survive intentional resize.
 
-## Motion / cinematics
+Acceptance covers at minimum:
+- large desktop;
+- standard laptop/desktop;
+- narrow/icon-rail width;
+- minimum supported window.
 
-Motion is functional and restrained:
-- 140 ms micro-interactions;
-- about 200 ms state transitions;
-- about 250 ms advanced-panel expansion;
-- up to 300 ms page entrance;
-- subtle stagger may be used sparingly;
-- reduced-motion mode remains supported;
-- no decorative looping motion competing with security status.
+When space decreases:
+- sidebar compacts intentionally;
+- hero/actions stack;
+- card grids reflow;
+- settings sections stack;
+- page-header actions reflow;
+- no outer horizontal scrollbar is allowed;
+- no clipping, overlap, cut card or off-viewport control is acceptable.
 
-## Required geometry acceptance
+Secondary scroll hosts must re-sync when a vertical scrollbar appears so its scrollbar extent cannot create stale horizontal overflow.
 
-The automated B6-2 gate must verify at 1600 px desktop width that:
-- the Home root occupies the expected fluid canvas;
-- hero and modules panel do not collapse into a narrow center column;
-- 2-column module cards are not clipped;
-- KPI cards remain readable;
-- horizontal scroll maximum is zero.
+## Accessibility / interaction
 
-Minimum supported desktop width must reflow safely without overflow.
+Required:
+- visible keyboard focus;
+- readable normal/secondary/muted text;
+- hover, pressed, selected and disabled states;
+- status communicated with text as well as color;
+- useful accessible names on important controls;
+- adequate clickable targets;
+- consistent tooltips only where they clarify unavailable/read-only behavior.
 
 ## Anti-regression rules
 
 Do not reintroduce:
 - white/light accidental viewports;
-- generic white primary buttons unrelated to the Sentinel palette;
-- a narrow website-like centered column on desktop;
-- equal horizontal stretch siblings around the Home root;
+- a second visual template for internal pages;
+- narrow website-like centered content on desktop;
+- huge unstructured empty regions;
 - tiny low-contrast body text;
 - unicode/emoji fallback icons in primary navigation;
-- inconsistent card radii/spacing;
-- positive/green protection status without runtime proof;
+- inconsistent card radii/gutters;
+- green/positive protection status without runtime proof;
+- enabled scan/quarantine actions without actual authority;
+- horizontal page overflow;
 - a separate Technician UI as the primary product mode.
 
-The product remains one Home experience with simple information first and complete technical evidence available through Advanced details.
+## Required validation
+
+The automated B6-2 gate must cover:
+- B6-0/B6-1 safety regressions;
+- current B6-2 functional/runtime-truth regressions;
+- Dashboard structure preservation;
+- semantic dark ownership for secondary scroll surfaces;
+- normal text contrast checks;
+- shared PageHeader/EmptyState/Settings hierarchy;
+- bounded Scan/Quarantine/History empty compositions;
+- Protection hierarchy;
+- large/laptop/narrow responsive geometry;
+- zero outer/secondary horizontal overflow;
+- passive self-check;
+- offscreen Qt construction;
+- protected-source hash checks in the local Windows gate.
+
+A real Windows visual review is still required before checkpoint stabilization. The intended final perception is simple:
+
+> The Dashboard has been extended to the entire product.
