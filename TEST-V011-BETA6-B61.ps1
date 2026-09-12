@@ -13,15 +13,17 @@ try{
     $principal=New-Object Security.Principal.WindowsPrincipal($id)
     if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){Fail 'preflight' 'Run B6-1 from normal non-elevated PowerShell.'}
     if(-not(Test-Path -LiteralPath '.\.venv\Scripts\python.exe')){Fail 'preflight' '.venv not available'}
-    if(-not(Test-Path -LiteralPath '.\TEST-V011-BETA6-B60.ps1')){Fail 'preflight' 'accepted B6-0 gate missing'}
+    if(-not(Test-Path -LiteralPath '.\tests\test_v011_beta6_b60_technician_ux_foundation.py')){Fail 'preflight' 'accepted B6-0 regression tests missing'}
+    if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b60_acceptance.py')){Fail 'preflight' 'accepted B6-0 deterministic acceptance missing'}
     $Py='.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-1 UNIFIED HOME TARGET DISCOVERY UX' -ForegroundColor Cyan
     Write-Host 'One Home experience. Discovery is explicit and read-only. Advanced details retain technical evidence.' -ForegroundColor Yellow
 
+    # Protect only predecessor/runtime sources that are actually part of the current repository snapshot.
+    # Historical B6-0 harness entries protection_service_core.py and realtime.py are not present in this source tree,
+    # so B6-1 validates the accepted B6-0 contract through its deterministic pytest + acceptance tool instead.
     $Protected=@(
-        '.\sentinel\protection_service_core.py',
-        '.\sentinel\realtime.py',
         '.\sentinel\edr.py',
         '.\sentinel\edr_service_bridge.py',
         '.\sentinel\rescue_target_discovery.py',
@@ -35,10 +37,6 @@ try{
         $BeforeProtected[$path]=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
     }
 
-    Write-Host 'B61 PREDECESSOR GATE: running accepted B6-0 gate...' -ForegroundColor DarkCyan
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\TEST-V011-BETA6-B60.ps1'
-    if($LASTEXITCODE -ne 0){Fail 'predecessor-b60' ('accepted B6-0 gate failed exit='+$LASTEXITCODE)}
-
     $Base=Join-Path $env:USERPROFILE 'BCSentinel-TestTemp'
     New-Item -ItemType Directory -Path $Base -Force|Out-Null
     $PytestTemp=Join-Path $Base ('b61-pytest-'+[guid]::NewGuid().ToString('N'))
@@ -46,8 +44,16 @@ try{
     $OldQt=$env:QT_QPA_PLATFORM
     $env:QT_QPA_PLATFORM='offscreen'
     try{
-        & $Py -m compileall -q sentinel\rescue_home_ui_model.py sentinel\rescue_home_ui.py packaging\rescue_home_ui_entry.py tools\v011_beta6_b61_acceptance.py tests\test_v011_beta6_b61_unified_home_target_discovery.py
-        if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-1 compileall failed'}
+        & $Py -m compileall -q sentinel\rescue_home_ui_model.py sentinel\rescue_home_ui.py packaging\rescue_home_ui_entry.py tools\v011_beta6_b60_acceptance.py tools\v011_beta6_b61_acceptance.py tests\test_v011_beta6_b60_technician_ux_foundation.py tests\test_v011_beta6_b61_unified_home_target_discovery.py
+        if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-0/B6-1 compileall failed'}
+
+        Write-Host 'B61 PREDECESSOR CONTRACT: validating accepted B6-0 deterministic acceptance...' -ForegroundColor DarkCyan
+        & $Py -m tools.v011_beta6_b60_acceptance --output '.\acceptance-v011-beta6-b60-b61-regression.json'
+        if($LASTEXITCODE -ne 0){Fail 'predecessor-b60' 'accepted B6-0 deterministic acceptance failed'}
+        $B60=Get-Content -Raw -LiteralPath '.\acceptance-v011-beta6-b60-b61-regression.json' -Encoding UTF8|ConvertFrom-Json
+        if(-not[bool]$B60.passed){Fail 'predecessor-b60' 'accepted B6-0 acceptance JSON did not pass'}
+        if(-not[bool]$B60.checks.no_destructive_authority){Fail 'predecessor-b60' 'B6-0 destructive-authority contract changed'}
+        if(-not[bool]$B60.checks.startup_dispatch_disabled){Fail 'predecessor-b60' 'B6-0 startup-dispatch contract changed'}
 
         Write-Host ('B61 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
         & $Py -m pytest -q --basetemp $PytestTemp tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py
@@ -80,7 +86,7 @@ try{
             if($after -ne $BeforeProtected[$path]){Fail 'protected-source' ('B6-1 modified frozen/predecessor source during gate: '+$path)}
         }
 
-        Write-Host 'B61 LOCAL: B6-0 predecessor PASS | B6-1 deterministic tests PASS | synthetic acceptance PASS | Home Qt smoke PASS | passive startup PASS | no destructive authority added' -ForegroundColor Green
+        Write-Host 'B61 LOCAL: B6-0 deterministic predecessor PASS | B6-0/B6-1 tests PASS | synthetic acceptance PASS | Home Qt smoke PASS | passive startup PASS | no destructive authority added' -ForegroundColor Green
         Write-Host 'B61 STATUS: LOCAL IMPLEMENTATION GATE PASS. Real Windows target/multi-disk/BitLocker acceptance is still REQUIRED before checkpoint stabilization.' -ForegroundColor Yellow
         Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-1 UNIFIED HOME TARGET DISCOVERY - LOCAL PASS / WINDOWS GATE PENDING' -ForegroundColor Green
         exit 0
