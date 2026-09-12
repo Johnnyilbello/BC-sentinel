@@ -1,75 +1,181 @@
-# BC Sentinel — Stitch UI Migration Report
+# BC Sentinel — Dashboard Visual Consistency Refinement Report
 
 ## Scope
 
-The visual migration uses `stitch_bc_sentinel_antivirus_ui.zip` as the visual source of truth and the current BC Sentinel branch as the functional source of truth.
+This pass refines the complete B6-2 desktop UI after the initial Stitch migration.
 
-## Audited ZIP
+The governing rule is now:
 
-15/15 files reviewed:
+```text
+Current accepted Dashboard = primary visual source of truth
+Current BC Sentinel model/runtime = functional and security source of truth
+Original Stitch bundle = supporting visual evidence
+```
 
-- Dashboard HTML + screenshot
-- Scan HTML + screenshot
-- Quarantine HTML + screenshot
-- History HTML + screenshot
-- Settings HTML + screenshot
-- Threat-detected HTML + screenshot
-- App icon screenshot
-- Sentinel Elite design document
-- Brutalist Luxe Command design document
+The Dashboard is intentionally preserved. The objective is to make Scansione, Quarantena, Cronologia, Protezione and Impostazioni feel like direct extensions of it.
 
-## Decisions
+## Files changed in this refinement
 
-- **Sentinel Elite** is the global product shell and consumer-security visual language.
-- **Brutalist Luxe Command** is restricted to dense History/evidence surfaces.
-- Native Windows title-bar chrome is not duplicated inside PySide.
-- Example data from Stitch is never copied into operational runtime screens.
-- Runtime safety/truth overrides cosmetic fidelity where the mockup displays an optimistic protected state.
+Presentation / shell:
+- `sentinel/ui_design_system.py`
+- `sentinel/ui_styles.py`
+- `sentinel/ui_pages.py`
+- `sentinel/home_security_ui.py`
 
-## Structural migration
+Validation:
+- `tests/test_v011_beta6_b62_visual_consistency_refinement.py`
+- `tools/v011_beta6_b62_acceptance.py`
+- `TEST-V011-BETA6-B62.ps1`
+- `.github/workflows/b62-stitch-ui.yml`
 
-The application now has a single shared shell and six visual destinations matching the Stitch navigation:
+Documentation:
+- `BC_SENTINEL_UI_SOURCE_OF_TRUTH.md`
+- this report
 
-`Dashboard → Scansione → Quarantena → Cronologia → Protezione → Impostazioni`
+No antimalware/EDR/Web Protection/target-discovery/security-state engine source was intentionally modified by the visual refinement.
 
-Shared visual primitives centralize palette, spacing, radii, motion, breakpoints, line icons, Sentinel mark and read-only toggles.
+## Shared design system consolidated
 
-The Home Dashboard follows the Stitch hierarchy:
+Semantic colors now explicitly cover:
+- app/sidebar/header backgrounds;
+- primary/secondary/nested/elevated surfaces;
+- subtle/strong borders;
+- primary/secondary/muted copy;
+- BC emerald accent;
+- success, warning, critical and info states;
+- hover, pressed, selected, focus and disabled states.
 
-`Status hero → scan actions → 3 KPI cards → Moduli Protezione panel → 2×2 protection cards → recent activity`
+Typography roles now centralize:
+- caption;
+- body;
+- bodyStrong;
+- subtitle;
+- title;
+- pageTitle;
+- metric.
 
-## Responsive migration
+Existing 4/8/16/24/32/48 spacing, radius and motion tokens remain centralized.
 
-The former centered/narrow layout and stale minimum-size behavior are removed. The outer Home page is width-locked to the real scroll viewport and all primary layouts reflow intentionally.
+## Problems found and corrected
 
-The acceptance suite exercises large desktop, standard laptop and tablet/narrow geometries and treats any outer horizontal scrolling as a failure. Secondary pages use vertical-only shrink-safe scroll hosts, and compact/narrow modes reflow page headers, controls and settings composition intentionally.
+### 1. Secondary dark ownership
 
-## Cleanup
+The Dashboard already owned its dark canvas correctly, but secondary `QScrollArea` viewport/host surfaces were not explicitly included in the central dark selector. Native Qt background leakage could therefore appear as a white/light internal page.
 
-- public Home entry consolidated in `sentinel.home_security_ui`; the internal `home_security_ui_impl.py` remains only as the Dashboard presentation component, not as a second user-facing UI;
-- no emoji/unicode navigation icons;
-- old blue/white Rescue surface restyled into the shared Sentinel system;
-- common tokens moved to `sentinel/ui_design_system.py`;
-- centralized application/Rescue QSS moved to `sentinel/ui_styles.py`;
-- secondary surfaces moved to `sentinel/ui_pages.py`;
-- functional engines are not modified.
+Fixed by giving `SecondaryPageScroll`, `SecondaryPageViewport` and `SecondaryPageHost` explicit `bg_app` ownership.
+
+### 2. Secondary/muted contrast
+
+The previous gray-green copy was too subdued in several internal surfaces.
+
+Primary/secondary/muted text tokens were raised while preserving the Dashboard green-charcoal character. Deterministic WCAG contrast checks now protect normal secondary/muted copy against the main dark surfaces.
+
+### 3. Empty-page composition
+
+Scansione, Quarantena and Cronologia previously risked reading as a small control area followed by an unfinished empty screen.
+
+Fixed without fabricated security data:
+- one bounded reusable `EmptyState` for Quarantena/Cronologia;
+- bounded task-state composition for Scansione;
+- no fake rows, threats, metrics or events;
+- page content no longer expands empty states arbitrarily to fill the entire viewport.
+
+### 4. Shared page structure
+
+All internal pages now use the same Dashboard-derived origin and hierarchy through shared `PageHeader` and section primitives. Secondary pages use the same app shell, gutter logic, dark hierarchy and page-title rhythm.
+
+### 5. Protezione hierarchy
+
+Protection modules now explicitly separate:
+- identity/icon;
+- module name;
+- description;
+- engine/status badge;
+- runtime verification state;
+- read-only toggle/state indicator;
+- real action only when the current contract authorizes it.
+
+This preserves the critical distinction `engine available != runtime verified`.
+
+### 6. Impostazioni hierarchy
+
+Settings now use reusable `SettingsRow` and `SettingsSection` primitives with four clear groups:
+- Protezione;
+- Generale;
+- Cartelle monitorate;
+- Esclusioni / Allowlist.
+
+Unconnected controls remain visibly read-only/unavailable instead of appearing functional.
+
+### 7. Topbar / Sidebar refinement
+
+The Dashboard sidebar structure and green active state remain intact. Inactive content uses more readable secondary text, footer spacing/separation is more coherent, and `Aggiorna stato` remains a restrained ghost/secondary action.
+
+### 8. Narrow resize overflow
+
+The new visual-consistency suite found a real 8 px horizontal overflow after sequential navigation/resizing on a secondary page. Root cause: Qt could expose the vertical scrollbar one event-loop tick after the secondary host width had been fixed, leaving the host stale by exactly the scrollbar extent.
+
+Fixed in `_PageScroll` by re-synchronizing host width when:
+- the scroll viewport resizes;
+- the vertical scrollbar range changes;
+- the normal global responsive sync runs.
+
+The fix passed the subsequent Windows CI geometry suite.
 
 ## Functional preservation
 
-The migration does not grant new security authority. Smart Scan/Full Scan execution remains disabled in B6-2. Recovery keeps B6-1 passive startup and explicit discovery. Engine/source availability is never promoted to `Protected` without accepted runtime evidence.
+The refinement does not grant new security authority.
 
-Quarantine, History, Settings and Scan do not display example/mock data from Stitch. Where a real provider is not connected, the surface exposes an explicit unavailable/empty state instead.
+- Smart Scan / Full Scan execution remains disabled in B6-2.
+- no automatic scan starts at Home startup;
+- no automatic Rescue starts at Home startup;
+- Quarantine does not invent rows or actions without a real provider;
+- History does not invent events;
+- Settings does not invent persisted configuration;
+- `Protected` still requires accepted runtime evidence;
+- System & Recovery preserves B6-1 passive/explicit behavior.
 
-## Verification state
+## Automated validation
 
-Static Python syntax validation of the new migration modules was completed before commit generation.
+The Windows GitHub Actions gate runs:
+1. dependency installation;
+2. Python compile validation;
+3. B6-0/B6-1/B6-2 deterministic regression suite;
+4. dedicated visual-consistency tests;
+5. deterministic B6-2 acceptance;
+6. passive Home self-check;
+7. Qt offscreen smoke.
 
-The authoritative Windows/Qt runtime result remains the repository gate:
+The visual-consistency tests cover:
+- Dashboard structure preservation;
+- semantic token completeness;
+- text contrast;
+- explicit dark secondary surfaces;
+- shared PageHeader and EmptyState usage;
+- bounded empty compositions;
+- Quarantine controls and zero fabricated rows;
+- Protection hierarchy;
+- Settings shared rows and four sections;
+- laptop, narrow/icon-rail and minimum-window overflow checks across every page.
+
+## Acceptance boundary
+
+Automated Windows/Qt acceptance can prove deterministic geometry, dark ownership, hierarchy contracts and regression safety. It cannot replace a human visual review of the actual Windows application on the target display.
+
+Before B6-2 checkpoint stabilization, run:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TEST-V011-BETA6-B62.ps1
 ```
 
-The gate compiles the migrated presentation modules, runs B6-0/B6-1/B6-2 regressions, deterministic acceptance, six-page shell checks, runtime-truth checks, large/laptop/tablet responsive geometry, outer/secondary overflow checks and protected-source hash checks.
+Then open:
 
-A real Windows visual review remains mandatory before checkpoint stabilization.
+```powershell
+.\.venv\Scripts\python.exe -m sentinel.home_security_ui
+```
+
+Review Dashboard, Scansione, Quarantena, Cronologia, Protezione and Impostazioni at maximized/normal/narrow sizes.
+
+The target perception is:
+
+> **The Dashboard has been extended to the entire product.**
