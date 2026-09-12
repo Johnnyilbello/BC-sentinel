@@ -7,7 +7,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("BC_SENTINEL_REDUCED_MOTION", "1")
 
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QSizePolicy, QWidget
 
 from sentinel import home_security_model as model
 from sentinel import home_security_ui as ui
@@ -177,6 +177,7 @@ def test_window_startup_is_passive_and_smart_scan_is_disabled() -> None:
         assert calls == ["status"]
         assert window.windowTitle() == ui.WINDOW_TITLE
         assert window.smart_scan_button.isEnabled() is False
+        assert window.full_scan_button.isEnabled() is False
         assert len(window.card_widgets) == 4
         assert window.recovery_window is None
     finally:
@@ -190,6 +191,7 @@ def test_unverified_cards_use_neutral_visual_role_not_positive() -> None:
         for layer_id in model.REQUIRED_RUNTIME_LAYERS:
             card = window.card_widgets[layer_id]
             assert card.property("statusRole") == "neutral"
+            assert card.runtime_switch.on is False
         assert window.hero.property("posture") == model.POSTURE_UNVERIFIED
     finally:
         window.close()
@@ -242,22 +244,22 @@ def test_refresh_is_passive_status_refresh_only() -> None:
         window.close()
 
 
-def test_visual_tokens_are_deterministic_and_within_motion_contract() -> None:
+def test_visual_tokens_match_stitch_sentinel_elite_contract() -> None:
     assert ui.SPACING_TOKENS == {
         "xs": 4,
         "sm": 8,
-        "md": 12,
-        "lg": 16,
-        "xl": 20,
-        "2xl": 24,
-        "3xl": 32,
-        "4xl": 40,
+        "md": 16,
+        "lg": 24,
+        "xl": 32,
+        "xxl": 48,
     }
     assert 120 <= ui.MOTION_TOKENS["micro"] <= 160
     assert 180 <= ui.MOTION_TOKENS["state"] <= 220
     assert 220 <= ui.MOTION_TOKENS["panel"] <= 280
     assert ui.MOTION_TOKENS["page"] <= 320
-    assert ui.COLOR_TOKENS["canvas"].lower() != "#ffffff"
+    assert ui.COLOR_TOKENS["canvas"].lower() == "#0f1412"
+    assert ui.COLOR_TOKENS["accent"].lower() == "#10b981"
+    assert ui.COLOR_TOKENS["text_primary"].lower() == "#dde4dd"
 
 
 def test_all_page_and_viewport_surfaces_own_dark_theme() -> None:
@@ -276,7 +278,6 @@ def test_original_sentinel_identity_contract_is_preserved() -> None:
     _app()
     window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
     try:
-        assert ui.COLOR_TOKENS["accent"].lower() == "#10b981"
         assert tuple(label for _, label in ui.NAV_ITEMS) == (
             "Dashboard",
             "Scansione",
@@ -288,22 +289,70 @@ def test_original_sentinel_identity_contract_is_preserved() -> None:
         assert set(window.nav_buttons) == set(label for _, label in ui.NAV_ITEMS)
         assert window.nav_buttons["Dashboard"].isEnabled() is True
         assert all(not button.isEnabled() for name, button in window.nav_buttons.items() if name != "Dashboard")
+        assert all(not button.icon().isNull() for button in window.nav_buttons.values())
+        assert window.sidebar.width() == 260
         assert window.sidebar_scan_button.isEnabled() is False
-        root = window.findChild(QWidget, "SecurityRoot")
-        assert root is not None
-        assert root.maximumWidth() == 1280
-        assert "#Sidebar" in window.styleSheet()
+        assert window.modules_panel.objectName() == "ModulesPanel"
+        assert "#ModulesPanel" in window.styleSheet()
         assert "#RecoveryButton" in window.styleSheet()
     finally:
         window.close()
+
+
+def test_stitch_1600_layout_has_no_horizontal_clipping() -> None:
+    app = _app()
+    window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
+    try:
+        window.resize(1600, 980)
+        window.show()
+        app.processEvents()
+        window._apply_responsive_layout(force=True)
+        app.processEvents()
+
+        root = window.findChild(QWidget, "SecurityRoot")
+        assert root is not None
+        assert root.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
+        # 1600 - 260 sidebar - 48 page margins, allowing native frame variance.
+        assert root.width() >= 1200
+        assert window.hero.width() >= 1150
+        assert window.modules_panel.width() >= 1150
+        assert window.page_scroll.horizontalScrollBar().maximum() == 0
+        assert all(card.width() >= 500 for card in window.card_widgets.values())
+        assert all(metric.width() >= 300 for metric in window.metric_cards)
+    finally:
+        window.close()
+
+
+def test_minimum_desktop_layout_reflows_without_overflow() -> None:
+    app = _app()
+    window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
+    try:
+        window.resize(window.minimumWidth(), window.minimumHeight())
+        window.show()
+        app.processEvents()
+        window._apply_responsive_layout(force=True)
+        app.processEvents()
+        assert window.page_scroll.horizontalScrollBar().maximum() == 0
+        assert window.hero_layout.direction() == ui.QBoxLayout.Direction.TopToBottom
+        assert all(card.width() >= 280 for card in window.card_widgets.values())
+    finally:
+        window.close()
+
+
+def test_display_copy_is_compact_and_does_not_claim_protection_when_unverified() -> None:
+    badge, headline, summary = ui._display_posture(model.POSTURE_UNVERIFIED)
+    assert badge == "Verifica necessaria"
+    assert "verificare" in headline.lower()
+    assert "protetto" in summary.lower()
+    assert "BC Sentinel è attivo" not in headline
 
 
 def test_window_minimum_size_and_offscreen_self_check_contract() -> None:
     _app()
     window = ui.SecurityOverviewWindow(status_provider=lambda: _evidence())
     try:
-        assert window.minimumWidth() >= 980
-        assert window.minimumHeight() >= 700
+        assert window.minimumWidth() >= 1080
+        assert window.minimumHeight() >= 720
     finally:
         window.close()
     check = ui.self_check()
