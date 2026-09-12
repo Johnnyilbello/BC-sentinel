@@ -10,7 +10,7 @@ function Fail([string]$Stage,[string]$Message){
 
 try{
     $id=[Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal=New-Object Security.Principal.WindowsPrincipal($id)
+    $principal=New-Object System.Security.Principal.WindowsPrincipal($id)
     if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){
         Fail 'preflight' 'Run B6-3 from normal non-elevated PowerShell.'
     }
@@ -20,11 +20,12 @@ try{
     if(-not(Test-Path -LiteralPath '.\sentinel\home_smart_scan_ui.py')){Fail 'preflight' 'Smart Scan page missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\home_smart_scan_window.py')){Fail 'preflight' 'B6-3 Home integration missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_provider_loader.py')){Fail 'preflight' 'B6-3 live provider loader missing'}
+    if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_live_provider.py')){Fail 'preflight' 'B6-3.2 pinned StaticScanner adapter missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_acceptance.py')){Fail 'preflight' 'B6-3 acceptance tool missing'}
     $Py='.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-3 SMART SCAN ORCHESTRATION FOUNDATION' -ForegroundColor Cyan
-    Write-Host 'B6-3 adds explicit Smart Scan orchestration and a fail-closed live provider boundary. No remediation authority is added.' -ForegroundColor Yellow
+    Write-Host 'B6-3 adds explicit Smart Scan orchestration, a fail-closed loader and a SHA-256-pinned StaticScanner runtime adapter. No remediation authority is added.' -ForegroundColor Yellow
 
     $Protected=@(
         '.\sentinel\advanced_antimalware.py',
@@ -55,6 +56,14 @@ try{
     New-Item -ItemType Directory -Path $PytestTemp -Force|Out-Null
     $OldQt=$env:QT_QPA_PLATFORM
     $OldMotion=$env:BC_SENTINEL_REDUCED_MOTION
+    $OldRuntime=$env:BC_SENTINEL_FULL_RUNTIME_ROOT
+    $OldScannerSha=$env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256
+    $OldRuntimePython=$env:BC_SENTINEL_FULL_RUNTIME_PYTHON
+    $OldScanRoots=$env:BC_SENTINEL_SMART_SCAN_ROOTS
+    Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_ROOT -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256 -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_PYTHON -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_SMART_SCAN_ROOTS -ErrorAction SilentlyContinue
     $env:QT_QPA_PLATFORM='offscreen'
     $env:BC_SENTINEL_REDUCED_MOTION='1'
     try{
@@ -63,18 +72,21 @@ try{
             sentinel\home_smart_scan_ui.py `
             sentinel\home_smart_scan_window.py `
             sentinel\smart_scan_provider_loader.py `
+            sentinel\smart_scan_live_provider.py `
             tools\v011_beta6_b63_acceptance.py `
             tests\test_v011_beta6_b63_smart_scan.py `
             tests\test_v011_beta6_b63_smart_scan_ui.py `
-            tests\test_v011_beta6_b63_live_provider_loader.py
+            tests\test_v011_beta6_b63_live_provider_loader.py `
+            tests\test_v011_beta6_b63_live_runtime_adapter.py
         if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-3 compileall failed'}
 
         Write-Host ('B63 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
         & $Py -m pytest -q --basetemp $PytestTemp `
             tests/test_v011_beta6_b63_smart_scan.py `
             tests/test_v011_beta6_b63_smart_scan_ui.py `
-            tests/test_v011_beta6_b63_live_provider_loader.py
-        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider-loader tests failed'}
+            tests/test_v011_beta6_b63_live_provider_loader.py `
+            tests/test_v011_beta6_b63_live_runtime_adapter.py
+        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/StaticScanner adapter tests failed'}
 
         & $Py -m tools.v011_beta6_b63_acceptance --output '.\acceptance-v011-beta6-b63.json'
         if($LASTEXITCODE -ne 0){Fail 'acceptance-b63' 'B6-3 deterministic acceptance failed'}
@@ -105,9 +117,9 @@ try{
         $Smoke=($SmokeRaw -join [Environment]::NewLine)|ConvertFrom-Json
         if(-not[bool]$Smoke.passed -or -not[bool]$Smoke.window_created){Fail 'qt-smoke' 'B6-3 Home did not construct'}
         if([int]$Smoke.page_count -ne 6){Fail 'qt-smoke' ('unexpected page count='+[string]$Smoke.page_count)}
-        if([bool]$Smoke.provider_available){Fail 'provider-truth' 'GitHub delta unexpectedly claims a live provider is available'}
-        if([bool]$Smoke.provider_load.accepted){Fail 'provider-truth' 'Provider loader accepted a missing live runtime adapter'}
-        if([bool]$Smoke.smart_scan_enabled -or [bool]$Smoke.scan_page_quick_enabled){Fail 'provider-truth' 'Default UI enabled Smart Scan without accepted provider'}
+        if([bool]$Smoke.provider_available){Fail 'provider-truth' 'Unpinned default environment unexpectedly claims a live provider is available'}
+        if([bool]$Smoke.provider_load.accepted){Fail 'provider-truth' 'Provider loader accepted an unpinned external runtime'}
+        if([bool]$Smoke.smart_scan_enabled -or [bool]$Smoke.scan_page_quick_enabled){Fail 'provider-truth' 'Default UI enabled Smart Scan without accepted pinned runtime'}
         if([bool]$Smoke.full_scan_enabled){Fail 'full-scan' 'Full Scan unexpectedly enabled'}
         if([int]$Smoke.horizontal_scroll_max -ne 0 -or [int]$Smoke.scan_page_horizontal_scroll_max -ne 0){
             Fail 'overflow' 'B6-3 Home introduced horizontal overflow'
@@ -120,15 +132,19 @@ try{
             }
         }
 
-        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | Smart Scan state machine PASS | explicit-start contract PASS | coverage truth PASS | cancellation PASS | live-provider loader fail-closed PASS | UI integration PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
-        Write-Host 'B63 STATUS: ORCHESTRATION/PROVIDER BOUNDARY PASS. Complete local Windows runtime adapter + real Smart Scan acceptance remain REQUIRED before B6-3 stabilization.' -ForegroundColor Yellow
+        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | Smart Scan state machine PASS | explicit-start contract PASS | coverage truth PASS | cancellation PASS | loader fail-closed PASS | pinned StaticScanner adapter deterministic PASS | UI integration PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
+        Write-Host 'B63 STATUS: B6-3.2 ADAPTER IMPLEMENTED. Real pinned Windows FULL runtime preflight + live Smart Scan acceptance remain REQUIRED before stabilization.' -ForegroundColor Yellow
         Write-Host 'NOTE: B6-2 manual visual acceptance/polish is intentionally deferred and remains a separate open acceptance item.' -ForegroundColor Yellow
-        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN ORCHESTRATION - LOCAL PASS / LIVE PROVIDER WINDOWS GATE PENDING' -ForegroundColor Green
+        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN ORCHESTRATION - LOCAL PASS / PINNED LIVE RUNTIME WINDOWS GATE PENDING' -ForegroundColor Green
         exit 0
     }
     finally{
         if($null -eq $OldQt){Remove-Item Env:QT_QPA_PLATFORM -ErrorAction SilentlyContinue}else{$env:QT_QPA_PLATFORM=$OldQt}
         if($null -eq $OldMotion){Remove-Item Env:BC_SENTINEL_REDUCED_MOTION -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_REDUCED_MOTION=$OldMotion}
+        if($null -eq $OldRuntime){Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_ROOT -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_FULL_RUNTIME_ROOT=$OldRuntime}
+        if($null -eq $OldScannerSha){Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256 -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256=$OldScannerSha}
+        if($null -eq $OldRuntimePython){Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_PYTHON -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_FULL_RUNTIME_PYTHON=$OldRuntimePython}
+        if($null -eq $OldScanRoots){Remove-Item Env:BC_SENTINEL_SMART_SCAN_ROOTS -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_ROOTS=$OldScanRoots}
         Remove-Item -LiteralPath $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
