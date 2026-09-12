@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-3 Implementation Status
 
-Status: **B6-3.0 ORCHESTRATION FOUNDATION CI GREEN / B6-3.1 LIVE PROVIDER BOUNDARY IMPLEMENTED / COMPLETE WINDOWS RUNTIME ADAPTER PENDING**
+Status: **B6-3.0 ORCHESTRATION FOUNDATION CI GREEN / B6-3.1 LIVE PROVIDER BOUNDARY CI GREEN / COMPLETE WINDOWS RUNTIME ADAPTER PENDING**
 
 Development branch: `feature/v011-beta6-b63-smart-scan`
 
@@ -63,6 +63,8 @@ Loader guarantees:
 - accepted provider may enable Smart Scan only after capability validation;
 - no dynamic arbitrary plugin path is accepted.
 
+The normal B6-3 Home now uses this loader automatically when no provider is explicitly injected. If the complete Windows source tree supplies a conforming `sentinel.smart_scan_live_provider`, Smart Scan can be enabled without changing the Home or weakening its authority contract.
+
 ## Why the real provider is not fabricated in GitHub
 
 The synchronized GitHub repository is historically a delta tree rather than the complete Windows runtime source-of-record. The repository does not currently expose the complete live scanner API required to implement a truthful adapter. Existing historical/synchronized files refer to runtime components that are absent from the GitHub delta.
@@ -73,20 +75,23 @@ The optional adapter must be implemented against the complete local Windows sour
 
 ## Current automated evidence
 
-Latest confirmed B6-3 Windows CI before the loader extension:
+Latest B6-3 Windows CI including the fail-closed live-provider loader:
 
 - workflow: `B6-3 Smart Scan Gate`;
-- run: `34710130613`;
-- result: PASS;
-- deterministic regression suite: **86 passed**;
-- B6-2 predecessor acceptance: PASS;
-- B6-3 deterministic acceptance: PASS;
+- run: `34710390958`;
+- result: **PASS**;
+- deterministic regression suite: **92 passed**;
+- loader tests cover missing module, missing dependency, missing/failing factory, accepted provider, destructive-authority rejection and available-but-unaccepted rejection;
+- B6-2 predecessor deterministic acceptance: PASS;
+- B6-3 deterministic acceptance: PASS with zero failures;
 - B6-3 passive self-check: PASS;
 - Qt offscreen smoke: PASS;
-- horizontal overflow: 0;
-- default GitHub-delta live provider: unavailable, fail closed.
-
-The loader extension adds dedicated fail-closed tests and requires a fresh CI pass before this document can call B6-3.1 CI-green.
+- six-page Home shell preserved;
+- Dashboard and Scan horizontal overflow: 0;
+- default GitHub-delta provider load: `loaded=false`, `accepted=false`, reason `live_provider_module_not_synchronized`;
+- Smart Scan remains disabled by default when that accepted live adapter is absent;
+- Full Scan remains disabled;
+- automatic destructive authority remains false.
 
 ## Next gate — complete local Windows runtime adapter
 
