@@ -4,7 +4,9 @@ from __future__ import annotations
 
 The B6-2 window remains the predecessor regression barrier. This module layers
 Smart Scan onto the same Home experience without changing startup behavior or
-adding remediation authority.
+adding remediation authority.  When no provider is injected by tests/packaging,
+the Home uses the fail-closed fixed-module loader from
+``smart_scan_provider_loader``. Loading a provider never plans or starts a scan.
 """
 
 import argparse
@@ -18,6 +20,7 @@ from PySide6.QtWidgets import QApplication
 
 from sentinel import home_security_ui as base_ui
 from sentinel import home_smart_scan as smart
+from sentinel import smart_scan_provider_loader
 from sentinel.home_smart_scan_ui import SmartScanPage
 from sentinel.ui_design_system import COLORS, apply_icon
 
@@ -51,7 +54,30 @@ class B63SecurityOverviewWindow(base_ui.SecurityOverviewWindow):
         smart_scan_provider: smart.SmartScanProvider | None = None,
     ) -> None:
         super().__init__(status_provider=status_provider)
-        self.smart_scan_coordinator = smart.SmartScanCoordinator(smart_scan_provider)
+
+        if smart_scan_provider is None:
+            load_result = smart_scan_provider_loader.load_default_provider()
+            effective_provider = load_result.provider
+            self.smart_scan_provider_load = load_result.to_dict()
+        else:
+            effective_provider = smart_scan_provider
+            capability = smart.validate_provider_capabilities(effective_provider)
+            self.smart_scan_provider_load = {
+                "loaded": True,
+                "accepted": bool(
+                    capability.get("passed")
+                    and capability.get("available")
+                    and capability.get("accepted")
+                ),
+                "reason": "explicit_provider_injected",
+                "module_name": "",
+                "factory_name": "",
+                "provider_name": str(capability.get("provider_name") or ""),
+                "provider_profile": str(capability.get("provider_profile") or ""),
+                "provider_provenance": str(capability.get("provider_provenance") or ""),
+            }
+
+        self.smart_scan_coordinator = smart.SmartScanCoordinator(effective_provider)
         self.smart_scan_contract = self.smart_scan_coordinator.capabilities()
         self.smart_scan_worker: _SmartScanThread | None = None
         self.last_smart_scan_result: smart.SmartScanResult | None = None
@@ -251,6 +277,7 @@ def main(argv: list[str] | None = None) -> int:
                 "horizontal_scroll_max": window.page_scroll.horizontalScrollBar().maximum(),
                 "scan_page_horizontal_scroll_max": window.scan_scroll.horizontalScrollBar().maximum(),
                 "provider_available": window.smart_scan_coordinator.is_available(),
+                "provider_load": dict(window.smart_scan_provider_load),
             }
         )
         print(json.dumps(payload, indent=2, sort_keys=True))
