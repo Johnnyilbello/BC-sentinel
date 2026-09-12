@@ -6,10 +6,11 @@ import os
 import sys
 from typing import Callable, Final, Mapping
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QTimer, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QEasingCurve, QPointF, QPropertyAnimation, QRectF, QSize, QTimer, Qt
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QApplication,
+    QBoxLayout,
     QFrame,
     QGraphicsOpacityEffect,
     QGridLayout,
@@ -30,15 +31,14 @@ from sentinel import rescue_home_ui
 PROFILE: Final[str] = model.PROFILE
 WINDOW_TITLE: Final[str] = "BC Sentinel"
 
+# Stitch/Sentinel Elite spacing scale. The 4 px base and 8 px rhythm are canonical.
 SPACING_TOKENS: Final[dict[str, int]] = {
     "xs": 4,
     "sm": 8,
-    "md": 12,
-    "lg": 16,
-    "xl": 20,
-    "2xl": 24,
-    "3xl": 32,
-    "4xl": 40,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "xxl": 48,
 }
 
 MOTION_TOKENS: Final[dict[str, int]] = {
@@ -49,18 +49,22 @@ MOTION_TOKENS: Final[dict[str, int]] = {
     "stagger": 45,
 }
 
+# Dashboard + Sentinel Elite tokens extracted from the original Stitch bundle.
 COLOR_TOKENS: Final[dict[str, str]] = {
-    "canvas": "#0e1511",
-    "sidebar": "#161d19",
-    "surface_1": "#1a211d",
-    "surface_2": "#242c27",
-    "surface_3": "#2f3632",
+    "canvas": "#0f1412",
+    "sidebar": "#1c211f",
+    "surface_lowest": "#0a0f0d",
+    "surface_low": "#181d1a",
+    "surface_1": "#1c211f",
+    "surface_2": "#262b29",
+    "surface_3": "#313634",
     "border": "#3c4a42",
-    "border_soft": "#29352f",
+    "border_soft": "#29342f",
     "text_primary": "#dde4dd",
     "text_secondary": "#bbcabf",
     "text_muted": "#86948a",
     "accent": "#10b981",
+    "accent_bright": "#4edea3",
     "accent_soft": "#123428",
     "success": "#4edea3",
     "warning": "#f0b766",
@@ -69,19 +73,19 @@ COLOR_TOKENS: Final[dict[str, str]] = {
 }
 
 NAV_ITEMS: Final[tuple[tuple[str, str], ...]] = (
-    ("▦", "Dashboard"),
-    ("⌕", "Scansione"),
-    ("▣", "Quarantena"),
-    ("↺", "Cronologia"),
-    ("⬢", "Protezione"),
-    ("⚙", "Impostazioni"),
+    ("dashboard", "Dashboard"),
+    ("scan", "Scansione"),
+    ("quarantine", "Quarantena"),
+    ("history", "Cronologia"),
+    ("protection", "Protezione"),
+    ("settings", "Impostazioni"),
 )
 
-MODULE_GLYPHS: Final[Mapping[str, str]] = {
-    model.LAYER_MALWARE: "✦",
-    model.LAYER_BEHAVIOR: "◉",
-    model.LAYER_WEB: "◎",
-    model.LAYER_RECOVERY: "↻",
+MODULE_ICONS: Final[Mapping[str, str]] = {
+    model.LAYER_MALWARE: "radar",
+    model.LAYER_BEHAVIOR: "behavior",
+    model.LAYER_WEB: "web",
+    model.LAYER_RECOVERY: "recovery",
 }
 
 
@@ -106,42 +110,189 @@ def _posture_color(posture: str) -> str:
     return COLOR_TOKENS["warning"]
 
 
-class ShieldMark(QWidget):
-    """Native vector shield; no web asset dependency."""
+def _display_posture(posture: str) -> tuple[str, str, str]:
+    """Consumer copy stays concise while the model remains the technical source of truth."""
+    if posture == model.POSTURE_PROTECTED:
+        return (
+            "Protezione verificata",
+            "BC Sentinel è attivo",
+            "Monitoraggio runtime verificato sui livelli di protezione principali.",
+        )
+    if posture == model.POSTURE_ATTENTION:
+        return (
+            "Attenzione richiesta",
+            "BC Sentinel richiede attenzione",
+            "È stato verificato uno stato di protezione che richiede un controllo.",
+        )
+    return (
+        "Verifica necessaria",
+        "Stato di protezione da verificare",
+        "I motori sono disponibili, ma manca una prova runtime aggiornata. "
+        "BC Sentinel non mostrerà il PC come protetto senza evidenza corrente.",
+    )
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+
+def _layer_state_copy(card: model.HomeProtectionCard) -> str:
+    if card.status == model.STATUS_ACTIVE and card.runtime_verified:
+        return "Protezione runtime verificata."
+    if card.status == model.STATUS_READY:
+        return "Disponibile · apertura manuale."
+    if card.status == model.STATUS_ENGINE_AVAILABLE:
+        return "Motore disponibile · runtime non verificato."
+    if card.status == model.STATUS_ATTENTION:
+        return "Richiede attenzione."
+    if card.status == model.STATUS_OFF:
+        return "Disattivato con stato verificato."
+    return "Stato runtime non disponibile."
+
+
+def _make_icon(kind: str, color: str | None = None, size: int = 20) -> QIcon:
+    """Small dependency-free line icons to avoid emoji/font fallback artifacts."""
+    color = color or COLOR_TOKENS["text_secondary"]
+    pix = QPixmap(size, size)
+    pix.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = QPen(QColor(color), max(1.35, size / 12.0))
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    p.setPen(pen)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+
+    s = float(size)
+    if kind == "dashboard":
+        d = s * 0.27
+        gap = s * 0.14
+        x = s * 0.14
+        y = s * 0.14
+        for r in range(2):
+            for c in range(2):
+                p.drawRoundedRect(QRectF(x + c * (d + gap), y + r * (d + gap), d, d), 1.5, 1.5)
+    elif kind in {"scan", "protection"}:
+        path = QPainterPath()
+        path.moveTo(s * 0.5, s * 0.12)
+        path.lineTo(s * 0.78, s * 0.23)
+        path.lineTo(s * 0.75, s * 0.55)
+        path.cubicTo(s * 0.73, s * 0.72, s * 0.61, s * 0.82, s * 0.5, s * 0.88)
+        path.cubicTo(s * 0.39, s * 0.82, s * 0.27, s * 0.72, s * 0.25, s * 0.55)
+        path.lineTo(s * 0.22, s * 0.23)
+        path.closeSubpath()
+        p.drawPath(path)
+        if kind == "protection":
+            p.drawLine(QPointF(s * 0.38, s * 0.50), QPointF(s * 0.47, s * 0.59))
+            p.drawLine(QPointF(s * 0.47, s * 0.59), QPointF(s * 0.65, s * 0.39))
+    elif kind == "quarantine":
+        p.drawRoundedRect(QRectF(s * 0.18, s * 0.32, s * 0.64, s * 0.48), 2, 2)
+        p.drawLine(QPointF(s * 0.18, s * 0.40), QPointF(s * 0.82, s * 0.40))
+        p.drawLine(QPointF(s * 0.40, s * 0.19), QPointF(s * 0.60, s * 0.19))
+        p.drawLine(QPointF(s * 0.50, s * 0.19), QPointF(s * 0.50, s * 0.58))
+        p.drawLine(QPointF(s * 0.42, s * 0.50), QPointF(s * 0.50, s * 0.58))
+        p.drawLine(QPointF(s * 0.58, s * 0.50), QPointF(s * 0.50, s * 0.58))
+    elif kind == "history":
+        p.drawArc(QRectF(s * 0.18, s * 0.18, s * 0.64, s * 0.64), 35 * 16, 300 * 16)
+        p.drawLine(QPointF(s * 0.20, s * 0.33), QPointF(s * 0.12, s * 0.26))
+        p.drawLine(QPointF(s * 0.20, s * 0.33), QPointF(s * 0.26, s * 0.23))
+        p.drawLine(QPointF(s * 0.50, s * 0.33), QPointF(s * 0.50, s * 0.52))
+        p.drawLine(QPointF(s * 0.50, s * 0.52), QPointF(s * 0.64, s * 0.58))
+    elif kind == "settings":
+        p.drawEllipse(QRectF(s * 0.35, s * 0.35, s * 0.30, s * 0.30))
+        for angle in range(0, 360, 45):
+            import math
+            a = math.radians(angle)
+            inner = QPointF(s * (0.5 + 0.25 * math.cos(a)), s * (0.5 + 0.25 * math.sin(a)))
+            outer = QPointF(s * (0.5 + 0.38 * math.cos(a)), s * (0.5 + 0.38 * math.sin(a)))
+            p.drawLine(inner, outer)
+    elif kind in {"refresh", "recovery"}:
+        p.drawArc(QRectF(s * 0.18, s * 0.18, s * 0.64, s * 0.64), 30 * 16, 285 * 16)
+        p.drawLine(QPointF(s * 0.79, s * 0.22), QPointF(s * 0.79, s * 0.40))
+        p.drawLine(QPointF(s * 0.79, s * 0.22), QPointF(s * 0.61, s * 0.23))
+    elif kind == "bolt":
+        poly = QPolygonF(
+            [
+                QPointF(s * 0.57, s * 0.08),
+                QPointF(s * 0.30, s * 0.52),
+                QPointF(s * 0.49, s * 0.52),
+                QPointF(s * 0.41, s * 0.92),
+                QPointF(s * 0.72, s * 0.42),
+                QPointF(s * 0.52, s * 0.42),
+            ]
+        )
+        p.drawPolyline(poly)
+    elif kind == "search":
+        p.drawEllipse(QRectF(s * 0.19, s * 0.19, s * 0.48, s * 0.48))
+        p.drawLine(QPointF(s * 0.61, s * 0.61), QPointF(s * 0.84, s * 0.84))
+    elif kind == "radar":
+        p.drawEllipse(QRectF(s * 0.18, s * 0.18, s * 0.64, s * 0.64))
+        p.drawEllipse(QRectF(s * 0.33, s * 0.33, s * 0.34, s * 0.34))
+        p.drawLine(QPointF(s * 0.50, s * 0.50), QPointF(s * 0.74, s * 0.31))
+    elif kind == "behavior":
+        p.drawPolyline(
+            QPolygonF(
+                [
+                    QPointF(s * 0.12, s * 0.58),
+                    QPointF(s * 0.28, s * 0.58),
+                    QPointF(s * 0.38, s * 0.32),
+                    QPointF(s * 0.50, s * 0.72),
+                    QPointF(s * 0.61, s * 0.45),
+                    QPointF(s * 0.88, s * 0.45),
+                ]
+            )
+        )
+    elif kind == "web":
+        p.drawEllipse(QRectF(s * 0.16, s * 0.16, s * 0.68, s * 0.68))
+        p.drawArc(QRectF(s * 0.34, s * 0.16, s * 0.32, s * 0.68), 90 * 16, 180 * 16)
+        p.drawArc(QRectF(s * 0.34, s * 0.16, s * 0.32, s * 0.68), 270 * 16, 180 * 16)
+        p.drawLine(QPointF(s * 0.18, s * 0.50), QPointF(s * 0.82, s * 0.50))
+    elif kind == "info":
+        p.drawEllipse(QRectF(s * 0.16, s * 0.16, s * 0.68, s * 0.68))
+        p.drawLine(QPointF(s * 0.50, s * 0.43), QPointF(s * 0.50, s * 0.67))
+        p.drawPoint(QPointF(s * 0.50, s * 0.31))
+    else:
+        p.drawEllipse(QRectF(s * 0.36, s * 0.36, s * 0.28, s * 0.28))
+    p.end()
+    return QIcon(pix)
+
+
+class SentinelLogo(QWidget):
+    """Compact vector interpretation of the original Stitch Sentinel shield."""
+
+    def __init__(self, size: int = 44, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setFixedSize(76, 76)
-        self.setAccessibleName("BC Sentinel shield")
+        self._size = size
+        self.setFixedSize(size, size)
+        self.setAccessibleName("BC Sentinel logo")
 
     def paintEvent(self, event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#223329"))
-        painter.drawEllipse(2, 2, 72, 72)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        s = float(self._size)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#202a25"))
+        p.drawRoundedRect(QRectF(1, 1, s - 2, s - 2), 9, 9)
 
-        path = QPainterPath()
-        path.moveTo(38, 15)
-        path.lineTo(56, 22)
-        path.lineTo(54, 43)
-        path.cubicTo(53, 53, 46, 60, 38, 64)
-        path.cubicTo(30, 60, 23, 53, 22, 43)
-        path.lineTo(20, 22)
-        path.closeSubpath()
-        painter.setBrush(QColor(COLOR_TOKENS["accent"]))
-        painter.drawPath(path)
-
-        check = QPainterPath()
-        check.moveTo(29, 39)
-        check.lineTo(35, 45)
-        check.lineTo(48, 31)
-        pen = QPen(QColor("#07110c"), 4)
+        pen = QPen(QColor(COLOR_TOKENS["accent"]), max(1.8, s / 18))
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPath(check)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        outer = QPainterPath()
+        outer.moveTo(s * 0.50, s * 0.16)
+        outer.lineTo(s * 0.76, s * 0.24)
+        outer.lineTo(s * 0.74, s * 0.55)
+        outer.cubicTo(s * 0.72, s * 0.72, s * 0.61, s * 0.82, s * 0.50, s * 0.88)
+        outer.cubicTo(s * 0.39, s * 0.82, s * 0.28, s * 0.72, s * 0.26, s * 0.55)
+        outer.lineTo(s * 0.24, s * 0.24)
+        outer.closeSubpath()
+        p.drawPath(outer)
+
+        inner = QPainterPath()
+        inner.moveTo(s * 0.62, s * 0.36)
+        inner.cubicTo(s * 0.56, s * 0.31, s * 0.43, s * 0.31, s * 0.39, s * 0.39)
+        inner.cubicTo(s * 0.35, s * 0.47, s * 0.42, s * 0.52, s * 0.50, s * 0.52)
+        inner.cubicTo(s * 0.60, s * 0.52, s * 0.66, s * 0.57, s * 0.61, s * 0.65)
+        inner.cubicTo(s * 0.56, s * 0.73, s * 0.43, s * 0.72, s * 0.37, s * 0.67)
+        p.drawPath(inner)
 
 
 class ModuleSwitch(QWidget):
@@ -152,20 +303,20 @@ class ModuleSwitch(QWidget):
         self.on = bool(on)
         self.setFixedSize(44, 24)
         self.setAccessibleName("Protection runtime switch")
-        self.setToolTip("Read-only in B6-2. Runtime controls arrive in a later milestone.")
+        self.setToolTip("Sola lettura in B6-2. I controlli runtime arriveranno in un milestone successivo.")
 
     def paintEvent(self, event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        track = QColor(COLOR_TOKENS["accent"] if self.on else "#26332d")
-        border = QColor("#4d6256" if not self.on else "#2a8f69")
-        painter.setPen(QPen(border, 1))
-        painter.setBrush(track)
-        painter.drawRoundedRect(1, 2, 42, 20, 10, 10)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        track = QColor(COLOR_TOKENS["accent"] if self.on else "#27342e")
+        border = QColor("#2a8f69" if self.on else "#506158")
+        p.setPen(QPen(border, 1))
+        p.setBrush(track)
+        p.drawRoundedRect(1, 2, 42, 20, 10, 10)
         x = 23 if self.on else 4
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#edf4ef" if self.on else "#8c9991"))
-        painter.drawEllipse(x, 5, 14, 14)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#eef5f0" if self.on else "#91a097"))
+        p.drawEllipse(x, 5, 14, 14)
 
 
 class ProtectionCard(QFrame):
@@ -182,18 +333,21 @@ class ProtectionCard(QFrame):
         self.setProperty("cardId", card.card_id)
         self.setProperty("statusRole", _status_role(card.status))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(280)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 14)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
-        top.setSpacing(12)
-        icon = QLabel(MODULE_GLYPHS.get(card.card_id, "•"))
-        icon.setObjectName("ModuleIcon")
-        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setFixedSize(40, 40)
-        top.addWidget(icon, 0, Qt.AlignmentFlag.AlignTop)
+        top.setSpacing(14)
+
+        icon_wrap = QLabel()
+        icon_wrap.setObjectName("ModuleIcon")
+        icon_wrap.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_wrap.setFixedSize(42, 42)
+        icon_wrap.setPixmap(_make_icon(MODULE_ICONS.get(card.card_id, "info"), COLOR_TOKENS["accent"], 21).pixmap(21, 21))
+        top.addWidget(icon_wrap, 0, Qt.AlignmentFlag.AlignTop)
 
         title_wrap = QVBoxLayout()
         title_wrap.setSpacing(3)
@@ -211,38 +365,31 @@ class ProtectionCard(QFrame):
         top.addWidget(self.runtime_switch, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(top)
 
-        status_row = QHBoxLayout()
-        status_row.setSpacing(8)
-        status = QLabel(card.status_label)
-        status.setObjectName("StatusPill")
-        status.setProperty("statusRole", _status_role(card.status))
-        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        status.setMinimumHeight(26)
-        status.setAccessibleName(f"{card.label} status: {card.status_label}")
-        status_row.addWidget(status)
-        status_row.addStretch(1)
-        layout.addLayout(status_row)
-
-        summary = QLabel(card.summary)
-        summary.setObjectName("CardSummary")
-        summary.setWordWrap(True)
-        summary.setMinimumHeight(40)
-        layout.addWidget(summary)
+        state = QLabel(_layer_state_copy(card))
+        state.setObjectName("CardState")
+        state.setProperty("statusRole", _status_role(card.status))
+        state.setWordWrap(True)
+        layout.addWidget(state)
 
         actions = QHBoxLayout()
-        actions.setSpacing(8)
-        self.details_button = QPushButton("Advanced details")
+        actions.setSpacing(10)
+        self.details_button = QPushButton("Dettagli avanzati")
         self.details_button.setObjectName("InlineButton")
         self.details_button.setCheckable(True)
-        self.details_button.setAccessibleName(f"Advanced details for {card.label}")
+        self.details_button.setIcon(_make_icon("info", COLOR_TOKENS["text_muted"], 15))
+        self.details_button.setIconSize(QSize(15, 15))
+        self.details_button.setAccessibleName(f"Dettagli avanzati per {card.label}")
         self.details_button.toggled.connect(self._toggle_details)
         actions.addWidget(self.details_button)
         actions.addStretch(1)
 
-        self.action_button = QPushButton(card.action_label)
+        self.action_button = QPushButton("Apri" if card.action_enabled else card.action_label)
         self.action_button.setObjectName("RecoveryButton" if card.action_enabled else "HiddenAction")
         self.action_button.setEnabled(card.action_enabled)
         self.action_button.setVisible(card.action_enabled)
+        if card.action_enabled:
+            self.action_button.setIcon(_make_icon("recovery", "#062016", 16))
+            self.action_button.setIconSize(QSize(16, 16))
         self.action_button.setAccessibleName(card.action_label)
         self.action_button.clicked.connect(lambda: on_action(card.card_id))
         actions.addWidget(self.action_button)
@@ -255,21 +402,21 @@ class ProtectionCard(QFrame):
         details_layout = QVBoxLayout(self.details_panel)
         details_layout.setContentsMargins(12, 12, 12, 12)
         details_layout.setSpacing(8)
-        details_title = QLabel("Technical evidence")
+        details_title = QLabel("Evidenza tecnica")
         details_title.setObjectName("AdvancedTitle")
         self.details_text = QPlainTextEdit()
         self.details_text.setObjectName("AdvancedText")
         self.details_text.setReadOnly(True)
-        self.details_text.setMinimumHeight(168)
+        self.details_text.setMinimumHeight(164)
         self.details_text.setPlainText(json.dumps(card.advanced_details, indent=2, sort_keys=True, default=str))
-        self.details_text.setAccessibleName(f"Technical evidence for {card.label}")
+        self.details_text.setAccessibleName(f"Evidenza tecnica per {card.label}")
         details_layout.addWidget(details_title)
         details_layout.addWidget(self.details_text)
         layout.addWidget(self.details_panel)
 
     def _toggle_details(self, expanded: bool) -> None:
-        target = 226 if expanded else 0
-        self.details_button.setText("Hide details" if expanded else "Advanced details")
+        target = 222 if expanded else 0
+        self.details_button.setText("Nascondi dettagli" if expanded else "Dettagli avanzati")
         if _reduced_motion():
             self.details_panel.setMaximumHeight(target)
             return
@@ -283,23 +430,27 @@ class ProtectionCard(QFrame):
 
 
 class MetricCard(QFrame):
-    def __init__(self, label: str, value: str, symbol: str, parent: QWidget | None = None) -> None:
+    def __init__(self, label: str, value: str, icon_kind: str, accent: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MetricCard")
+        self.setProperty("accentMetric", accent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMinimumHeight(102)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setContentsMargins(18, 15, 18, 15)
         layout.setSpacing(8)
         top = QHBoxLayout()
         title = QLabel(label.upper())
         title.setObjectName("MetricLabel")
-        symbol_label = QLabel(symbol)
-        symbol_label.setObjectName("MetricSymbol")
+        icon = QLabel()
+        icon.setPixmap(_make_icon(icon_kind, COLOR_TOKENS["accent"] if accent else COLOR_TOKENS["text_muted"], 18).pixmap(18, 18))
         top.addWidget(title)
         top.addStretch(1)
-        top.addWidget(symbol_label)
+        top.addWidget(icon)
         layout.addLayout(top)
         value_label = QLabel(value)
-        value_label.setObjectName("MetricValue")
+        value_label.setObjectName("MetricValueAccent" if accent else "MetricValue")
+        value_label.setWordWrap(False)
         layout.addWidget(value_label)
 
 
@@ -316,13 +467,15 @@ class SecurityOverviewWindow(QMainWindow):
         self.recovery_window: rescue_home_ui.HomeWindow | None = None
         self._entrance_animations: list[QPropertyAnimation] = []
         self._animated_widgets: list[QWidget] = []
+        self._last_layout_mode: tuple[bool, bool] | None = None
 
         self.setObjectName("SecurityOverviewWindow")
         self.setWindowTitle(WINDOW_TITLE)
-        self.setMinimumSize(980, 700)
-        self.resize(1380, 880)
+        self.setMinimumSize(1080, 720)
+        self.resize(1440, 900)
         self._build_ui()
         self._apply_theme()
+        QTimer.singleShot(0, self._post_layout_setup)
         QTimer.singleShot(0, self._start_entrance_motion)
 
     def _build_ui(self) -> None:
@@ -332,79 +485,95 @@ class SecurityOverviewWindow(QMainWindow):
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
 
-        sidebar = self._build_sidebar()
-        shell_layout.addWidget(sidebar)
+        self.sidebar = self._build_sidebar()
+        shell_layout.addWidget(self.sidebar)
 
-        main = QWidget()
-        main.setObjectName("MainColumn")
-        main_layout = QVBoxLayout(main)
+        self.main_column = QWidget()
+        self.main_column.setObjectName("MainColumn")
+        main_layout = QVBoxLayout(self.main_column)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_layout.addWidget(self._build_topbar())
 
-        page_scroll = QScrollArea()
-        page_scroll.setObjectName("PageScroll")
-        page_scroll.setWidgetResizable(True)
-        page_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        page_scroll.viewport().setObjectName("PageViewport")
-        page_scroll.viewport().setAutoFillBackground(False)
+        self.page_scroll = QScrollArea()
+        self.page_scroll.setObjectName("PageScroll")
+        self.page_scroll.setWidgetResizable(True)
+        self.page_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.page_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.page_scroll.viewport().setObjectName("PageViewport")
+        self.page_scroll.viewport().setAutoFillBackground(False)
 
         page_host = QWidget()
         page_host.setObjectName("PageHost")
-        host_layout = QHBoxLayout(page_host)
-        host_layout.setContentsMargins(24, 22, 24, 30)
-        host_layout.addStretch(1)
+        host_layout = QVBoxLayout(page_host)
+        host_layout.setContentsMargins(24, 24, 24, 32)
+        host_layout.setSpacing(0)
 
-        root = QWidget()
-        root.setObjectName("SecurityRoot")
-        root.setMaximumWidth(1280)
-        root.setAutoFillBackground(False)
-        page = QVBoxLayout(root)
+        self.content_root = QWidget()
+        self.content_root.setObjectName("SecurityRoot")
+        self.content_root.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.content_root.setAutoFillBackground(False)
+        page = QVBoxLayout(self.content_root)
         page.setContentsMargins(0, 0, 0, 0)
-        page.setSpacing(20)
+        page.setSpacing(24)
 
-        hero = self._build_hero()
-        page.addWidget(hero)
+        self.hero = self._build_hero()
+        page.addWidget(self.hero)
 
-        metrics = QGridLayout()
-        metrics.setHorizontalSpacing(12)
-        metrics.setVerticalSpacing(12)
-        metric_cards = (
-            MetricCard("Ultima scansione", "Non collegata", "◷"),
-            MetricCard("Rilevamenti", "—", "!"),
-            MetricCard("Quarantena", "—", "▣"),
-        )
-        for index, metric in enumerate(metric_cards):
-            metrics.addWidget(metric, 0, index)
-            metrics.setColumnStretch(index, 1)
-        page.addLayout(metrics)
+        self.metrics_grid = QGridLayout()
+        self.metrics_grid.setHorizontalSpacing(16)
+        self.metrics_grid.setVerticalSpacing(16)
+        self.metric_cards = [
+            MetricCard("Ultima scansione", "Non disponibile", "history"),
+            MetricCard("Rilevamenti attivi", "—", "protection", accent=True),
+            MetricCard("File in quarantena", "—", "quarantine"),
+        ]
+        self._render_metrics(columns=3)
+        page.addLayout(self.metrics_grid)
 
-        section_row = QHBoxLayout()
-        section_title = QLabel("Moduli di protezione")
+        self.modules_panel = QFrame()
+        self.modules_panel.setObjectName("ModulesPanel")
+        modules_layout = QVBoxLayout(self.modules_panel)
+        modules_layout.setContentsMargins(24, 20, 24, 24)
+        modules_layout.setSpacing(18)
+
+        module_header = QHBoxLayout()
+        module_header.setSpacing(10)
+        module_icon = QLabel()
+        module_icon.setPixmap(_make_icon("protection", COLOR_TOKENS["accent"], 21).pixmap(21, 21))
+        section_title = QLabel("Moduli Protezione")
         section_title.setObjectName("SectionTitle")
-        section_hint = QLabel("Disponibilità motore ≠ protezione runtime verificata")
-        section_hint.setObjectName("SectionHint")
-        section_row.addWidget(section_title)
-        section_row.addStretch(1)
-        section_row.addWidget(section_hint)
-        page.addLayout(section_row)
+        self.section_hint = QLabel("Disponibilità motore ≠ protezione runtime verificata")
+        self.section_hint.setObjectName("SectionHint")
+        self.section_hint.setWordWrap(True)
+        module_header.addWidget(module_icon)
+        module_header.addWidget(section_title)
+        module_header.addStretch(1)
+        module_header.addWidget(self.section_hint)
+        modules_layout.addLayout(module_header)
+
+        divider = QFrame()
+        divider.setObjectName("SectionDivider")
+        divider.setFixedHeight(1)
+        modules_layout.addWidget(divider)
 
         self.cards_grid = QGridLayout()
-        self.cards_grid.setHorizontalSpacing(12)
-        self.cards_grid.setVerticalSpacing(12)
-        self._render_cards()
-        page.addLayout(self.cards_grid)
+        self.cards_grid.setHorizontalSpacing(16)
+        self.cards_grid.setVerticalSpacing(16)
+        self._render_cards(columns=2)
+        modules_layout.addLayout(self.cards_grid)
+        page.addWidget(self.modules_panel)
 
-        activity = QFrame()
-        activity.setObjectName("ActivityCard")
-        activity_layout = QHBoxLayout(activity)
-        activity_layout.setContentsMargins(18, 16, 18, 16)
+        self.activity = QFrame()
+        self.activity.setObjectName("ActivityCard")
+        activity_layout = QHBoxLayout(self.activity)
+        activity_layout.setContentsMargins(18, 14, 18, 14)
         activity_layout.setSpacing(16)
         activity_copy = QVBoxLayout()
-        activity_copy.setSpacing(4)
+        activity_copy.setSpacing(3)
         activity_title = QLabel("Attività recente")
         activity_title.setObjectName("CardTitle")
-        self.activity_summary = QLabel(self.snapshot.recent_activity_summary)
+        self.activity_summary = QLabel("La cronologia verrà collegata alla Home in un milestone successivo.")
         self.activity_summary.setObjectName("CardSummary")
         self.activity_summary.setWordWrap(True)
         activity_copy.addWidget(activity_title)
@@ -412,48 +581,47 @@ class SecurityOverviewWindow(QMainWindow):
         activity_layout.addLayout(activity_copy, 1)
         activity_state = QLabel("Non collegata")
         activity_state.setObjectName("NeutralPill")
-        activity_layout.addWidget(activity_state, 0, Qt.AlignmentFlag.AlignTop)
-        page.addWidget(activity)
+        activity_layout.addWidget(activity_state, 0, Qt.AlignmentFlag.AlignVCenter)
+        page.addWidget(self.activity)
 
-        host_layout.addWidget(root, 1)
+        host_layout.addWidget(self.content_root)
         host_layout.addStretch(1)
-        page_scroll.setWidget(page_host)
-        main_layout.addWidget(page_scroll, 1)
-        shell_layout.addWidget(main, 1)
+        self.page_scroll.setWidget(page_host)
+        main_layout.addWidget(self.page_scroll, 1)
+        shell_layout.addWidget(self.main_column, 1)
         self.setCentralWidget(shell)
 
-        self._animated_widgets = [self.hero, *metric_cards, *self.card_widgets.values(), activity]
+        self._animated_widgets = [self.hero, *self.metric_cards, self.modules_panel, self.activity]
 
     def _build_sidebar(self) -> QWidget:
         sidebar = QFrame()
         sidebar.setObjectName("Sidebar")
-        sidebar.setFixedWidth(236)
+        sidebar.setFixedWidth(260)
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(14, 22, 14, 18)
+        layout.setContentsMargins(16, 24, 16, 18)
         layout.setSpacing(8)
 
         brand = QHBoxLayout()
-        brand.setContentsMargins(6, 0, 6, 18)
-        logo = QLabel("S")
-        logo.setObjectName("BrandMark")
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setFixedSize(38, 38)
+        brand.setContentsMargins(2, 0, 2, 24)
+        brand.setSpacing(12)
+        brand.addWidget(SentinelLogo(44))
         brand_text = QVBoxLayout()
-        brand_text.setSpacing(0)
+        brand_text.setSpacing(1)
         name = QLabel("BC Sentinel")
         name.setObjectName("BrandName")
-        edition = QLabel("Intelligent Protection")
+        edition = QLabel("Enterprise Shield")
         edition.setObjectName("BrandEdition")
         brand_text.addWidget(name)
         brand_text.addWidget(edition)
-        brand.addWidget(logo)
         brand.addLayout(brand_text, 1)
         layout.addLayout(brand)
 
         self.nav_buttons: dict[str, QPushButton] = {}
-        for index, (glyph, label) in enumerate(NAV_ITEMS):
-            button = QPushButton(f"{glyph}   {label}")
+        for index, (icon_kind, label) in enumerate(NAV_ITEMS):
+            button = QPushButton(label)
             button.setObjectName("NavActive" if index == 0 else "NavItem")
+            button.setIcon(_make_icon(icon_kind, COLOR_TOKENS["accent"] if index == 0 else COLOR_TOKENS["text_secondary"], 20))
+            button.setIconSize(QSize(20, 20))
             button.setCheckable(index == 0)
             button.setChecked(index == 0)
             button.setEnabled(index == 0)
@@ -463,16 +631,28 @@ class SecurityOverviewWindow(QMainWindow):
             layout.addWidget(button)
 
         layout.addStretch(1)
+
+        self.sidebar_scan_button = QPushButton("Quick Scan · B6-3")
+        self.sidebar_scan_button.setObjectName("SidebarScan")
+        self.sidebar_scan_button.setIcon(_make_icon("bolt", COLOR_TOKENS["accent"], 18))
+        self.sidebar_scan_button.setIconSize(QSize(18, 18))
+        self.sidebar_scan_button.setEnabled(False)
+        self.sidebar_scan_button.setToolTip("Quick Scan sarà attivata in B6-3")
+        layout.addWidget(self.sidebar_scan_button)
+
         divider = QFrame()
         divider.setObjectName("SidebarDivider")
         divider.setFixedHeight(1)
         layout.addWidget(divider)
 
-        self.sidebar_scan_button = QPushButton("⚡  Quick Scan")
-        self.sidebar_scan_button.setObjectName("SidebarScan")
-        self.sidebar_scan_button.setEnabled(False)
-        self.sidebar_scan_button.setToolTip("Smart Scan sarà attivata in B6-3")
-        layout.addWidget(self.sidebar_scan_button)
+        for icon_kind, label in (("info", "Supporto"), ("protection", "Account")):
+            button = QPushButton(label)
+            button.setObjectName("SidebarFooterItem")
+            button.setIcon(_make_icon(icon_kind, COLOR_TOKENS["text_muted"], 18))
+            button.setIconSize(QSize(18, 18))
+            button.setEnabled(False)
+            layout.addWidget(button)
+
         return sidebar
 
     def _build_topbar(self) -> QWidget:
@@ -480,82 +660,147 @@ class SecurityOverviewWindow(QMainWindow):
         bar.setObjectName("TopBar")
         bar.setFixedHeight(56)
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(22, 0, 22, 0)
+        layout.setContentsMargins(24, 0, 18, 0)
         title = QLabel("BC SENTINEL Intelligent Windows Protection")
         title.setObjectName("TopBarTitle")
         layout.addWidget(title)
         layout.addStretch(1)
-        self.refresh_button = QPushButton("↻  Refresh status")
+        self.refresh_button = QPushButton("Aggiorna stato")
         self.refresh_button.setObjectName("TopBarAction")
-        self.refresh_button.setAccessibleName("Refresh passive protection status")
+        self.refresh_button.setIcon(_make_icon("refresh", COLOR_TOKENS["text_secondary"], 16))
+        self.refresh_button.setIconSize(QSize(16, 16))
+        self.refresh_button.setAccessibleName("Aggiorna stato di protezione passivo")
         self.refresh_button.clicked.connect(self._refresh_snapshot)
         layout.addWidget(self.refresh_button)
         return bar
 
     def _build_hero(self) -> QWidget:
-        self.hero = QFrame()
-        self.hero.setObjectName("PostureHero")
-        self.hero.setProperty("posture", self.snapshot.posture)
-        layout = QHBoxLayout(self.hero)
-        layout.setContentsMargins(24, 22, 24, 22)
-        layout.setSpacing(22)
+        hero = QFrame()
+        hero.setObjectName("PostureHero")
+        hero.setProperty("posture", self.snapshot.posture)
+        hero.setMinimumHeight(170)
 
-        layout.addWidget(ShieldMark(), 0, Qt.AlignmentFlag.AlignVCenter)
+        self.hero_layout = QBoxLayout(QBoxLayout.Direction.LeftToRight, hero)
+        self.hero_layout.setContentsMargins(30, 24, 30, 24)
+        self.hero_layout.setSpacing(24)
+
+        self.hero_layout.addWidget(SentinelLogo(82), 0, Qt.AlignmentFlag.AlignVCenter)
 
         copy = QVBoxLayout()
-        copy.setSpacing(6)
-        self.posture_label = QLabel(self.snapshot.posture_label)
+        copy.setSpacing(7)
+        badge_text, headline, summary = _display_posture(self.snapshot.posture)
+        self.posture_label = QLabel(badge_text)
         self.posture_label.setObjectName("PosturePill")
         self.posture_label.setProperty("posture", self.snapshot.posture)
-        self.posture_label.setMaximumWidth(220)
         self.posture_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.headline_label = QLabel(self.snapshot.headline)
+        self.posture_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+
+        self.headline_label = QLabel(headline)
         self.headline_label.setObjectName("HeroTitle")
         self.headline_label.setWordWrap(True)
-        self.hero_summary = QLabel(self.snapshot.summary)
+        self.headline_label.setMinimumWidth(320)
+
+        self.hero_summary = QLabel(summary)
         self.hero_summary.setObjectName("HeroSummary")
         self.hero_summary.setWordWrap(True)
+        self.hero_summary.setMaximumWidth(620)
+
         copy.addWidget(self.posture_label, 0, Qt.AlignmentFlag.AlignLeft)
         copy.addWidget(self.headline_label)
         copy.addWidget(self.hero_summary)
-        layout.addLayout(copy, 1)
+        self.hero_layout.addLayout(copy, 1)
 
-        actions = QVBoxLayout()
-        actions.setSpacing(8)
-        actions.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        self.smart_scan_button = QPushButton("⚡  Scansione rapida")
+        self.hero_actions = QBoxLayout(QBoxLayout.Direction.LeftToRight)
+        self.hero_actions.setSpacing(14)
+        self.hero_actions.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        self.smart_scan_button = QPushButton("Scansione rapida")
         self.smart_scan_button.setObjectName("PrimaryDisabled")
+        self.smart_scan_button.setIcon(_make_icon("bolt", "#6c9f89", 18))
+        self.smart_scan_button.setIconSize(QSize(18, 18))
         self.smart_scan_button.setEnabled(False)
-        self.smart_scan_button.setMinimumWidth(180)
-        self.smart_scan_button.setAccessibleName("Smart Scan unavailable until B6-3")
-        full_scan = QPushButton("⌕  Scansione completa")
-        full_scan.setObjectName("SecondaryDisabled")
-        full_scan.setEnabled(False)
-        full_scan.setMinimumWidth(180)
-        note = QLabel("Disponibili nel prossimo milestone")
-        note.setObjectName("Microcopy")
-        note.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        actions.addWidget(self.smart_scan_button)
-        actions.addWidget(full_scan)
-        actions.addWidget(note)
-        layout.addLayout(actions)
-        return self.hero
+        self.smart_scan_button.setMinimumWidth(190)
+        self.smart_scan_button.setAccessibleName("Smart Scan non disponibile fino a B6-3")
 
-    def _render_cards(self) -> None:
+        self.full_scan_button = QPushButton("Scansione completa")
+        self.full_scan_button.setObjectName("SecondaryDisabled")
+        self.full_scan_button.setIcon(_make_icon("search", "#738178", 18))
+        self.full_scan_button.setIconSize(QSize(18, 18))
+        self.full_scan_button.setEnabled(False)
+        self.full_scan_button.setMinimumWidth(190)
+
+        self.hero_actions.addWidget(self.smart_scan_button)
+        self.hero_actions.addWidget(self.full_scan_button)
+        self.hero_layout.addLayout(self.hero_actions)
+        return hero
+
+    def _render_metrics(self, columns: int) -> None:
+        while self.metrics_grid.count():
+            item = self.metrics_grid.takeAt(0)
+            if item.widget() is not None:
+                item.widget().setParent(None)
+        for index, card in enumerate(self.metric_cards):
+            row, col = divmod(index, columns)
+            self.metrics_grid.addWidget(card, row, col)
+        for col in range(max(1, columns)):
+            self.metrics_grid.setColumnStretch(col, 1)
+
+    def _render_cards(self, columns: int = 2) -> None:
+        existing = list(self.card_widgets.values())
+        if not existing:
+            for card in self.snapshot.cards:
+                self.card_widgets[card.card_id] = ProtectionCard(card, self._handle_card_action)
+            existing = list(self.card_widgets.values())
+
+        while self.cards_grid.count():
+            item = self.cards_grid.takeAt(0)
+            if item.widget() is not None:
+                item.widget().setParent(None)
+
+        for index, widget in enumerate(existing):
+            row, column = divmod(index, columns)
+            self.cards_grid.addWidget(widget, row, column)
+        for col in range(max(1, columns)):
+            self.cards_grid.setColumnStretch(col, 1)
+
+    def _rebuild_cards_for_snapshot(self) -> None:
         while self.cards_grid.count():
             item = self.cards_grid.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
         self.card_widgets.clear()
+        columns = 2 if self._content_width() >= 900 else 1
+        self._render_cards(columns=columns)
 
-        for index, card in enumerate(self.snapshot.cards):
-            widget = ProtectionCard(card, self._handle_card_action)
-            self.card_widgets[card.card_id] = widget
-            row, column = divmod(index, 2)
-            self.cards_grid.addWidget(widget, row, column)
-        self.cards_grid.setColumnStretch(0, 1)
-        self.cards_grid.setColumnStretch(1, 1)
+    def _content_width(self) -> int:
+        return max(0, self.page_scroll.viewport().width() - 48)
+
+    def _post_layout_setup(self) -> None:
+        self._apply_responsive_layout(force=True)
+
+    def _apply_responsive_layout(self, force: bool = False) -> None:
+        width = self._content_width()
+        compact = width < 900
+        narrow_metrics = width < 760
+        mode = (compact, narrow_metrics)
+        if not force and mode == self._last_layout_mode:
+            return
+        self._last_layout_mode = mode
+
+        self.hero_layout.setDirection(
+            QBoxLayout.Direction.TopToBottom if compact else QBoxLayout.Direction.LeftToRight
+        )
+        self.hero_actions.setDirection(
+            QBoxLayout.Direction.TopToBottom if width < 1060 else QBoxLayout.Direction.LeftToRight
+        )
+        self.section_hint.setVisible(width >= 820)
+        self._render_metrics(columns=1 if narrow_metrics else 3)
+        self._render_cards(columns=1 if compact else 2)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        QTimer.singleShot(0, self._apply_responsive_layout)
 
     def _handle_card_action(self, card_id: str) -> None:
         if card_id != model.LAYER_RECOVERY:
@@ -569,7 +814,7 @@ class SecurityOverviewWindow(QMainWindow):
         self.recovery_window.show()
         self.recovery_window.raise_()
         self.recovery_window.activateWindow()
-        self.statusBar().showMessage("System & Recovery opened. Discovery remains manual.", 5000)
+        self.statusBar().showMessage("System & Recovery aperto. La discovery resta manuale.", 5000)
 
     def _clear_recovery_window(self) -> None:
         self.recovery_window = None
@@ -579,19 +824,20 @@ class SecurityOverviewWindow(QMainWindow):
         try:
             self.snapshot = model.build_snapshot(self.status_provider)
             self._update_hero()
-            self._render_cards()
-            self._animated_widgets = [self.hero, *self.card_widgets.values()]
-            self.statusBar().showMessage("Passive status refreshed. No scan was started.", 4500)
+            self._rebuild_cards_for_snapshot()
+            self._animated_widgets = [self.hero, self.modules_panel]
+            self.statusBar().showMessage("Stato aggiornato passivamente. Nessuna scansione avviata.", 4500)
             self._start_entrance_motion(cards_only=True)
         finally:
             self.refresh_button.setEnabled(True)
 
     def _update_hero(self) -> None:
         self.hero.setProperty("posture", self.snapshot.posture)
-        self.posture_label.setText(self.snapshot.posture_label)
+        badge, headline, summary = _display_posture(self.snapshot.posture)
+        self.posture_label.setText(badge)
         self.posture_label.setProperty("posture", self.snapshot.posture)
-        self.headline_label.setText(self.snapshot.headline)
-        self.hero_summary.setText(self.snapshot.summary)
+        self.headline_label.setText(headline)
+        self.hero_summary.setText(summary)
         for widget in (self.hero, self.posture_label):
             widget.style().unpolish(widget)
             widget.style().polish(widget)
@@ -625,59 +871,291 @@ class SecurityOverviewWindow(QMainWindow):
         self.setStyleSheet(
             f"""
             #SecurityOverviewWindow, #AppShell, #MainColumn, #PageScroll, #PageViewport, #PageHost, #SecurityRoot {{
-                background: {c['canvas']}; border: none;
+                background: {c['canvas']};
+                border: none;
             }}
-            QLabel {{ color: {c['text_primary']}; background: transparent; }}
-            #Sidebar {{ background: {c['sidebar']}; border-right: 1px solid {c['border_soft']}; }}
-            #BrandMark {{ background: {c['accent']}; color: #062016; border-radius: 9px; font-size: 19px; font-weight: 800; }}
-            #BrandName {{ color: {c['accent']}; font-size: 18px; font-weight: 750; }}
-            #BrandEdition {{ color: {c['text_muted']}; font-size: 10px; }}
-            #NavActive, #NavItem {{ text-align: left; padding: 10px 12px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; }}
-            #NavActive {{ background: #123428; color: {c['text_primary']}; border-left: 3px solid {c['accent']}; }}
-            #NavItem {{ background: transparent; color: {c['text_muted']}; }}
-            #NavItem:disabled {{ color: #65716a; }}
-            #SidebarDivider {{ background: {c['border_soft']}; border: none; }}
-            #SidebarScan {{ background: #123428; color: #5e8875; border: 1px solid #28513f; border-radius: 8px; padding: 9px 12px; font-weight: 700; }}
-            #TopBar {{ background: {c['canvas']}; border-bottom: 1px solid {c['border_soft']}; }}
-            #TopBarTitle {{ color: {c['text_secondary']}; font-size: 14px; font-weight: 650; }}
-            #TopBarAction {{ background: transparent; color: {c['text_secondary']}; border: 1px solid {c['border']}; border-radius: 8px; padding: 7px 11px; font-weight: 600; }}
-            #TopBarAction:hover {{ background: {c['surface_2']}; color: {c['text_primary']}; }}
-            #PostureHero {{ background: {c['surface_1']}; border: 1px solid {c['border']}; border-radius: 16px; }}
-            #HeroTitle {{ color: #f0f5f1; font-size: 25px; font-weight: 750; }}
-            #HeroSummary {{ color: {c['text_secondary']}; font-size: 13px; }}
-            #PosturePill, #StatusPill, #NeutralPill {{ border-radius: 13px; padding: 4px 9px; font-size: 10px; font-weight: 750; }}
-            #PosturePill[posture="{model.POSTURE_PROTECTED}"], #StatusPill[statusRole="positive"] {{ color: {c['success']}; background: #10271c; border: 1px solid #2a6045; }}
-            #PosturePill[posture="{model.POSTURE_ATTENTION}"], #StatusPill[statusRole="attention"] {{ color: {c['critical']}; background: #301817; border: 1px solid #6c302e; }}
-            #PosturePill[posture="{model.POSTURE_UNVERIFIED}"] {{ color: {c['warning']}; background: #2d2414; border: 1px solid #665027; }}
-            #StatusPill[statusRole="neutral"], #NeutralPill {{ color: {c['text_secondary']}; background: {c['surface_3']}; border: 1px solid {c['border']}; }}
-            #PrimaryDisabled, #SecondaryDisabled {{ border-radius: 8px; padding: 9px 14px; font-weight: 700; }}
-            #PrimaryDisabled {{ background: #174532; color: #6c9f89; border: 1px solid #286148; }}
-            #SecondaryDisabled {{ background: transparent; color: #6f7d75; border: 1px solid #344239; }}
-            #Microcopy {{ color: {c['text_muted']}; font-size: 10px; }}
-            #MetricCard {{ background: {c['surface_1']}; border: 1px solid {c['border_soft']}; border-radius: 12px; }}
-            #MetricLabel {{ color: {c['text_muted']}; font-size: 10px; font-weight: 750; }}
-            #MetricSymbol {{ color: {c['text_muted']}; font-size: 16px; }}
-            #MetricValue {{ color: #edf3ee; font-size: 21px; font-weight: 700; }}
-            #SectionTitle {{ color: #eef3ef; font-size: 17px; font-weight: 700; }}
-            #SectionHint {{ color: {c['text_muted']}; font-size: 10px; }}
-            #ProtectionCard, #ActivityCard {{ background: {c['surface_1']}; border: 1px solid {c['border_soft']}; border-radius: 12px; }}
-            #ProtectionCard:hover {{ border: 1px solid {c['border']}; background: #1d2721; }}
-            #ModuleIcon {{ background: {c['surface_2']}; color: {c['accent']}; border: 1px solid {c['border_soft']}; border-radius: 20px; font-size: 18px; font-weight: 700; }}
-            #CardTitle {{ color: #f0f5f1; font-size: 15px; font-weight: 700; }}
-            #CardDescription {{ color: {c['text_secondary']}; font-size: 12px; }}
-            #CardSummary {{ color: {c['text_muted']}; font-size: 11px; }}
-            #InlineButton {{ background: transparent; color: {c['text_secondary']}; border: none; padding: 5px 0; font-size: 11px; font-weight: 650; text-align: left; }}
-            #InlineButton:hover {{ color: {c['accent']}; }}
-            #InlineButton:focus {{ color: {c['accent']}; }}
-            #RecoveryButton {{ background: {c['accent']}; color: #062016; border: 1px solid #34c996; border-radius: 8px; padding: 8px 12px; font-weight: 750; }}
-            #RecoveryButton:hover {{ background: #22c990; }}
-            #AdvancedPanel {{ background: #0b120e; border: 1px solid {c['border_soft']}; border-radius: 9px; }}
-            #AdvancedTitle {{ color: {c['text_secondary']}; font-size: 10px; font-weight: 750; }}
-            #AdvancedText {{ background: #09100c; color: #bec9c1; border: 1px solid #27332c; border-radius: 7px; font-family: Consolas, "Cascadia Mono", monospace; font-size: 10px; selection-background-color: #22523d; }}
-            QScrollBar:vertical {{ background: transparent; width: 8px; margin: 2px; }}
-            QScrollBar::handle:vertical {{ background: #34443b; border-radius: 4px; min-height: 34px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-            QStatusBar {{ color: {c['text_muted']}; background: {c['canvas']}; border-top: 1px solid {c['border_soft']}; }}
+            QLabel {{
+                color: {c['text_primary']};
+                background: transparent;
+            }}
+
+            #Sidebar {{
+                background: {c['sidebar']};
+                border-right: 1px solid {c['border']};
+            }}
+            #BrandName {{
+                color: {c['accent']};
+                font-size: 20px;
+                font-weight: 700;
+            }}
+            #BrandEdition {{
+                color: {c['text_secondary']};
+                font-size: 11px;
+                font-weight: 500;
+            }}
+            #NavActive, #NavItem, #SidebarFooterItem {{
+                text-align: left;
+                padding: 10px 12px;
+                border-radius: 8px;
+                border: none;
+                font-size: 14px;
+                font-weight: 600;
+            }}
+            #NavActive {{
+                background: #14382c;
+                color: {c['text_primary']};
+                border-left: 3px solid {c['accent']};
+            }}
+            #NavItem, #SidebarFooterItem {{
+                background: transparent;
+                color: {c['text_secondary']};
+            }}
+            #NavItem:disabled, #SidebarFooterItem:disabled {{
+                color: #78877f;
+            }}
+            #SidebarDivider {{
+                background: {c['border_soft']};
+                border: none;
+                margin-top: 6px;
+                margin-bottom: 6px;
+            }}
+            #SidebarScan {{
+                background: #153a2d;
+                color: #7ea592;
+                border: 1px solid #2b654c;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 13px;
+                font-weight: 700;
+            }}
+
+            #TopBar {{
+                background: {c['canvas']};
+                border-bottom: 1px solid {c['border']};
+            }}
+            #TopBarTitle {{
+                color: {c['text_primary']};
+                font-size: 15px;
+                font-weight: 650;
+            }}
+            #TopBarAction {{
+                background: transparent;
+                color: {c['text_secondary']};
+                border: 1px solid {c['border']};
+                border-radius: 8px;
+                padding: 7px 11px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            #TopBarAction:hover {{
+                background: {c['surface_2']};
+                color: {c['text_primary']};
+            }}
+
+            #PostureHero {{
+                background: {c['surface_1']};
+                border: 1px solid {c['border']};
+                border-radius: 24px;
+            }}
+            #HeroTitle {{
+                color: #f2f6f3;
+                font-size: 28px;
+                font-weight: 700;
+            }}
+            #HeroSummary {{
+                color: {c['text_secondary']};
+                font-size: 14px;
+            }}
+            #PosturePill, #StatusPill, #NeutralPill {{
+                border-radius: 12px;
+                padding: 4px 9px;
+                font-size: 11px;
+                font-weight: 700;
+            }}
+            #PosturePill[posture="{model.POSTURE_PROTECTED}"], #StatusPill[statusRole="positive"] {{
+                color: {c['success']};
+                background: #10271c;
+                border: 1px solid #2a6045;
+            }}
+            #PosturePill[posture="{model.POSTURE_ATTENTION}"], #StatusPill[statusRole="attention"] {{
+                color: {c['critical']};
+                background: #301817;
+                border: 1px solid #6c302e;
+            }}
+            #PosturePill[posture="{model.POSTURE_UNVERIFIED}"] {{
+                color: {c['warning']};
+                background: #2d2414;
+                border: 1px solid #665027;
+            }}
+            #StatusPill[statusRole="neutral"], #NeutralPill {{
+                color: {c['text_secondary']};
+                background: {c['surface_3']};
+                border: 1px solid {c['border']};
+            }}
+            #PrimaryDisabled, #SecondaryDisabled {{
+                border-radius: 8px;
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            #PrimaryDisabled {{
+                background: #174532;
+                color: #79a892;
+                border: 1px solid #286148;
+            }}
+            #SecondaryDisabled {{
+                background: transparent;
+                color: #7d8c84;
+                border: 1px solid #405047;
+            }}
+
+            #MetricCard {{
+                background: {c['surface_1']};
+                border: 1px solid {c['border']};
+                border-radius: 16px;
+            }}
+            #MetricCard[accentMetric="true"] {{
+                border-left: 4px solid {c['accent']};
+            }}
+            #MetricLabel {{
+                color: {c['text_secondary']};
+                font-size: 12px;
+                font-weight: 650;
+            }}
+            #MetricValue {{
+                color: #f0f5f1;
+                font-size: 24px;
+                font-weight: 700;
+            }}
+            #MetricValueAccent {{
+                color: {c['accent']};
+                font-size: 24px;
+                font-weight: 700;
+            }}
+
+            #ModulesPanel {{
+                background: {c['surface_1']};
+                border: 1px solid {c['border']};
+                border-radius: 24px;
+            }}
+            #SectionTitle {{
+                color: #f0f5f1;
+                font-size: 18px;
+                font-weight: 700;
+            }}
+            #SectionHint {{
+                color: {c['text_muted']};
+                font-size: 11px;
+            }}
+            #SectionDivider {{
+                background: {c['border']};
+                border: none;
+            }}
+            #ProtectionCard {{
+                background: {c['canvas']};
+                border: 1px solid #344139;
+                border-radius: 16px;
+            }}
+            #ProtectionCard:hover {{
+                border: 1px solid {c['border']};
+                background: #111813;
+            }}
+            #ModuleIcon {{
+                background: {c['surface_2']};
+                border: 1px solid {c['border_soft']};
+                border-radius: 21px;
+            }}
+            #CardTitle {{
+                color: #f1f5f2;
+                font-size: 16px;
+                font-weight: 700;
+            }}
+            #CardDescription {{
+                color: {c['text_secondary']};
+                font-size: 13px;
+            }}
+            #CardSummary {{
+                color: {c['text_muted']};
+                font-size: 12px;
+            }}
+            #CardState {{
+                color: {c['text_muted']};
+                font-size: 12px;
+                padding-left: 56px;
+            }}
+            #CardState[statusRole="positive"] {{
+                color: {c['accent_bright']};
+            }}
+            #CardState[statusRole="attention"] {{
+                color: {c['critical']};
+            }}
+            #InlineButton {{
+                background: transparent;
+                color: {c['text_secondary']};
+                border: none;
+                padding: 5px 0;
+                font-size: 11px;
+                font-weight: 650;
+                text-align: left;
+            }}
+            #InlineButton:hover, #InlineButton:focus {{
+                color: {c['accent']};
+            }}
+            #RecoveryButton {{
+                background: {c['accent']};
+                color: #062016;
+                border: 1px solid #34c996;
+                border-radius: 8px;
+                padding: 7px 12px;
+                font-size: 12px;
+                font-weight: 750;
+            }}
+            #RecoveryButton:hover {{
+                background: #22c990;
+            }}
+
+            #ActivityCard {{
+                background: {c['surface_1']};
+                border: 1px solid {c['border_soft']};
+                border-radius: 16px;
+            }}
+            #AdvancedPanel {{
+                background: {c['surface_lowest']};
+                border: 1px solid {c['border_soft']};
+                border-radius: 10px;
+            }}
+            #AdvancedTitle {{
+                color: {c['text_secondary']};
+                font-size: 11px;
+                font-weight: 700;
+            }}
+            #AdvancedText {{
+                background: #09100c;
+                color: #bec9c1;
+                border: 1px solid #27332c;
+                border-radius: 8px;
+                font-family: Consolas, "Cascadia Mono", monospace;
+                font-size: 10px;
+                selection-background-color: #22523d;
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: 8px;
+                margin: 2px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #34443b;
+                border-radius: 4px;
+                min-height: 34px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0;
+            }}
+            QStatusBar {{
+                color: {c['text_muted']};
+                background: {c['canvas']};
+                border-top: 1px solid {c['border_soft']};
+            }}
             """
         )
 
@@ -715,12 +1193,18 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication.instance() or QApplication(sys.argv[:1])
     window = SecurityOverviewWindow()
     if args.offscreen_smoke:
+        window.resize(1600, 980)
+        window.show()
+        app.processEvents()
         payload = self_check()
         payload["window_created"] = True
         payload["window_title"] = window.windowTitle()
         payload["minimum_size"] = [window.minimumWidth(), window.minimumHeight()]
         payload["card_count"] = len(window.card_widgets)
         payload["smart_scan_enabled"] = window.smart_scan_button.isEnabled()
+        payload["content_width"] = window.content_root.width()
+        payload["hero_width"] = window.hero.width()
+        payload["horizontal_scroll_max"] = window.page_scroll.horizontalScrollBar().maximum()
         print(json.dumps(payload, indent=2, sort_keys=True))
         window.close()
         return 0 if payload["passed"] else 4
