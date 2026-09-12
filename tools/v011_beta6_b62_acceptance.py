@@ -55,6 +55,12 @@ def run_acceptance() -> dict:
     app = QApplication.instance() or QApplication([])
     window = ui.SecurityOverviewWindow()
     try:
+        window.resize(1600, 980)
+        window.show()
+        app.processEvents()
+        window._apply_responsive_layout(force=True)
+        app.processEvents()
+
         default_runtime_cards = [
             card for card in default_snapshot.cards
             if card.card_id in model.REQUIRED_RUNTIME_LAYERS
@@ -75,22 +81,22 @@ def run_acceptance() -> dict:
             "window_constructs": window.windowTitle() == ui.WINDOW_TITLE,
             "four_protection_cards": len(window.card_widgets) == 4,
             "smart_scan_disabled_in_ui": window.smart_scan_button.isEnabled() is False,
+            "full_scan_disabled_in_ui": window.full_scan_button.isEnabled() is False,
             "recovery_action_available": window.card_widgets[model.LAYER_RECOVERY].action_button.isEnabled() is True,
             "neutral_default_visual_posture": window.hero.property("posture") == model.POSTURE_UNVERIFIED,
             "dark_surface_contract": (
-                ui.COLOR_TOKENS["canvas"].lower() != "#ffffff"
+                ui.COLOR_TOKENS["canvas"].lower() == "#0f1412"
                 and "#PageViewport" in window.styleSheet()
                 and "#SecurityRoot" in window.styleSheet()
             ),
+            "stitch_accent_exact": ui.COLOR_TOKENS["accent"].lower() == "#10b981",
             "spacing_tokens_exact": ui.SPACING_TOKENS == {
                 "xs": 4,
                 "sm": 8,
-                "md": 12,
-                "lg": 16,
-                "xl": 20,
-                "2xl": 24,
-                "3xl": 32,
-                "4xl": 40,
+                "md": 16,
+                "lg": 24,
+                "xl": 32,
+                "xxl": 48,
             },
             "motion_tokens_within_contract": (
                 120 <= ui.MOTION_TOKENS["micro"] <= 160
@@ -98,7 +104,14 @@ def run_acceptance() -> dict:
                 and 220 <= ui.MOTION_TOKENS["panel"] <= 280
                 and ui.MOTION_TOKENS["page"] <= 320
             ),
-            "minimum_window_contract": window.minimumWidth() >= 980 and window.minimumHeight() >= 700,
+            "minimum_window_contract": window.minimumWidth() >= 1080 and window.minimumHeight() >= 720,
+            "stitch_sidebar_width": window.sidebar.width() == 260,
+            "stitch_modules_container": window.modules_panel.objectName() == "ModulesPanel",
+            "stitch_1600_content_width": window.content_root.width() >= 1200,
+            "stitch_1600_hero_width": window.hero.width() >= 1150,
+            "stitch_no_horizontal_scroll": window.page_scroll.horizontalScrollBar().maximum() == 0,
+            "stitch_module_cards_not_clipped": all(card.width() >= 500 for card in window.card_widgets.values()),
+            "native_nav_icons_present": all(not button.icon().isNull() for button in window.nav_buttons.values()),
         }
     finally:
         window.close()
@@ -116,7 +129,11 @@ def run_acceptance() -> dict:
         "verified_fixture_posture": verified_snapshot.posture,
         "partial_fixture_posture": partial_snapshot.posture,
         "smart_scan_enabled": default_snapshot.smart_scan_enabled,
-        "note": "Deterministic/local B6-2 acceptance only. Real Windows visual acceptance remains required before checkpoint acceptance.",
+        "note": (
+            "Deterministic/local B6-2 acceptance. Includes the Stitch 1600px geometry regression "
+            "that prevents the previously observed one-third-width/clipped dashboard. "
+            "Real Windows visual acceptance remains required before checkpoint acceptance."
+        ),
     }
 
 
