@@ -124,6 +124,8 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
             except (RuntimeError, TypeError): pass
             button.clicked.connect(lambda checked=False, page=name: self._navigate(page))
 
+        self.topbar_title = self.main_column.findChild(QLabel, "TopBarTitle")
+        if self.topbar_title is None: self.topbar_title = QLabel("BC SENTINEL")
         brand_name = self.sidebar.findChild(QLabel, "BrandName")
         brand_edition = self.sidebar.findChild(QLabel, "BrandEdition")
         self.brand_copy = brand_name if brand_name is not None else QLabel()
@@ -139,18 +141,15 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
         self.stack.setCurrentIndex(index)
         for name, button in self.nav_buttons.items():
             selected = name == page; button.setChecked(selected); button.setObjectName("NavActive" if selected else "NavItem"); button.style().unpolish(button); button.style().polish(button)
-        if self._layout_mode != "mobile":
-            self.topbar_title.setText("BC SENTINEL Intelligent Windows Protection" if page == "Dashboard" else f"BC SENTINEL · {page}")
+        if self._layout_mode != "mobile": self.topbar_title.setText("BC SENTINEL Intelligent Windows Protection" if page == "Dashboard" else f"BC SENTINEL · {page}")
         QTimer.singleShot(0, self._sync_all_scroll_widths)
 
     def _reset_grid_stretches(self) -> None:
-        for col in range(4):
-            self.metrics_grid.setColumnStretch(col, 0); self.cards_grid.setColumnStretch(col, 0)
+        for col in range(4): self.metrics_grid.setColumnStretch(col, 0); self.cards_grid.setColumnStretch(col, 0)
 
     def _sync_page_host_width(self) -> None:
         viewport = max(0, self.page_scroll.viewport().width())
-        if viewport:
-            self.page_host.setFixedWidth(viewport)
+        if viewport: self.page_host.setFixedWidth(viewport)
         self.page_host.updateGeometry(); self.content_root.updateGeometry()
 
     def _sync_all_scroll_widths(self) -> None:
@@ -158,14 +157,9 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
         for scroll in getattr(self, "secondary_scrolls", []): scroll.sync_width()
 
     def _apply_responsive_layout(self, force: bool = False) -> None:
-        width = max(0, self.width())
-        compact = width < BREAKPOINTS["wide"]
-        mobile = width < BREAKPOINTS["compact"]
-        mode = "mobile" if mobile else "compact" if compact else "desktop"
-        if not force and mode == getattr(self, "_layout_mode", None):
-            self._sync_all_scroll_widths(); return
+        width = max(0, self.width()); compact = width < BREAKPOINTS["wide"]; mobile = width < BREAKPOINTS["compact"]; mode = "mobile" if mobile else "compact" if compact else "desktop"
+        if not force and mode == getattr(self, "_layout_mode", None): self._sync_all_scroll_widths(); return
         self._layout_mode = mode
-
         self.sidebar.setFixedWidth(76 if mobile else 220 if compact else 260)
         for label in getattr(self, "_brand_labels", []): label.setVisible(not mobile)
         if hasattr(self, "sidebar_scan_button"): self.sidebar_scan_button.setText("" if mobile else "Quick Scan · B6-3")
@@ -173,25 +167,15 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
         for button, text in zip(getattr(self, "_footer_buttons", []), getattr(self, "_footer_texts", [])): button.setText("" if mobile else text)
         self.refresh_button.setText("" if mobile else "Aggiorna stato")
         self.topbar_title.setText("BC SENTINEL" if mobile else "BC SENTINEL Intelligent Windows Protection" if self._current_page == "Dashboard" else f"BC SENTINEL · {self._current_page}")
-
         self.hero_layout.setDirection(QBoxLayout.Direction.TopToBottom if compact else QBoxLayout.Direction.LeftToRight)
         self.hero_actions.setDirection(QBoxLayout.Direction.TopToBottom if compact else QBoxLayout.Direction.LeftToRight)
         self.hero_actions.setAlignment(Qt.AlignmentFlag.AlignLeft if compact else Qt.AlignmentFlag.AlignVCenter)
-        self.headline_label.setMinimumWidth(0 if compact else 320)
-        self.hero_summary.setMaximumWidth(16777215 if compact else 620)
-        self.smart_scan_button.setMinimumWidth(0 if compact else 190)
-        self.full_scan_button.setMinimumWidth(0 if compact else 190)
-        self.section_hint.setVisible(not compact)
-
-        self._reset_grid_stretches()
-        self._render_metrics(columns=1 if compact else 3)
-        self._render_cards(columns=1 if compact else 2)
+        self.headline_label.setMinimumWidth(0 if compact else 320); self.hero_summary.setMaximumWidth(16777215 if compact else 620); self.smart_scan_button.setMinimumWidth(0 if compact else 190); self.full_scan_button.setMinimumWidth(0 if compact else 190); self.section_hint.setVisible(not compact)
+        self._reset_grid_stretches(); self._render_metrics(columns=1 if compact else 3); self._render_cards(columns=1 if compact else 2)
         for card in self.card_widgets.values(): card.setMinimumWidth(0)
-
         for page in (self.scan_page, self.quarantine_page, self.history_page, self.protection_page, self.settings_page):
             setter = getattr(page, "set_compact", None)
             if setter: setter(compact, mobile)
-
         margin = 16 if compact else 24
         if self.page_host.layout(): self.page_host.layout().setContentsMargins(margin, margin, margin, 32)
         for scroll in self.secondary_scrolls:
@@ -199,60 +183,40 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
         QTimer.singleShot(0, self._sync_all_scroll_widths)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
-        super().resizeEvent(event)
-        QTimer.singleShot(0, self._apply_responsive_layout)
-        QTimer.singleShot(0, self._sync_all_scroll_widths)
+        super().resizeEvent(event); QTimer.singleShot(0, self._apply_responsive_layout); QTimer.singleShot(0, self._sync_all_scroll_widths)
 
-    def _open_recovery(self) -> None:
-        self._handle_card_action(model.LAYER_RECOVERY)
+    def _open_recovery(self) -> None: self._handle_card_action(model.LAYER_RECOVERY)
 
     def _refresh_snapshot(self) -> None:
         self.refresh_button.setEnabled(False)
         try:
-            self.snapshot = model.build_snapshot(self.status_provider)
-            self._update_hero()
+            self.snapshot = model.build_snapshot(self.status_provider); self._update_hero()
             for widget in self.card_widgets.values(): widget.deleteLater()
-            self.card_widgets.clear()
-            self._render_cards(1 if self._layout_mode in {"compact", "mobile"} else 2)
-
+            self.card_widgets.clear(); self._render_cards(1 if self._layout_mode in {"compact", "mobile"} else 2)
             current_index = self.stack.currentIndex()
             for scroll in (self.protection_scroll, self.settings_scroll):
                 self.stack.removeWidget(scroll)
                 if scroll in self.secondary_scrolls: self.secondary_scrolls.remove(scroll)
                 scroll.deleteLater()
-            self.protection_page = ProtectionPage(self.snapshot, self._open_recovery)
-            self.settings_page = SettingsPage(self.snapshot)
-            self.protection_scroll = _PageScroll(self.protection_page)
-            self.settings_scroll = _PageScroll(self.settings_page)
-            self.secondary_scrolls.extend([self.protection_scroll, self.settings_scroll])
-            self.stack.insertWidget(4, self.protection_scroll)
-            self.stack.insertWidget(5, self.settings_scroll)
-            self.stack.setCurrentIndex(min(current_index, self.stack.count() - 1))
-            self._apply_responsive_layout(force=True)
-            self.statusBar().showMessage("Stato aggiornato passivamente. Nessuna scansione avviata.", 4500)
-        finally:
-            self.refresh_button.setEnabled(True)
+            self.protection_page = ProtectionPage(self.snapshot, self._open_recovery); self.settings_page = SettingsPage(self.snapshot); self.protection_scroll = _PageScroll(self.protection_page); self.settings_scroll = _PageScroll(self.settings_page); self.secondary_scrolls.extend([self.protection_scroll, self.settings_scroll]); self.stack.insertWidget(4, self.protection_scroll); self.stack.insertWidget(5, self.settings_scroll); self.stack.setCurrentIndex(min(current_index, self.stack.count() - 1)); self._apply_responsive_layout(force=True); self.statusBar().showMessage("Stato aggiornato passivamente. Nessuna scansione avviata.", 4500)
+        finally: self.refresh_button.setEnabled(True)
 
 
 _impl.SecurityOverviewWindow = SecurityOverviewWindow
 
 
 def self_check() -> dict:
-    contract = model.validate_b62_safety_contract(); snapshot = model.build_snapshot()
-    return {"profile": PROFILE, "passed": bool(contract["passed"]), "contract": contract, "snapshot": snapshot.to_dict(), "window_created": False, "startup_scan_dispatch": False, "startup_rescue_dispatch": False, "smart_scan_enabled": snapshot.smart_scan_enabled}
+    contract = model.validate_b62_safety_contract(); snapshot = model.build_snapshot(); return {"profile": PROFILE, "passed": bool(contract["passed"]), "contract": contract, "snapshot": snapshot.to_dict(), "window_created": False, "startup_scan_dispatch": False, "startup_rescue_dispatch": False, "smart_scan_enabled": snapshot.smart_scan_enabled}
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-2 Stitch UI migration")
-    parser.add_argument("--self-check", action="store_true"); parser.add_argument("--offscreen-smoke", action="store_true"); args = parser.parse_args(argv)
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-2 Stitch UI migration"); parser.add_argument("--self-check", action="store_true"); parser.add_argument("--offscreen-smoke", action="store_true"); args = parser.parse_args(argv)
     if args.self_check and not args.offscreen_smoke:
         payload = self_check(); print(json.dumps(payload, indent=2, sort_keys=True)); return 0 if payload["passed"] else 4
-    if args.offscreen_smoke:
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen"); os.environ.setdefault("BC_SENTINEL_REDUCED_MOTION", "1")
+    if args.offscreen_smoke: os.environ.setdefault("QT_QPA_PLATFORM", "offscreen"); os.environ.setdefault("BC_SENTINEL_REDUCED_MOTION", "1")
     app = QApplication.instance() or QApplication(sys.argv[:1]); window = SecurityOverviewWindow()
     if args.offscreen_smoke:
-        window.resize(1600, 980); window.show(); app.processEvents(); window._apply_responsive_layout(force=True); app.processEvents(); window._sync_all_scroll_widths(); app.processEvents()
-        payload = self_check(); payload.update({"window_created": True, "window_title": window.windowTitle(), "minimum_size": [window.minimumWidth(), window.minimumHeight()], "card_count": len(window.card_widgets), "smart_scan_enabled": window.smart_scan_button.isEnabled(), "content_width": window.content_root.width(), "hero_width": window.hero.width(), "horizontal_scroll_max": window.page_scroll.horizontalScrollBar().maximum(), "page_count": window.stack.count()}); print(json.dumps(payload, indent=2, sort_keys=True)); window.close(); return 0 if payload["passed"] else 4
+        window.resize(1600, 980); window.show(); app.processEvents(); window._apply_responsive_layout(force=True); app.processEvents(); window._sync_all_scroll_widths(); app.processEvents(); payload = self_check(); payload.update({"window_created": True, "window_title": window.windowTitle(), "minimum_size": [window.minimumWidth(), window.minimumHeight()], "card_count": len(window.card_widgets), "smart_scan_enabled": window.smart_scan_button.isEnabled(), "content_width": window.content_root.width(), "hero_width": window.hero.width(), "horizontal_scroll_max": window.page_scroll.horizontalScrollBar().maximum(), "page_count": window.stack.count()}); print(json.dumps(payload, indent=2, sort_keys=True)); window.close(); return 0 if payload["passed"] else 4
     window.show(); return int(app.exec())
 
 
