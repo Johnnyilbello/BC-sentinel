@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory=$true)][string]$RuntimeRoot,
+    [string]$RuntimeRoot = "",
     [string]$RuntimePython = "",
     [string[]]$ScanRoots = @(),
     [int]$MaxFiles = 250,
@@ -16,7 +16,22 @@ param(
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
-$resolved=(Resolve-Path -LiteralPath $RuntimeRoot).Path
+if($RuntimeRoot){
+    $resolved=(Resolve-Path -LiteralPath $RuntimeRoot).Path
+}else{
+    $matches=@(
+        where.exe /R "$env:USERPROFILE\Downloads" scanner.py 2>$null |
+        Select-String -Pattern '\\sentinel\\scanner\.py$' |
+        Where-Object { $_.Line -like '*Consolidation_FULL*' } |
+        ForEach-Object { $_.Line }
+    )
+    if($matches.Count -ne 1){
+        throw "Impossibile individuare in modo univoco il runtime FULL (trovati $($matches.Count) scanner.py). Specificare -RuntimeRoot esplicitamente."
+    }
+    $resolved=Split-Path -Parent (Split-Path -Parent $matches[0])
+    $resolved=(Resolve-Path -LiteralPath $resolved).Path
+}
+
 $scanner=Join-Path $resolved 'sentinel\scanner.py'
 if(-not(Test-Path -LiteralPath $scanner -PathType Leaf)){
     throw "sentinel\scanner.py non trovato in: $resolved"
