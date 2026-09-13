@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-3 Implementation Status
 
-Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / B6-3.3 LIVE COMPATIBILITY NARROW PASS / B6-3.4 PERFORMANCE & SCOPE WINDOWS CI GREEN / LIVE PERFORMANCE ACCEPTANCE PENDING**
+Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / B6-3.3 LIVE COMPATIBILITY NARROW PASS / B6-3.4 PERFORMANCE + FINDINGS + CANCELLATION LIVE PASS / FINAL LIVE UI GATE PENDING**
 
 Primary B6-3 branch: `feature/v011-beta6-b63-smart-scan`
 
@@ -89,7 +89,7 @@ BC_SENTINEL_V011_BETA6_B63_LIVE_ACCEPTANCE_2026-09-13.md
 
 The first broad live run took about 86 minutes and produced hundreds of thousands of reports. That proved historical engine execution, but it behaved more like a deep/full scan than a consumer Smart Scan.
 
-B6-3.4 now separates Smart Scan from Full Scan explicitly. When the accepted pinned runtime proves `StaticScanner.scan_file` is callable, the provider uses a bounded risk-prioritized scope and scans selected candidates file-by-file instead of invoking broad `scan_paths` over entire monitored roots.
+B6-3.4 separates Smart Scan from Full Scan explicitly. When the accepted pinned runtime proves `StaticScanner.scan_file` is callable, the provider uses a bounded risk-prioritized scope and scans selected candidates file-by-file instead of invoking broad `scan_paths` over entire monitored roots.
 
 Profile:
 
@@ -117,7 +117,9 @@ Candidate priority covers executable/script types, macro documents, selected arc
 
 The provider records `full_filesystem_coverage=false`. `coverage=COMPLETE` means the declared bounded Smart Scan plan completed with accepted evidence for every selected file; it does not claim whole-disk coverage.
 
-B6-3.4 also adds file-level progress, so progress can move while a root is being inspected rather than appearing frozen until the entire root completes.
+The exact pinned historical runtime subtree is excluded before budget allocation through `exclude_pinned_runtime_root_v1`, preventing the planner from selecting paths that the authoritative historical scanner intentionally refuses as BC Sentinel self-managed files.
+
+B6-3.4 adds file-level progress, so progress can move while a root is being inspected rather than appearing frozen until the entire root completes.
 
 Fail-closed behavior remains intact: per-file errors, missing evidence, unknown report semantics or incomplete planned coverage cannot become `COMPLETED_CLEAN`.
 
@@ -127,9 +129,58 @@ Canonical contract:
 BC_SENTINEL_V011_BETA6_B634_SMART_SCAN_PERFORMANCE_SCOPE.md
 ```
 
+### Real Windows performance + finding acceptance — PASS
+
+The corrected 250-file benchmark completed the declared Smart Scan scope successfully:
+
+```text
+completed_checks=5
+total_checks=5
+coverage=COMPLETE
+state=COMPLETED_FINDINGS
+elapsed_ms=18188
+selected_count=250
+Temp selected_count=221
+Roaming selected_count=29
+no_destructive_authority=true
+```
+
+This is materially faster than the prior ~86-minute broad scan while making no whole-disk coverage claim. Real findings were preserved for review and no automatic remediation was performed.
+
+Canonical evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B634_LIVE_BENCHMARK_R2_2026-09-13.md
+```
+
+### Real Windows cancellation acceptance — PASS
+
+A controlled cancellation request was issued two seconds after the coordinator entered `RUNNING` during a real pinned-runtime Smart Scan.
+
+Observed result:
+
+```text
+cancellation.requested=true
+cancellation.request_accepted=true
+state=CANCELLED
+coverage=INCOMPLETE
+completed_checks=3
+total_checks=5
+elapsed_ms=7219
+no_destructive_authority=true
+```
+
+The active Temp check was marked `CANCELLED`, the following Roaming check was `SKIPPED`, and evidence already produced before cancellation was preserved. No remediation was performed.
+
+Canonical evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B634_LIVE_CANCELLATION_2026-09-13.md
+```
+
 ## Automated evidence
 
-Windows deterministic evidence now covers:
+Windows deterministic evidence covers:
 
 - B6-0/B6-1/B6-2 predecessor regression;
 - B6-3 orchestration and passive-start contract;
@@ -139,6 +190,7 @@ Windows deterministic evidence now covers:
 - risk-prioritized candidate selection;
 - highest-risk-first file/byte budgets;
 - use of `scan_file` rather than broad `scan_paths` in B6-3.4;
+- exact self-managed runtime exclusion guard;
 - clean and finding translation;
 - per-file failure -> `INCOMPLETE`;
 - active cancellation -> `CANCELLED`;
@@ -146,30 +198,30 @@ Windows deterministic evidence now covers:
 - no destructive authority;
 - six-page shell and zero horizontal overflow.
 
-Observed Windows run on B6-3.4 code:
+Latest explicitly observed full Windows CI for the runtime-scope guard:
 
 ```text
 Workflow: B6-3 Smart Scan Gate
-Run: 34763211770
-Head: 15f992380809b68f8ecaf8deeccab3112c296b91
+Run: 34764439517
+Head: e52960b42d4dda4467f16f080d709da57ca371e7
 Result: success
-Regression suite: 109 passed, 34 warnings
+Regression suite: 110 passed, 34 warnings
 ```
 
-A later helper-only head also passed the same Windows gate before this documentation update.
+Later documentation/cancellation-probe commits do not change scanner authority or the accepted scope semantics, but the final stabilization gate must still re-run the full Windows predecessor suite before promotion.
 
 ## Remaining B6-3 stabilization gate
 
-B6-3 is not stable yet. Remaining live acceptance work:
+B6-3 is not stable yet. Performance/scope, live finding translation and real cancellation are now accepted.
 
-1. real pinned Windows B6-3.4 performance benchmark with `provider_profile=v0.11.0-beta.6-b63.4-smart-scope`;
-2. verify selected candidate/file/byte scope and materially lower elapsed time than the prior ~86-minute broad run;
-3. controlled live harmless **finding** translation;
-4. real cancellation during active pinned-runtime scanning;
-5. UI responsiveness and visible progress during a real B6-3.4 scan;
-6. no target mutation/remediation;
-7. final B6-0/B6-1/B6-2 predecessor gate remains green;
-8. supported-Windows evidence committed.
+Remaining live acceptance work:
+
+1. launch the actual Home/UI with the accepted pinned B6-3.4 provider;
+2. verify the UI remains responsive while a real Smart Scan is running;
+3. verify file-level progress is visibly rendered in the actual UI;
+4. verify the UI Cancel control drives the same accepted cancellation path without freezing or remediation;
+5. final B6-0/B6-1/B6-2 predecessor + B6-3 Windows gate remains green on the final head;
+6. supported-Windows evidence committed.
 
 Do not advance B6-4 until the B6-3 live Smart Scan stabilization gate is complete.
 
