@@ -8,6 +8,10 @@ verified v0.10-era ``FileReport`` shape can be interpreted truthfully, Unicode
 file names cannot crash the child JSON transport on Windows, and B6-3.4 can
 wrap a compatible pinned runtime with the risk-prioritized ``scan_file`` scope.
 
+B6-3.4 stabilization also routes planning through the self-managed runtime
+guard so files inside the exact pinned historical runtime are never scheduled
+for a scanner that intentionally refuses its own managed paths.
+
 Unknown assessment levels still fail closed. No remediation authority is
 introduced here.
 """
@@ -137,9 +141,9 @@ def apply(module: Any) -> Any:
 
     def create_provider() -> Any:
         base_provider = original_create_provider()
-        from sentinel import smart_scan_scope
+        from sentinel import smart_scan_scope_guard
 
-        return smart_scan_scope.wrap_provider(module, base_provider)
+        return smart_scan_scope_guard.wrap_provider(module, base_provider)
 
     # Order matters: the B6-3.4 wrapper must inherit the hardened runtime env and
     # assessment translator installed here.
