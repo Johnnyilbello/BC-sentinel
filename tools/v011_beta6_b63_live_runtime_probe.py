@@ -4,19 +4,22 @@ import argparse
 import json
 
 from sentinel import home_smart_scan as smart
-from sentinel import smart_scan_live_provider as live
+from sentinel import smart_scan_provider_loader as provider_loader
 
 
 def build_report(*, execute: bool = False) -> dict:
-    provider = live.create_provider()
+    load_result = provider_loader.load_default_provider()
+    provider = load_result.provider
     capabilities = dict(provider.capabilities())
     capability_contract = smart.validate_provider_capabilities(provider)
     report = {
-        "checkpoint": "B6-3.2-pinned-static-scanner-runtime",
+        "checkpoint": "B6-3.3-static-scanner-runtime-compat",
+        "provider_load": load_result.to_dict(),
         "provider_capabilities": capabilities,
         "provider_contract": capability_contract,
         "accepted": bool(
-            capability_contract.get("passed")
+            load_result.accepted
+            and capability_contract.get("passed")
             and capability_contract.get("available")
             and capability_contract.get("accepted")
         ),
@@ -44,7 +47,7 @@ def build_report(*, execute: bool = False) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-3.2 pinned full-runtime preflight")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-3.3 pinned full-runtime compatibility preflight")
     parser.add_argument(
         "--execute",
         action="store_true",
