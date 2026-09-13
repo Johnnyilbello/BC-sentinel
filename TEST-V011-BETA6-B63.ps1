@@ -23,12 +23,15 @@ try{
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_live_provider.py')){Fail 'preflight' 'B6-3.2 pinned StaticScanner adapter missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_runtime_compat.py')){Fail 'preflight' 'B6-3.3 historical runtime compatibility shim missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_scope.py')){Fail 'preflight' 'B6-3.4 risk-prioritized scope engine missing'}
+    if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_scope_guard.py')){Fail 'preflight' 'B6-3.4 self-managed runtime scope guard missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_acceptance.py')){Fail 'preflight' 'B6-3 acceptance tool missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_live_runtime_probe.py')){Fail 'preflight' 'B6-3 live runtime probe missing'}
+    if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_live_ui_probe.py')){Fail 'preflight' 'B6-3.5 live Home UI probe missing'}
+    if(-not(Test-Path -LiteralPath '.\RUN-V011-BETA6-B635-LIVE-UI.ps1')){Fail 'preflight' 'B6-3.5 live Home UI helper missing'}
     $Py='.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-3 SMART SCAN ORCHESTRATION FOUNDATION' -ForegroundColor Cyan
-    Write-Host 'B6-3 adds explicit orchestration, fail-closed live runtime binding, historical report/Unicode compatibility and B6-3.4 risk-prioritized scan_file scope. No remediation authority is added.' -ForegroundColor Yellow
+    Write-Host 'B6-3 adds explicit orchestration, fail-closed live runtime binding, historical report/Unicode compatibility, risk-prioritized scan_file scope and live Home UI acceptance tooling. No remediation authority is added.' -ForegroundColor Yellow
 
     $Protected=@(
         '.\sentinel\advanced_antimalware.py',
@@ -86,14 +89,17 @@ try{
             sentinel\smart_scan_live_provider.py `
             sentinel\smart_scan_runtime_compat.py `
             sentinel\smart_scan_scope.py `
+            sentinel\smart_scan_scope_guard.py `
             tools\v011_beta6_b63_acceptance.py `
             tools\v011_beta6_b63_live_runtime_probe.py `
+            tools\v011_beta6_b63_live_ui_probe.py `
             tests\test_v011_beta6_b63_smart_scan.py `
             tests\test_v011_beta6_b63_smart_scan_ui.py `
             tests\test_v011_beta6_b63_live_provider_loader.py `
             tests\test_v011_beta6_b63_live_runtime_adapter.py `
             tests\test_v011_beta6_b63_runtime_compat.py `
-            tests\test_v011_beta6_b634_smart_scope.py
+            tests\test_v011_beta6_b634_smart_scope.py `
+            tests\test_v011_beta6_b635_live_ui_probe.py
         if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-3 compileall failed'}
 
         Write-Host ('B63 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
@@ -103,8 +109,9 @@ try{
             tests/test_v011_beta6_b63_live_provider_loader.py `
             tests/test_v011_beta6_b63_live_runtime_adapter.py `
             tests/test_v011_beta6_b63_runtime_compat.py `
-            tests/test_v011_beta6_b634_smart_scope.py
-        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/runtime/scope tests failed'}
+            tests/test_v011_beta6_b634_smart_scope.py `
+            tests/test_v011_beta6_b635_live_ui_probe.py
+        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/runtime/scope/UI-probe tests failed'}
 
         & $Py -m tools.v011_beta6_b63_acceptance --output '.\acceptance-v011-beta6-b63.json'
         if($LASTEXITCODE -ne 0){Fail 'acceptance-b63' 'B6-3 deterministic acceptance failed'}
@@ -150,10 +157,10 @@ try{
             }
         }
 
-        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | orchestration PASS | coverage truth PASS | loader fail-closed PASS | pinned runtime PASS | assessment/Unicode PASS | B6-3.4 risk scope PASS | file-level progress PASS | cancellation PASS | findings PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
-        Write-Host 'B63 STATUS: B6-3.4 SMART SCAN PERFORMANCE/SCOPE ENGINE IMPLEMENTED. Real pinned Windows performance and cancellation acceptance remain required before stabilization.' -ForegroundColor Yellow
+        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | orchestration PASS | coverage truth PASS | loader fail-closed PASS | pinned runtime PASS | assessment/Unicode PASS | B6-3.4 risk scope PASS | file-level progress PASS | cancellation PASS | findings PASS | B6-3.5 UI probe contract PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
+        Write-Host 'B63 STATUS: B6-3.4 LIVE PERFORMANCE + CANCELLATION ACCEPTED. B6-3.5 live Home/UI acceptance remains required before stabilization.' -ForegroundColor Yellow
         Write-Host 'NOTE: B6-2 manual visual acceptance/polish is intentionally deferred and remains a separate open acceptance item.' -ForegroundColor Yellow
-        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN - LOCAL DETERMINISTIC PASS / B6-3.4 LIVE WINDOWS GATE PENDING' -ForegroundColor Green
+        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN - LOCAL DETERMINISTIC PASS / B6-3.5 LIVE HOME UI GATE PENDING' -ForegroundColor Green
         exit 0
     }
     finally{
