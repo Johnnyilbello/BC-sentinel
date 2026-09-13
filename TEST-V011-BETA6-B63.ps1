@@ -21,11 +21,13 @@ try{
     if(-not(Test-Path -LiteralPath '.\sentinel\home_smart_scan_window.py')){Fail 'preflight' 'B6-3 Home integration missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_provider_loader.py')){Fail 'preflight' 'B6-3 live provider loader missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_live_provider.py')){Fail 'preflight' 'B6-3.2 pinned StaticScanner adapter missing'}
+    if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_runtime_compat.py')){Fail 'preflight' 'B6-3.3 historical runtime compatibility shim missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_acceptance.py')){Fail 'preflight' 'B6-3 acceptance tool missing'}
+    if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_live_runtime_probe.py')){Fail 'preflight' 'B6-3 live runtime probe missing'}
     $Py='.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-3 SMART SCAN ORCHESTRATION FOUNDATION' -ForegroundColor Cyan
-    Write-Host 'B6-3 adds explicit Smart Scan orchestration, a fail-closed loader and a SHA-256-pinned StaticScanner runtime adapter. No remediation authority is added.' -ForegroundColor Yellow
+    Write-Host 'B6-3 adds explicit Smart Scan orchestration, a fail-closed loader, a SHA-256-pinned StaticScanner runtime adapter and historical report/Unicode compatibility hardening. No remediation authority is added.' -ForegroundColor Yellow
 
     $Protected=@(
         '.\sentinel\advanced_antimalware.py',
@@ -73,11 +75,14 @@ try{
             sentinel\home_smart_scan_window.py `
             sentinel\smart_scan_provider_loader.py `
             sentinel\smart_scan_live_provider.py `
+            sentinel\smart_scan_runtime_compat.py `
             tools\v011_beta6_b63_acceptance.py `
+            tools\v011_beta6_b63_live_runtime_probe.py `
             tests\test_v011_beta6_b63_smart_scan.py `
             tests\test_v011_beta6_b63_smart_scan_ui.py `
             tests\test_v011_beta6_b63_live_provider_loader.py `
-            tests\test_v011_beta6_b63_live_runtime_adapter.py
+            tests\test_v011_beta6_b63_live_runtime_adapter.py `
+            tests\test_v011_beta6_b63_runtime_compat.py
         if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-3 compileall failed'}
 
         Write-Host ('B63 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
@@ -85,8 +90,9 @@ try{
             tests/test_v011_beta6_b63_smart_scan.py `
             tests/test_v011_beta6_b63_smart_scan_ui.py `
             tests/test_v011_beta6_b63_live_provider_loader.py `
-            tests/test_v011_beta6_b63_live_runtime_adapter.py
-        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/StaticScanner adapter tests failed'}
+            tests/test_v011_beta6_b63_live_runtime_adapter.py `
+            tests/test_v011_beta6_b63_runtime_compat.py
+        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/StaticScanner compatibility tests failed'}
 
         & $Py -m tools.v011_beta6_b63_acceptance --output '.\acceptance-v011-beta6-b63.json'
         if($LASTEXITCODE -ne 0){Fail 'acceptance-b63' 'B6-3 deterministic acceptance failed'}
@@ -132,10 +138,10 @@ try{
             }
         }
 
-        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | Smart Scan state machine PASS | explicit-start contract PASS | coverage truth PASS | cancellation PASS | loader fail-closed PASS | pinned StaticScanner adapter deterministic PASS | UI integration PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
-        Write-Host 'B63 STATUS: B6-3.2 ADAPTER IMPLEMENTED. Real pinned Windows FULL runtime preflight + live Smart Scan acceptance remain REQUIRED before stabilization.' -ForegroundColor Yellow
+        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | Smart Scan state machine PASS | explicit-start contract PASS | coverage truth PASS | cancellation PASS | loader fail-closed PASS | pinned StaticScanner adapter PASS | historical assessment schema PASS | Unicode transport PASS | UI integration PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
+        Write-Host 'B63 STATUS: B6-3.3 COMPATIBILITY HARDENING IMPLEMENTED. Narrow real pinned Windows runtime acceptance is REQUIRED before repeating broad Smart Scan scope.' -ForegroundColor Yellow
         Write-Host 'NOTE: B6-2 manual visual acceptance/polish is intentionally deferred and remains a separate open acceptance item.' -ForegroundColor Yellow
-        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN ORCHESTRATION - LOCAL PASS / PINNED LIVE RUNTIME WINDOWS GATE PENDING' -ForegroundColor Green
+        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN ORCHESTRATION - LOCAL DETERMINISTIC PASS / NARROW LIVE RUNTIME RETEST PENDING' -ForegroundColor Green
         exit 0
     }
     finally{
