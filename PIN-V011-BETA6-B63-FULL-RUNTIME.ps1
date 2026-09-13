@@ -6,12 +6,20 @@ param(
     [int]$MaxTotalMB = 0,
     [int]$MaxFileMB = 0,
     [int]$RecentDays = 0,
+    [double]$CancelAfterSeconds = 0,
     [switch]$Execute,
     [string]$Output = ".\acceptance-v011-beta6-b63-live.json"
 )
 
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
+
+if($CancelAfterSeconds -lt 0){
+    throw 'CancelAfterSeconds deve essere >= 0.'
+}
+if($CancelAfterSeconds -gt 0 -and -not $Execute){
+    throw 'CancelAfterSeconds richiede -Execute.'
+}
 
 $resolved=(Resolve-Path -LiteralPath $RuntimeRoot).Path
 $scanner=Join-Path $resolved 'sentinel\scanner.py'
@@ -59,6 +67,7 @@ Write-Host ('Smart scope MaxFiles: '+$(if($env:BC_SENTINEL_SMART_SCAN_MAX_FILES)
 Write-Host ('Smart scope MaxTotal: '+$(if($env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES){([math]::Round(([double]$env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES/1MB),0).ToString()+' MB')}else{'default 384 MB'}))
 Write-Host ('Smart scope MaxFile: '+$(if($env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES){([math]::Round(([double]$env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES/1MB),0).ToString()+' MB')}else{'default 128 MB'}))
 Write-Host ('Smart scope RecentDays: '+$(if($env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS){$env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS}else{'default 180'}))
+if($CancelAfterSeconds -gt 0){Write-Host ('Controlled cancellation after RUNNING + '+$CancelAfterSeconds+' s')}
 Write-Host ''
 
 # Environment variables created by a powershell.exe -File child cannot flow back
@@ -103,15 +112,27 @@ if(-not $Execute){
     return
 }
 
-Write-Host 'B6-3.4 explicit risk-prioritized Smart Scan requested by user...' -ForegroundColor Yellow
-if($Output){
-    & $Py -m tools.v011_beta6_b63_live_runtime_probe --execute --output $Output
+if($CancelAfterSeconds -gt 0){
+    Write-Host ('B6-3.4 explicit live cancellation probe requested: cancel after '+$CancelAfterSeconds+' s of RUNNING...') -ForegroundColor Yellow
 }else{
-    & $Py -m tools.v011_beta6_b63_live_runtime_probe --execute
+    Write-Host 'B6-3.4 explicit risk-prioritized Smart Scan requested by user...' -ForegroundColor Yellow
 }
+
+$Args=@('-m','tools.v011_beta6_b63_live_runtime_probe','--execute')
+if($CancelAfterSeconds -gt 0){
+    $Args += @('--cancel-after-seconds',[string]$CancelAfterSeconds)
+}
+if($Output){
+    $Args += @('--output',$Output)
+}
+& $Py @Args
 $ExecuteExit=$LASTEXITCODE
 if($ExecuteExit -ne 0){
     throw "B6-3.4 live Smart Scan non completata con stato accettabile (exit=$ExecuteExit)."
 }
-Write-Host 'B6-3.4 live Smart Scan completed.' -ForegroundColor Green
+if($CancelAfterSeconds -gt 0){
+    Write-Host 'B6-3.4 live cancellation probe completed.' -ForegroundColor Green
+}else{
+    Write-Host 'B6-3.4 live Smart Scan completed.' -ForegroundColor Green
+}
 if($Output){Write-Host ('Acceptance evidence: '+$Output)}
