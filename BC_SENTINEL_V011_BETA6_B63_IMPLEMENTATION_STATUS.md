@@ -1,82 +1,70 @@
 # BC Sentinel v0.11.0-beta.6 — B6-3 Implementation Status
 
-Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / B6-3.3 LIVE COMPATIBILITY NARROW PASS / B6-3.4 PERFORMANCE + FINDINGS + CANCELLATION LIVE PASS / FINAL LIVE UI GATE PENDING**
+Status: **B6-3.0 ORCHESTRATION PASS / B6-3.1 PROVIDER BOUNDARY PASS / B6-3.2 PINNED STATICSCANNER ADAPTER PASS / B6-3.3 LIVE COMPATIBILITY PASS / B6-3.4 PERFORMANCE + FINDINGS + CANCELLATION LIVE PASS / B6-3.5 LIVE HOME UI COMPLETE + CANCEL PASS / FINAL WINDOWS CI GATE PENDING**
 
-Primary B6-3 branch: `feature/v011-beta6-b63-smart-scan`
-
-B6-3.4 integration branch: `feature/v011-beta6-b634-smart-scan-scope`
+Primary branch: `feature/v011-beta6-b63-smart-scan`
 
 ## Product-owner decision
 
-Further UI polishing is intentionally deferred. Functional/security roadmap work continues first. The accepted B6-2 Dashboard visual contract remains the UI baseline and must not regress.
+Further visual polish remains intentionally deferred. Functional/security roadmap work continues first. The accepted B6-2 Dashboard visual contract remains the baseline and must not regress.
 
-## B6-2 predecessor
+## B6-3.0 — Smart Scan orchestration
 
-B6-2 Home / Security Overview remains automated-Windows-CI green, including responsive geometry and runtime-truth checks. Manual product-owner visual acceptance and additional polish remain open, so B6-2 has not replaced B6-0 as the latest stable checkpoint.
+Implemented and accepted:
 
-## B6-3.0 — Smart Scan orchestration foundation
-
-Implemented:
-
-- typed Smart Scan plan/check/finding/progress/result models;
-- explicit session states: `IDLE`, `PLANNED`, `RUNNING`, `COMPLETED_CLEAN`, `COMPLETED_FINDINGS`, `INCOMPLETE`, `FAILED`, `CANCELLED`;
-- complete-vs-incomplete coverage semantics;
-- explicit user start only, duplicate-start refusal and cancellation;
-- worker-thread integration so scan work does not run on the GUI thread;
-- one shared coordinator for Dashboard, sidebar and Scansione;
+- typed plan/check/finding/progress/result models;
+- states `IDLE`, `PLANNED`, `RUNNING`, `COMPLETED_CLEAN`, `COMPLETED_FINDINGS`, `INCOMPLETE`, `FAILED`, `CANCELLED`;
+- explicit user start only;
+- duplicate-start refusal;
+- worker-thread execution;
+- shared coordinator across Dashboard/sidebar/Scansione;
+- truthful complete-vs-incomplete coverage;
 - Advanced details preserve complete evidence;
 - Full Scan remains disabled;
-- no destructive/remediation authority.
+- no remediation/destructive authority.
 
-`CLEAN` cannot be produced when the declared plan is incomplete.
+`CLEAN` cannot be produced when declared coverage is incomplete.
 
-## B6-3.1 — Live provider boundary
+## B6-3.1 — Fixed live provider boundary
 
-The Home loads only the fixed adapter module `sentinel.smart_scan_live_provider` through `sentinel.smart_scan_provider_loader`.
-
-The loader remains fail-closed and never starts a scan during import/factory validation. Provider availability is not inferred from source/module presence alone.
+Home loads only `sentinel.smart_scan_live_provider` through the fail-closed provider loader. Loading/factory validation never starts a scan and source/module presence alone never becomes runtime truth.
 
 ## B6-3.2 — Pinned historical StaticScanner adapter
 
-The historical FULL Windows runtime exposes the real on-demand APIs:
+Accepted path:
 
 ```text
-sentinel.scanner.StaticScanner.scan_paths(...)
-sentinel.scanner.StaticScanner.scan_file(...)
+New Home
+  -> SmartScanCoordinator
+  -> sentinel.smart_scan_live_provider
+  -> pinned historical FULL runtime subprocess
+  -> sentinel.scanner.StaticScanner.scan_file(...)
 ```
 
-The adapter keeps the historical engine outside the current B6 package and invokes it in a separate Python process. The runtime is unavailable unless `sentinel/scanner.py` exists, its SHA-256 matches the explicit pin, the selected Python can import `StaticScanner`, and the required scanner method is callable.
+The historical runtime is accepted only when the pinned `scanner.py` SHA-256 matches and the required scanner API is callable. No automatic quarantine, repair, process kill, delete, registry/boot write, unlock, write mount, format or reimage authority is added.
 
-No automatic quarantine, repair, process kill, registry/boot write, unlock, write mount, format or reimage authority is added.
-
-## B6-3.3 — Historical report compatibility and Unicode transport
-
-The first real broad Windows scan successfully invoked the historical scanner but exposed two compatibility gaps:
-
-1. real `FileReport` payloads use a nested `assessment` object (`level`, `score`, `reasons`, `signals`, `confidence`), not only the simplified `verdict/detections` shape used in the first adapter fixtures;
-2. Windows console `cp1252` could fail while transporting paths containing unsupported Unicode characters.
-
-The broad run correctly ended `INCOMPLETE` instead of claiming `CLEAN`.
-
-B6-3.3 added a compatibility layer for the real assessment vocabulary and hardened Unicode child-process transport. Unknown assessment levels remain fail-closed.
-
-### Controlled narrow live Windows acceptance — PASS
-
-A harmless Unicode-named fixture was scanned through the real pinned FULL runtime with:
+Pinned scanner SHA-256:
 
 ```text
-provider loaded=true
+7874df734f6146f8848d8a55f5eb6be37bb5cbaee1638e051357f978f5275433
+```
+
+## B6-3.3 — Real report compatibility + Unicode transport
+
+The first broad live run exposed the real nested `assessment` schema and a Windows console Unicode transport failure. Compatibility handling now recognizes accepted historical assessment levels while unknown values remain fail-closed. Child-process transport is Unicode-safe.
+
+Controlled narrow live acceptance:
+
+```text
 provider accepted=true
 executed=true
-completed_checks=1
-total_checks=1
+completed_checks=1/1
 coverage=COMPLETE
 state=COMPLETED_CLEAN
 reports=1
 recognized_reports=1
 findings_count=0
 no_destructive_authority=true
-elapsed_ms=157
 ```
 
 Canonical evidence:
@@ -87,9 +75,7 @@ BC_SENTINEL_V011_BETA6_B63_LIVE_ACCEPTANCE_2026-09-13.md
 
 ## B6-3.4 — Smart Scan Performance & Scope Engine
 
-The first broad live run took about 86 minutes and produced hundreds of thousands of reports. That proved historical engine execution, but it behaved more like a deep/full scan than a consumer Smart Scan.
-
-B6-3.4 separates Smart Scan from Full Scan explicitly. When the accepted pinned runtime proves `StaticScanner.scan_file` is callable, the provider uses a bounded risk-prioritized scope and scans selected candidates file-by-file instead of invoking broad `scan_paths` over entire monitored roots.
+The old broad run took about 86 minutes and behaved like a deep/full scan. B6-3.4 introduced a bounded risk-prioritized Smart Scan using `scan_file()` on selected candidates instead of broad `scan_paths()` over entire roots.
 
 Profile:
 
@@ -97,55 +83,33 @@ Profile:
 v0.11.0-beta.6-b63.4-smart-scope
 ```
 
-Scope mode:
+Mode:
 
 ```text
 risk_prioritized_v1
 ```
 
-Default policy:
+Key semantics:
+
+- `full_filesystem_coverage=false`;
+- `coverage=COMPLETE` means the declared bounded Smart Scan plan completed, not whole-disk coverage;
+- candidate priority covers executable/script, macro, archive/container, persistence/startup, recency and risk-bearing locations;
+- exact pinned runtime subtree is excluded before budget allocation via `exclude_pinned_runtime_root_v1`;
+- per-file progress is emitted;
+- file/report errors or unknown evidence cannot become `COMPLETED_CLEAN`.
+
+### Live performance + finding acceptance — PASS
 
 ```text
-max files: 1200
-max selected bytes: 384 MB
-max individual file: 128 MB
-recent window: 180 days
-full filesystem coverage: false
-```
-
-Candidate priority covers executable/script types, macro documents, selected archives/disk images, relevant link/document types, persistence/startup paths, recency and risk-bearing locations such as Downloads/Temp/Roaming. Common development/build trees are excluded from **Smart Scan scope only**; this is not a global antivirus exclusion and does not define Full Scan behavior.
-
-The provider records `full_filesystem_coverage=false`. `coverage=COMPLETE` means the declared bounded Smart Scan plan completed with accepted evidence for every selected file; it does not claim whole-disk coverage.
-
-The exact pinned historical runtime subtree is excluded before budget allocation through `exclude_pinned_runtime_root_v1`, preventing the planner from selecting paths that the authoritative historical scanner intentionally refuses as BC Sentinel self-managed files.
-
-B6-3.4 adds file-level progress, so progress can move while a root is being inspected rather than appearing frozen until the entire root completes.
-
-Fail-closed behavior remains intact: per-file errors, missing evidence, unknown report semantics or incomplete planned coverage cannot become `COMPLETED_CLEAN`.
-
-Canonical contract:
-
-```text
-BC_SENTINEL_V011_BETA6_B634_SMART_SCAN_PERFORMANCE_SCOPE.md
-```
-
-### Real Windows performance + finding acceptance — PASS
-
-The corrected 250-file benchmark completed the declared Smart Scan scope successfully:
-
-```text
-completed_checks=5
-total_checks=5
+selected_count=250
+completed_checks=5/5
 coverage=COMPLETE
 state=COMPLETED_FINDINGS
 elapsed_ms=18188
-selected_count=250
-Temp selected_count=221
-Roaming selected_count=29
+Temp selected=221
+Roaming selected=29
 no_destructive_authority=true
 ```
-
-This is materially faster than the prior ~86-minute broad scan while making no whole-disk coverage claim. Real findings were preserved for review and no automatic remediation was performed.
 
 Canonical evidence:
 
@@ -153,24 +117,17 @@ Canonical evidence:
 BC_SENTINEL_V011_BETA6_B634_LIVE_BENCHMARK_R2_2026-09-13.md
 ```
 
-### Real Windows cancellation acceptance — PASS
-
-A controlled cancellation request was issued two seconds after the coordinator entered `RUNNING` during a real pinned-runtime Smart Scan.
-
-Observed result:
+### Live coordinator cancellation — PASS
 
 ```text
 cancellation.requested=true
 cancellation.request_accepted=true
 state=CANCELLED
 coverage=INCOMPLETE
-completed_checks=3
-total_checks=5
+completed_checks=3/5
 elapsed_ms=7219
 no_destructive_authority=true
 ```
-
-The active Temp check was marked `CANCELLED`, the following Roaming check was `SKIPPED`, and evidence already produced before cancellation was preserved. No remediation was performed.
 
 Canonical evidence:
 
@@ -178,56 +135,97 @@ Canonical evidence:
 BC_SENTINEL_V011_BETA6_B634_LIVE_CANCELLATION_2026-09-13.md
 ```
 
-## Automated evidence
+## B6-3.5 — Actual Home/UI live acceptance
 
-Windows deterministic evidence covers:
+The real Qt Home was exercised with the accepted pinned provider. The scan was launched by clicking the real Home Smart Scan control; UI responsiveness, progress rendering, result rendering, overflow and Advanced details were measured from the actual window.
+
+### Complete-mode Home/UI — PASS
+
+```text
+state=COMPLETED_FINDINGS
+coverage=COMPLETE
+elapsed_ms=7984
+findings_count=7
+heartbeat_ticks_while_running=46
+max_heartbeat_gap_ms≈110
+progress_advanced=true
+progress_sample_count=17
+dashboard_horizontal_scroll_max=0
+scan_page_horizontal_scroll_max=0
+```
+
+Canonical evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B635_LIVE_UI_COMPLETE_2026-09-13.md
+```
+
+### Cancel-mode Home/UI — PASS
+
+The actual `Annulla` button was clicked after two seconds of `RUNNING`.
+
+```text
+cancel_click_sent=true
+state=CANCELLED
+coverage=INCOMPLETE
+elapsed_ms=7047
+findings_count=1
+heartbeat_ticks_while_running=36
+max_heartbeat_gap_ms=125
+progress_advanced=true
+progress_sample_count=9
+dashboard_horizontal_scroll_max=0
+scan_page_horizontal_scroll_max=0
+```
+
+Canonical evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B635_LIVE_UI_CANCEL_2026-09-13.md
+```
+
+This proves that the UI Cancel control drives the accepted coordinator cancellation path without freezing the UI or enabling remediation.
+
+## Non-blocking cleanup
+
+PySide currently emits warnings when code attempts `button.clicked.disconnect()` without a matching connection. They did not affect Home construction, scanning, progress, cancellation or terminal state. Cleanup may be handled separately and must not be mixed with security behavior changes unless re-tested.
+
+## Automated coverage
+
+The deterministic Windows gate covers:
 
 - B6-0/B6-1/B6-2 predecessor regression;
-- B6-3 orchestration and passive-start contract;
-- fail-closed provider loading and SHA-256 runtime pinning;
-- real historical assessment-schema compatibility;
+- B6-3 orchestration/passive-start contract;
+- fail-closed provider loading and SHA pinning;
+- historical assessment compatibility;
 - Unicode transport;
-- risk-prioritized candidate selection;
-- highest-risk-first file/byte budgets;
-- use of `scan_file` rather than broad `scan_paths` in B6-3.4;
-- exact self-managed runtime exclusion guard;
-- clean and finding translation;
-- per-file failure -> `INCOMPLETE`;
-- active cancellation -> `CANCELLED`;
-- monotonic file-level progress;
+- risk-prioritized scope and budgets;
+- `scan_file` path instead of legacy broad Smart Scan fallback;
+- exact pinned-runtime exclusion;
+- clean/finding translation;
+- per-file error -> `INCOMPLETE`;
+- cancellation -> `CANCELLED`;
+- monotonic progress;
+- B6-3.5 live UI evidence contract;
 - no destructive authority;
 - six-page shell and zero horizontal overflow.
 
-Latest explicitly observed full Windows CI for the runtime-scope guard:
+## Final B6-3 stabilization gate
 
-```text
-Workflow: B6-3 Smart Scan Gate
-Run: 34764439517
-Head: e52960b42d4dda4467f16f080d709da57ca371e7
-Result: success
-Regression suite: 110 passed, 34 warnings
-```
+All required real Windows runtime and Home/UI acceptance tests are now PASS.
 
-Later documentation/cancellation-probe commits do not change scanner authority or the accepted scope semantics, but the final stabilization gate must still re-run the full Windows predecessor suite before promotion.
+Only the final promotion barrier remains:
 
-## Remaining B6-3 stabilization gate
+1. run the complete B6-0/B6-1/B6-2 predecessor + B6-3 Windows CI gate on the final documentation/stabilization head;
+2. confirm every step is green;
+3. record the final supported-Windows evidence/checkpoint;
+4. only then consider B6-3 stabilized and open B6-4.
 
-B6-3 is not stable yet. Performance/scope, live finding translation and real cancellation are now accepted.
-
-Remaining live acceptance work:
-
-1. launch the actual Home/UI with the accepted pinned B6-3.4 provider;
-2. verify the UI remains responsive while a real Smart Scan is running;
-3. verify file-level progress is visibly rendered in the actual UI;
-4. verify the UI Cancel control drives the same accepted cancellation path without freezing or remediation;
-5. final B6-0/B6-1/B6-2 predecessor + B6-3 Windows gate remains green on the final head;
-6. supported-Windows evidence committed.
-
-Do not advance B6-4 until the B6-3 live Smart Scan stabilization gate is complete.
+Do not promote B6-3 or advance B6-4 before the final CI result is observed.
 
 ## Stable state
 
-The latest accepted stable checkpoint remains unchanged:
+The accepted stable checkpoint remains unchanged until final B6-3 promotion:
 
 ```text
 v0.11.0-beta.6 B6-0 — Technician UX Foundation
