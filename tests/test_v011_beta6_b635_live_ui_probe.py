@@ -27,6 +27,7 @@ def _base_evidence(mode: str, state: str, coverage: str) -> dict:
             "no_destructive_authority": True,
             "result_rendered": True,
             "advanced_details_available": True,
+            "dashboard_checked_visible": True,
             "horizontal_scroll_max": 0,
             "scan_page_horizontal_scroll_max": 0,
         },
@@ -57,3 +58,11 @@ def test_live_ui_evidence_contract_fails_closed_on_stall_or_false_complete_cance
     assert "visible_progress_did_not_advance" in failures
     assert "cancel_mode_state_not_cancelled:COMPLETED_CLEAN" in failures
     assert "cancel_mode_coverage_not_incomplete:COMPLETE" in failures
+
+
+def test_dashboard_overflow_must_be_measured_while_dashboard_is_visible():
+    evidence = _base_evidence("complete", "COMPLETED_FINDINGS", "COMPLETE")
+    evidence["final"]["dashboard_checked_visible"] = False
+    passed, failures = evaluate_evidence(evidence)
+    assert passed is False
+    assert "dashboard_overflow_not_measured_while_visible" in failures
