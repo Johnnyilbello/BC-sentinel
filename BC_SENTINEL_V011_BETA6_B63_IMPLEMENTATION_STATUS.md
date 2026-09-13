@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-3 Implementation Status
 
-Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / REAL WINDOWS LIVE ACCEPTANCE PENDING**
+Status: **B6-3.0 ORCHESTRATION CI GREEN / B6-3.1 PROVIDER BOUNDARY CI GREEN / B6-3.2 PINNED STATICSCANNER ADAPTER IMPLEMENTED / B6-3.3 LIVE RUNTIME COMPATIBILITY NARROW ACCEPTANCE PASS / STABILIZATION IN PROGRESS**
 
 Development branch: `feature/v011-beta6-b63-smart-scan`
 
@@ -111,56 +111,94 @@ Without an explicit root override, the adapter uses the existing `Settings.defau
 - subprocess/import failure fails closed;
 - progress is check/root based and monotonic.
 
-### Local helper / preflight
+## B6-3.3 — Historical report compatibility and Unicode transport
 
-Configure and pin the FULL runtime for the current PowerShell session:
+The first real broad Windows scan successfully invoked the historical scanner but exposed two real compatibility gaps:
 
-```powershell
-.\PIN-V011-BETA6-B63-FULL-RUNTIME.ps1 -RuntimeRoot "<FULL_RUNTIME_ROOT>"
+1. historical `FileReport` payloads use a nested `assessment` object (`level`, `score`, `reasons`, `signals`, `confidence`) rather than the simplified `verdict/detections` fixture shape used in the first adapter tests;
+2. Windows console `cp1252` could fail while transporting scanned paths containing unsupported Unicode characters.
+
+The broad run correctly ended `INCOMPLETE` rather than claiming `CLEAN`.
+
+B6-3.3 adds a dedicated compatibility layer for the real historical report schema and hardened Unicode subprocess transport. Unknown report semantics remain fail-closed.
+
+### Controlled narrow live Windows acceptance — PASS
+
+A harmless temporary fixture with an intentionally Unicode filename was scanned through the real pinned FULL runtime.
+
+Observed result:
+
+```text
+provider loaded=true
+provider accepted=true
+executed=true
+completed_checks=1
+total_checks=1
+coverage=COMPLETE
+state=COMPLETED_CLEAN
+reports=1
+recognized_reports=1
+findings_count=0
+no_destructive_authority=true
+elapsed_ms=157
 ```
 
-Then run capability/import preflight only:
+This proves for the tested clean case that:
 
-```powershell
-.\.venv\Scripts\python.exe -m tools.v011_beta6_b63_live_runtime_probe
-```
+- the fixed loader accepts the pinned live provider;
+- the modern coordinator executes the real `StaticScanner.scan_paths` path;
+- the historical `assessment` report is translated as auditable evidence;
+- the Unicode filename survives transport without the previous `UnicodeEncodeError`;
+- complete coverage is required before `COMPLETED_CLEAN`;
+- no automatic remediation/destructive authority was added.
 
-Only after preflight acceptance, explicitly run a live Smart Scan:
+Canonical evidence:
 
-```powershell
-.\.venv\Scripts\python.exe -m tools.v011_beta6_b63_live_runtime_probe --execute --output .\acceptance-v011-beta6-b63-live.json
+```text
+BC_SENTINEL_V011_BETA6_B63_LIVE_ACCEPTANCE_2026-09-13.md
 ```
 
 ## Automated evidence
 
-The deterministic B6-3 gate now includes dedicated adapter tests for:
+The deterministic B6-3 gate includes adapter/runtime compatibility tests for:
 
 - missing runtime pin -> unavailable;
 - scanner SHA mismatch -> unavailable;
 - valid pinned runtime -> accepted;
-- clean StaticScanner result -> complete clean;
+- clean result -> complete clean;
 - explicit detection -> preserved finding;
 - unknown report schema -> incomplete, never clean;
+- historical nested `assessment` schema translation;
+- unknown assessment level -> incomplete/fail-closed;
+- Unicode child-process transport;
 - runtime import failure -> unavailable;
 - exact configured root scope.
 
 The normal B6-3 gate deliberately clears live-runtime environment variables before offscreen smoke, proving that the default/unpinned application remains fail-closed.
 
-A fresh Windows CI pass is required after this B6-3.2 implementation before calling its deterministic gate green.
+Latest Windows CI after B6-3.3 compatibility hardening:
+
+```text
+Workflow: B6-3 Smart Scan Gate
+Run: 34762503470
+Head: 5ed8cfa20be2b68ac84b3708da50634d9784bea0
+Conclusion: success
+```
 
 ## Remaining B6-3 stabilization gate
 
-B6-3 is not stable until real Windows evidence proves the pinned FULL runtime path:
+B6-3 is not stable yet. Remaining acceptance work:
 
-1. B6-3 deterministic CI PASS with adapter tests;
-2. local FULL-runtime preflight reports `accepted=true`;
-3. explicit live scan on harmless controlled fixtures;
-4. correct real report-shape translation;
-5. clean/findings/incomplete/cancel behavior confirmed;
-6. UI remains responsive during real scan;
-7. no target mutation/remediation;
-8. B6-0/B6-1/B6-2 predecessors remain green;
-9. supported Windows acceptance evidence committed.
+1. controlled live **finding** translation with harmless detection evidence;
+2. real cancellation during an active live scan;
+3. UI responsiveness and visible progress during a real scan;
+4. redesign Smart Scan scope/performance: the first broad scan took about 86 minutes and scanned hundreds of thousands of files, which is not acceptable as the final consumer Smart Scan experience;
+5. broader Windows acceptance after performance/scope changes;
+6. no target mutation/remediation;
+7. B6-0/B6-1/B6-2 predecessors remain green;
+8. final supported-Windows evidence committed.
+
+Do not advance B6-4 until the B6-3 live Smart Scan stabilization gate is complete.
 
 ## Stable state
 
