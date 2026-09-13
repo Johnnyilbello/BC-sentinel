@@ -22,12 +22,13 @@ try{
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_provider_loader.py')){Fail 'preflight' 'B6-3 live provider loader missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_live_provider.py')){Fail 'preflight' 'B6-3.2 pinned StaticScanner adapter missing'}
     if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_runtime_compat.py')){Fail 'preflight' 'B6-3.3 historical runtime compatibility shim missing'}
+    if(-not(Test-Path -LiteralPath '.\sentinel\smart_scan_scope.py')){Fail 'preflight' 'B6-3.4 risk-prioritized scope engine missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_acceptance.py')){Fail 'preflight' 'B6-3 acceptance tool missing'}
     if(-not(Test-Path -LiteralPath '.\tools\v011_beta6_b63_live_runtime_probe.py')){Fail 'preflight' 'B6-3 live runtime probe missing'}
     $Py='.\.venv\Scripts\python.exe'
 
     Write-Host 'BC Sentinel v0.11.0-beta.6 - B6-3 SMART SCAN ORCHESTRATION FOUNDATION' -ForegroundColor Cyan
-    Write-Host 'B6-3 adds explicit Smart Scan orchestration, a fail-closed loader, a SHA-256-pinned StaticScanner runtime adapter and historical report/Unicode compatibility hardening. No remediation authority is added.' -ForegroundColor Yellow
+    Write-Host 'B6-3 adds explicit orchestration, fail-closed live runtime binding, historical report/Unicode compatibility and B6-3.4 risk-prioritized scan_file scope. No remediation authority is added.' -ForegroundColor Yellow
 
     $Protected=@(
         '.\sentinel\advanced_antimalware.py',
@@ -62,10 +63,18 @@ try{
     $OldScannerSha=$env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256
     $OldRuntimePython=$env:BC_SENTINEL_FULL_RUNTIME_PYTHON
     $OldScanRoots=$env:BC_SENTINEL_SMART_SCAN_ROOTS
+    $OldMaxFiles=$env:BC_SENTINEL_SMART_SCAN_MAX_FILES
+    $OldMaxTotalBytes=$env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES
+    $OldMaxFileBytes=$env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES
+    $OldRecentDays=$env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS
     Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_ROOT -ErrorAction SilentlyContinue
     Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256 -ErrorAction SilentlyContinue
     Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_PYTHON -ErrorAction SilentlyContinue
     Remove-Item Env:BC_SENTINEL_SMART_SCAN_ROOTS -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_FILES -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES -ErrorAction SilentlyContinue
+    Remove-Item Env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS -ErrorAction SilentlyContinue
     $env:QT_QPA_PLATFORM='offscreen'
     $env:BC_SENTINEL_REDUCED_MOTION='1'
     try{
@@ -76,13 +85,15 @@ try{
             sentinel\smart_scan_provider_loader.py `
             sentinel\smart_scan_live_provider.py `
             sentinel\smart_scan_runtime_compat.py `
+            sentinel\smart_scan_scope.py `
             tools\v011_beta6_b63_acceptance.py `
             tools\v011_beta6_b63_live_runtime_probe.py `
             tests\test_v011_beta6_b63_smart_scan.py `
             tests\test_v011_beta6_b63_smart_scan_ui.py `
             tests\test_v011_beta6_b63_live_provider_loader.py `
             tests\test_v011_beta6_b63_live_runtime_adapter.py `
-            tests\test_v011_beta6_b63_runtime_compat.py
+            tests\test_v011_beta6_b63_runtime_compat.py `
+            tests\test_v011_beta6_b634_smart_scope.py
         if($LASTEXITCODE -ne 0){Fail 'compileall' 'B6-3 compileall failed'}
 
         Write-Host ('B63 PYTEST BASETEMP='+$PytestTemp) -ForegroundColor DarkGray
@@ -91,8 +102,9 @@ try{
             tests/test_v011_beta6_b63_smart_scan_ui.py `
             tests/test_v011_beta6_b63_live_provider_loader.py `
             tests/test_v011_beta6_b63_live_runtime_adapter.py `
-            tests/test_v011_beta6_b63_runtime_compat.py
-        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/StaticScanner compatibility tests failed'}
+            tests/test_v011_beta6_b63_runtime_compat.py `
+            tests/test_v011_beta6_b634_smart_scope.py
+        if($LASTEXITCODE -ne 0){Fail 'pytest-b63' 'B6-3 Smart Scan/provider/runtime/scope tests failed'}
 
         & $Py -m tools.v011_beta6_b63_acceptance --output '.\acceptance-v011-beta6-b63.json'
         if($LASTEXITCODE -ne 0){Fail 'acceptance-b63' 'B6-3 deterministic acceptance failed'}
@@ -138,10 +150,10 @@ try{
             }
         }
 
-        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | Smart Scan state machine PASS | explicit-start contract PASS | coverage truth PASS | cancellation PASS | loader fail-closed PASS | pinned StaticScanner adapter PASS | historical assessment schema PASS | Unicode transport PASS | UI integration PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
-        Write-Host 'B63 STATUS: B6-3.3 COMPATIBILITY HARDENING IMPLEMENTED. Narrow real pinned Windows runtime acceptance is REQUIRED before repeating broad Smart Scan scope.' -ForegroundColor Yellow
+        Write-Host 'B63 LOCAL: predecessor B6-2 PASS | orchestration PASS | coverage truth PASS | loader fail-closed PASS | pinned runtime PASS | assessment/Unicode PASS | B6-3.4 risk scope PASS | file-level progress PASS | cancellation PASS | findings PASS | no destructive authority | Full Scan disabled' -ForegroundColor Green
+        Write-Host 'B63 STATUS: B6-3.4 SMART SCAN PERFORMANCE/SCOPE ENGINE IMPLEMENTED. Real pinned Windows performance and cancellation acceptance remain required before stabilization.' -ForegroundColor Yellow
         Write-Host 'NOTE: B6-2 manual visual acceptance/polish is intentionally deferred and remains a separate open acceptance item.' -ForegroundColor Yellow
-        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN ORCHESTRATION - LOCAL DETERMINISTIC PASS / NARROW LIVE RUNTIME RETEST PENDING' -ForegroundColor Green
+        Write-Host 'BC SENTINEL v0.11.0-beta.6 B6-3 SMART SCAN - LOCAL DETERMINISTIC PASS / B6-3.4 LIVE WINDOWS GATE PENDING' -ForegroundColor Green
         exit 0
     }
     finally{
@@ -151,6 +163,10 @@ try{
         if($null -eq $OldScannerSha){Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256 -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_FULL_RUNTIME_SCANNER_SHA256=$OldScannerSha}
         if($null -eq $OldRuntimePython){Remove-Item Env:BC_SENTINEL_FULL_RUNTIME_PYTHON -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_FULL_RUNTIME_PYTHON=$OldRuntimePython}
         if($null -eq $OldScanRoots){Remove-Item Env:BC_SENTINEL_SMART_SCAN_ROOTS -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_ROOTS=$OldScanRoots}
+        if($null -eq $OldMaxFiles){Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_FILES -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_MAX_FILES=$OldMaxFiles}
+        if($null -eq $OldMaxTotalBytes){Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES=$OldMaxTotalBytes}
+        if($null -eq $OldMaxFileBytes){Remove-Item Env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES=$OldMaxFileBytes}
+        if($null -eq $OldRecentDays){Remove-Item Env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS -ErrorAction SilentlyContinue}else{$env:BC_SENTINEL_SMART_SCAN_RECENT_DAYS=$OldRecentDays}
         Remove-Item -LiteralPath $PytestTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
