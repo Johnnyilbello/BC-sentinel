@@ -13,7 +13,7 @@ def build_report(*, execute: bool = False) -> dict:
     capabilities = dict(provider.capabilities())
     capability_contract = smart.validate_provider_capabilities(provider)
     report = {
-        "checkpoint": "B6-3.3-static-scanner-runtime-compat",
+        "checkpoint": "B6-3.4-smart-scan-performance-scope",
         "provider_load": load_result.to_dict(),
         "provider_capabilities": capabilities,
         "provider_contract": capability_contract,
@@ -47,11 +47,11 @@ def build_report(*, execute: bool = False) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-3.3 pinned full-runtime compatibility preflight")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-3.4 pinned runtime Smart Scan performance/scope preflight")
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Explicitly run Smart Scan after the pinned runtime passes capability validation.",
+        help="Explicitly run the accepted Smart Scan plan after pinned runtime validation.",
     )
     parser.add_argument("--output", default="", help="Optional JSON output path")
     args = parser.parse_args()
