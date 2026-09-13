@@ -3,11 +3,12 @@ from __future__ import annotations
 """Compatibility hardening for the historical StaticScanner runtime used by B6-3.
 
 The synchronized B6-3 adapter intentionally does not modify the historical
-scanner itself.  This module patches only the adapter boundary so that the
-verified v0.10-era ``FileReport`` shape can be interpreted truthfully and so
-Unicode file names cannot crash the child JSON transport on Windows.
+scanner itself. This module patches only the adapter boundary so that the
+verified v0.10-era ``FileReport`` shape can be interpreted truthfully, Unicode
+file names cannot crash the child JSON transport on Windows, and B6-3.4 can
+wrap a compatible pinned runtime with the risk-prioritized ``scan_file`` scope.
 
-Unknown assessment levels still fail closed.  No remediation authority is
+Unknown assessment levels still fail closed. No remediation authority is
 introduced here.
 """
 
@@ -76,9 +77,9 @@ def _assessment_severity(level: str) -> str:
 def apply(module: Any) -> Any:
     """Patch one imported ``sentinel.smart_scan_live_provider`` module in place.
 
-    Re-applying is idempotent.  The patch only changes adapter interpretation
-    and transport encoding; scanner execution, scope, cancellation and safety
-    authority remain owned by the existing adapter/runtime.
+    Re-applying is idempotent. The compatibility patch changes report
+    interpretation/transport and wraps the provider with B6-3.4 only when the
+    accepted pinned runtime proves ``StaticScanner.scan_file`` is callable.
     """
 
     if bool(getattr(module, _COMPAT_MARKER, False)):
@@ -86,12 +87,13 @@ def apply(module: Any) -> Any:
 
     original_runtime_env = getattr(module, "_runtime_env", None)
     original_report_evidence = getattr(module, "_report_evidence", None)
-    if not callable(original_runtime_env) or not callable(original_report_evidence):
+    original_create_provider = getattr(module, "create_provider", None)
+    if not callable(original_runtime_env) or not callable(original_report_evidence) or not callable(original_create_provider):
         raise RuntimeError("live_provider_compat_target_missing_expected_hooks")
 
     def runtime_env(binding: object) -> dict[str, str]:
         env = dict(original_runtime_env(binding))
-        # Keep the child protocol ASCII-safe.  json.dumps(..., ensure_ascii=False)
+        # Keep the child protocol ASCII-safe. json.dumps(..., ensure_ascii=False)
         # may contain arbitrary Unicode file names; backslashreplace converts
         # them into valid JSON \uXXXX escapes instead of crashing under cp1252.
         env["PYTHONIOENCODING"] = "ascii:backslashreplace"
@@ -133,7 +135,16 @@ def apply(module: Any) -> Any:
         # Unknown historical assessment vocabulary must never become CLEAN.
         return False, False, smart.SEVERITY_INFO, "Static scanner report", ""
 
+    def create_provider() -> Any:
+        base_provider = original_create_provider()
+        from sentinel import smart_scan_scope
+
+        return smart_scan_scope.wrap_provider(module, base_provider)
+
+    # Order matters: the B6-3.4 wrapper must inherit the hardened runtime env and
+    # assessment translator installed here.
     setattr(module, "_runtime_env", runtime_env)
     setattr(module, "_report_evidence", report_evidence)
+    setattr(module, "create_provider", create_provider)
     setattr(module, _COMPAT_MARKER, True)
     return module
