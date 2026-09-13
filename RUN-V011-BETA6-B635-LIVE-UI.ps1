@@ -61,7 +61,7 @@ if($Mode -eq 'cancel'){
 }
 Write-Host ''
 
-$Args=@(
+$ProbeArgs=@(
     '-m','tools.v011_beta6_b63_live_ui_probe',
     '--mode',$Mode,
     '--timeout-seconds',[string]$TimeoutSeconds,
@@ -69,10 +69,10 @@ $Args=@(
     '--output',$Output
 )
 if($Mode -eq 'cancel'){
-    $Args += @('--cancel-after-seconds',[string]$CancelAfterSeconds)
+    $ProbeArgs += @('--cancel-after-seconds',[string]$CancelAfterSeconds)
 }
 
-& $Py @Args
+& $Py @ProbeArgs
 $Exit=$LASTEXITCODE
 if($Exit -ne 0){
     throw "B6-3.5 live Home UI acceptance FAIL (exit=$Exit). Evidence: $Output"
