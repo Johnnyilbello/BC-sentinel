@@ -60,6 +60,20 @@ def _fallback(reason: str) -> ProviderLoadResult:
     )
 
 
+def _apply_runtime_compat(module: object) -> None:
+    """Apply the historical runtime compatibility shim only to the real adapter.
+
+    Loader unit tests inject synthetic module objects; those must remain isolated
+    and are intentionally not patched.
+    """
+
+    if str(getattr(module, "__name__", "")) != LIVE_PROVIDER_MODULE:
+        return
+    from sentinel import smart_scan_runtime_compat as runtime_compat
+
+    runtime_compat.apply(module)
+
+
 def load_default_provider(
     *,
     import_module: Callable[[str], object] = importlib.import_module,
@@ -74,6 +88,11 @@ def load_default_provider(
         return _fallback(f"live_provider_dependency_missing:{exc.name or 'unknown'}")
     except Exception as exc:
         return _fallback(f"live_provider_import_failed:{type(exc).__name__}")
+
+    try:
+        _apply_runtime_compat(module)
+    except Exception as exc:
+        return _fallback(f"live_provider_compat_failed:{type(exc).__name__}")
 
     factory = getattr(module, LIVE_PROVIDER_FACTORY, None)
     if not callable(factory):
