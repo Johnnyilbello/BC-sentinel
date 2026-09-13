@@ -64,14 +64,39 @@ Write-Host ''
 # Environment variables created by a powershell.exe -File child cannot flow back
 # to the caller. Keep preflight and the explicitly requested scan in this same
 # process. Preflight is passive and never starts a scan.
-Write-Host 'B6-3.4 passive runtime + scope preflight...' -ForegroundColor Cyan
-& $Py -m tools.v011_beta6_b63_live_runtime_probe
-$PreflightExit=$LASTEXITCODE
-if($PreflightExit -ne 0){
-    throw "B6-3.4 preflight non accettato (exit=$PreflightExit). Nessuna scansione e stata avviata."
+#
+# B6-3.4 refuses to execute if the runtime falls back to the legacy broad
+# scan_paths provider. This prevents a failed scan_file capability probe from
+# silently re-running the old ~deep-scan behavior under a Smart Scan label.
+$PreflightFile=Join-Path $env:TEMP ('bc-sentinel-b634-preflight-'+[guid]::NewGuid().ToString('N')+'.json')
+try{
+    Write-Host 'B6-3.4 passive runtime + scope preflight...' -ForegroundColor Cyan
+    & $Py -m tools.v011_beta6_b63_live_runtime_probe --output $PreflightFile
+    $PreflightExit=$LASTEXITCODE
+    if($PreflightExit -ne 0){
+        throw "B6-3.4 preflight non accettato (exit=$PreflightExit). Nessuna scansione e stata avviata."
+    }
+    if(-not(Test-Path -LiteralPath $PreflightFile -PathType Leaf)){
+        throw 'B6-3.4 preflight evidence non disponibile. Nessuna scansione e stata avviata.'
+    }
+    $Preflight=Get-Content -Raw -LiteralPath $PreflightFile -Encoding UTF8 | ConvertFrom-Json
+    $ExpectedProfile='v0.11.0-beta.6-b63.4-smart-scope'
+    $ExpectedMode='risk_prioritized_v1'
+    $Profile=[string]$Preflight.provider_capabilities.provider_profile
+    $Mode=[string]$Preflight.provider_capabilities.scope_mode
+    $ScanFileAvailable=[bool]$Preflight.provider_capabilities.scan_file_available
+    $FullFilesystem=[bool]$Preflight.provider_capabilities.full_filesystem_coverage
+    if(-not[bool]$Preflight.accepted){
+        throw 'B6-3.4 provider non accettato. Nessuna scansione e stata avviata.'
+    }
+    if($Profile -ne $ExpectedProfile -or $Mode -ne $ExpectedMode -or -not $ScanFileAvailable -or $FullFilesystem){
+        throw ("B6-3.4 Smart Scope non disponibile: profile='"+$Profile+"' mode='"+$Mode+"' scan_file="+$ScanFileAvailable+" full_filesystem="+$FullFilesystem+". Esecuzione rifiutata per evitare fallback alla scansione broad legacy.")
+    }
+    Write-Host ('B6-3.4 preflight PASS: '+$Profile+' / '+$Mode) -ForegroundColor Green
 }
-
-Write-Host 'B6-3.4 preflight PASS: provider accepted.' -ForegroundColor Green
+finally{
+    Remove-Item -LiteralPath $PreflightFile -Force -ErrorAction SilentlyContinue
+}
 
 if(-not $Execute){
     Write-Host 'Nessuna scansione avviata. Per eseguire esplicitamente la Smart Scan, rilancia questo helper con -Execute.' -ForegroundColor Yellow
