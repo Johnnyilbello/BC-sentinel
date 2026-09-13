@@ -203,3 +203,46 @@ class StaticScanner:
     result = holder["result"]
     assert result.state == smart.STATE_CANCELLED
     assert result.coverage == smart.COVERAGE_INCOMPLETE
+
+
+def test_scope_guard_excludes_exact_pinned_runtime_from_plan(tmp_path, monkeypatch) -> None:
+    scan_root = tmp_path / "Downloads"
+    scan_root.mkdir()
+    runtime = scan_root / "BC_Sentinel_pinned_runtime"
+    outside = scan_root / "outside.ps1"
+    outside.write_text("Write-Output outside", encoding="utf-8")
+
+    digest = _write_runtime(
+        runtime,
+        """
+from pathlib import Path
+RUNTIME_ROOT = Path(__file__).resolve().parents[1]
+class StaticScanner:
+    def scan_paths(self, roots, cancelled=None):
+        raise AssertionError('broad scan_paths must not run in B6-3.4')
+    def scan_file(self, path):
+        target = Path(path).resolve()
+        if target == RUNTIME_ROOT or RUNTIME_ROOT in target.parents:
+            raise ValueError('BC Sentinel self-managed path excluded from normal scanning.')
+        return {
+            'path': str(path),
+            'sha256': 'outside-safe',
+            'assessment': {'score': 0, 'level': 'SAFE', 'reasons': [], 'signals': [], 'confidence': 1.0}
+        }
+""".strip() + "\n",
+    )
+    (runtime / "self-managed.ps1").write_text("Write-Output self-managed", encoding="utf-8")
+    _configure(monkeypatch, runtime, digest, scan_root)
+
+    provider = live.create_provider()
+    caps = dict(provider.capabilities())
+    assert caps["scope_guard"] == "exclude_pinned_runtime_root_v1"
+    assert caps["self_managed_runtime_excluded"] is True
+
+    result = smart.SmartScanCoordinator(provider).run_sync()
+    assert result.state == smart.STATE_COMPLETED_CLEAN
+    assert result.coverage == smart.COVERAGE_COMPLETE
+    assert result.plan.raw["selected_count"] == 1
+    assert result.plan.raw["excluded_candidate_count"] >= 1
+    assert result.plan.raw["scope_guard"] == "exclude_pinned_runtime_root_v1"
+    assert result.check_results[0].evidence["planned_files"] == 1
