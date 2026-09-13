@@ -49,6 +49,8 @@ def evaluate_evidence(evidence: dict) -> tuple[bool, list[str]]:
         failures.append("result_not_rendered")
     if final.get("advanced_details_available") is not True:
         failures.append("advanced_details_not_available")
+    if final.get("dashboard_checked_visible") is not True:
+        failures.append("dashboard_overflow_not_measured_while_visible")
     if int(final.get("horizontal_scroll_max") or 0) != 0:
         failures.append("dashboard_horizontal_overflow")
     if int(final.get("scan_page_horizontal_scroll_max") or 0) != 0:
@@ -136,14 +138,20 @@ def run_probe(
             return
         finalized = True
         result = window.last_smart_scan_result
+
+        # Capture the scan result while the scan page is still the visible page.
+        # A hidden QScrollArea can retain stale geometry after QStackedWidget page
+        # changes, so measuring the hidden Dashboard scrollbar is not meaningful.
+        # After preserving the scan-page evidence, explicitly show Dashboard,
+        # reflow it, and only then measure its horizontal scrollbar contract.
         final: dict = {
             "result_rendered": result is not None and window.scan_page.coverage_label.isVisible(),
             "advanced_details_available": window.scan_page.advanced_button.isVisible(),
             "task_title": window.scan_page.task_title.text(),
             "task_subtitle": window.scan_page.task_subtitle.text(),
             "coverage_text": window.scan_page.coverage_label.text(),
-            "horizontal_scroll_max": window.page_scroll.horizontalScrollBar().maximum(),
             "scan_page_horizontal_scroll_max": window.scan_scroll.horizontalScrollBar().maximum(),
+            "dashboard_checked_visible": False,
         }
         if result is not None:
             final.update(
@@ -165,6 +173,15 @@ def run_probe(
             )
         else:
             final["no_destructive_authority"] = True
+
+        window._navigate("Dashboard")
+        app.processEvents()
+        window._apply_responsive_layout(force=True)
+        window._sync_all_scroll_widths()
+        app.processEvents()
+        final["dashboard_checked_visible"] = window.stack.currentWidget() is window.page_scroll
+        final["horizontal_scroll_max"] = window.page_scroll.horizontalScrollBar().maximum()
+
         evidence["final"] = final
         passed, failures = evaluate_evidence(evidence)
         evidence["passed"] = passed
@@ -300,6 +317,8 @@ def main() -> int:
         "progress_sample_count": runtime.get("progress_sample_count"),
         "progress_advanced": runtime.get("progress_advanced"),
         "cancel_click_sent": runtime.get("cancel_click_sent"),
+        "dashboard_horizontal_scroll_max": final.get("horizontal_scroll_max"),
+        "scan_page_horizontal_scroll_max": final.get("scan_page_horizontal_scroll_max"),
         "output": str(output),
     }
     print(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True))
