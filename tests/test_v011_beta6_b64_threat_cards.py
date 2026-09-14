@@ -147,7 +147,7 @@ def test_b64_scan_page_renders_card_and_per_card_advanced_details() -> None:
     widget = page.threat_card_widgets[0]
     assert widget.title_label.text() == "Fixture suspicious item"
     assert "HIGH" in widget.severity_badge.text()
-    assert "91%" in widget.findChild(type(widget.severity_badge), "ThreatCardMeta").text()
+    assert "91%" in widget.meta_label.text()
     assert widget.advanced_text.isHidden()
     widget.advanced_button.setChecked(True)
     app.processEvents()
