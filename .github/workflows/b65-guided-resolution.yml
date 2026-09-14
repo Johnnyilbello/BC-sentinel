@@ -13,15 +13,18 @@ on:
       - 'sentinel/home_guided_resolution_ui.py'
       - 'sentinel/home_guided_resolution_window.py'
       - 'sentinel/ui_quality_refinement.py'
+      - 'sentinel/ui_live_polish.py'
       - 'sentinel/ui_motion_components.py'
       - 'sentinel/guided_resolution_provider_loader.py'
       - 'sentinel/guided_resolution_live_provider.py'
       - 'sentinel/guided_resolution_action_plan.py'
       - 'sentinel/guided_resolution_confirmation.py'
+      - 'sentinel/guided_resolution_execution_gate.py'
       - 'tests/test_v011_beta6_b650_*.py'
       - 'tests/test_v011_beta6_b651_*.py'
       - 'tests/test_v011_beta6_b652_*.py'
       - 'tests/test_v011_beta6_b653_*.py'
+      - 'tests/test_v011_beta6_b654_*.py'
       - 'tests/test_v011_beta6_ui_quality_refinement.py'
       - '.github/workflows/b65-guided-resolution.yml'
   workflow_dispatch:
@@ -44,23 +47,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-      - name: Compile B6-5.3 plus UI quality and predecessors
+      - name: Compile B6-5.4 plus UI quality and predecessors
         shell: pwsh
         run: |
-          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py sentinel/home_guided_resolution.py sentinel/home_guided_resolution_ui.py sentinel/ui_quality_refinement.py sentinel/ui_motion_components.py sentinel/guided_resolution_provider_loader.py sentinel/guided_resolution_live_provider.py sentinel/guided_resolution_action_plan.py sentinel/guided_resolution_confirmation.py sentinel/home_guided_resolution_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_b653_confirmation.py tests/test_v011_beta6_ui_quality_refinement.py
-      - name: B6-0 through B6-5.3 deterministic regression suite
+          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py sentinel/home_guided_resolution.py sentinel/home_guided_resolution_ui.py sentinel/ui_quality_refinement.py sentinel/ui_live_polish.py sentinel/ui_motion_components.py sentinel/guided_resolution_provider_loader.py sentinel/guided_resolution_live_provider.py sentinel/guided_resolution_action_plan.py sentinel/guided_resolution_confirmation.py sentinel/guided_resolution_execution_gate.py sentinel/home_guided_resolution_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_b653_confirmation.py tests/test_v011_beta6_b654_execution_gate.py tests/test_v011_beta6_ui_quality_refinement.py
+      - name: B6-0 through B6-5.4 deterministic regression suite
         shell: pwsh
         run: |
-          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py tests/test_v011_beta6_b63_live_provider_loader.py tests/test_v011_beta6_b63_live_runtime_adapter.py tests/test_v011_beta6_b63_runtime_compat.py tests/test_v011_beta6_b634_smart_scope.py tests/test_v011_beta6_b635_live_ui_probe.py tests/test_v011_beta6_b64_threat_cards.py tests/test_v011_beta6_b64_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_b653_confirmation.py tests/test_v011_beta6_ui_quality_refinement.py
+          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py tests/test_v011_beta6_b63_live_provider_loader.py tests/test_v011_beta6_b63_live_runtime_adapter.py tests/test_v011_beta6_b63_runtime_compat.py tests/test_v011_beta6_b634_smart_scope.py tests/test_v011_beta6_b635_live_ui_probe.py tests/test_v011_beta6_b64_threat_cards.py tests/test_v011_beta6_b64_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_b653_confirmation.py tests/test_v011_beta6_b654_execution_gate.py tests/test_v011_beta6_ui_quality_refinement.py
       - name: B6-3 predecessor acceptance
         shell: pwsh
         run: python -m tools.v011_beta6_b63_acceptance --output acceptance-v011-beta6-b63-b65-ci.json
       - name: Passive B6-4 predecessor self-check
         shell: pwsh
         run: python -m sentinel.home_threat_cards_window --self-check
-      - name: B6-5.3 explicit-confirmation + UI quality self-check
+      - name: B6-5.4 execution-readiness + UI quality self-check
         shell: pwsh
         run: python -m sentinel.home_guided_resolution_window --self-check
-      - name: B6-5.3 Qt offscreen smoke
+      - name: B6-5.4 Qt offscreen smoke
         shell: pwsh
         run: python -m sentinel.home_guided_resolution_window --offscreen-smoke
