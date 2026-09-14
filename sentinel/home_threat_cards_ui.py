@@ -46,7 +46,7 @@ class ThreatCardWidget(QFrame):
         self.title_label.setMinimumWidth(0)
         header.addWidget(self.title_label, 1)
 
-        self.severity_badge = QLabel(model.severity_label)
+        self.severity_badge = QLabel(f"{model.severity_label} · {model.severity}")
         self.severity_badge.setObjectName("ThreatSeverityBadge")
         self.severity_badge.setProperty("severity", model.severity)
         self.severity_badge.setToolTip(f"Severità canonica: {model.severity}")
