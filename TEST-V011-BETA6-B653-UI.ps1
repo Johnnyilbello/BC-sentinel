@@ -6,22 +6,19 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
-# Keep Windows PowerShell 5.1 output readable when the repository contains UTF-8
-# copy. The visible launcher header intentionally stays ASCII-safe as well.
 try {
     $Utf8 = New-Object System.Text.UTF8Encoding($false)
     [Console]::OutputEncoding = $Utf8
     $OutputEncoding = $Utf8
 } catch {
-    # Encoding setup is cosmetic and must never block the safety preflight.
 }
 
 $ExpectedBranch = 'feature/v011-beta6-b65-guided-resolution'
 $ExpectedScannerSha = '7874df734f6146f8848d8a55f5eb6be37bb5cbaee1638e051357f978f5275433'
 
 Write-Host ''
-Write-Host 'BC Sentinel B6-5.3 - live UI test / UI polish R3' -ForegroundColor Cyan
-Write-Host '------------------------------------------------'
+Write-Host 'BC Sentinel B6-5.4 - live UI / execution-readiness test' -ForegroundColor Cyan
+Write-Host '------------------------------------------------------'
 
 $Py = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if(-not (Test-Path -LiteralPath $Py -PathType Leaf)){
@@ -34,11 +31,10 @@ if(Test-Path -LiteralPath (Join-Path $PSScriptRoot '.git')){
     Write-Host ('Branch: ' + $CurrentBranch)
     Write-Host ('Commit: ' + $CurrentCommit)
     if($CurrentBranch -ne $ExpectedBranch){
-        Write-Warning "Sei su '$CurrentBranch'. Per il test B6-5.3 usa '$ExpectedBranch'."
+        Write-Warning "Sei su '$CurrentBranch'. Per il test B6-5.4 usa '$ExpectedBranch'."
     }
 }
 
-# A previous offscreen CI/smoke environment would make the real window invisible.
 if($env:QT_QPA_PLATFORM -eq 'offscreen'){
     Remove-Item Env:QT_QPA_PLATFORM -ErrorAction SilentlyContinue
 }
@@ -76,8 +72,6 @@ if(-not $SkipRuntime){
         $env:BC_SENTINEL_FULL_RUNTIME_PYTHON = $Py
     }
 
-    # Bounded live test profile: enough to exercise real progress/findings without
-    # falling back to the old broad scan behavior.
     $env:BC_SENTINEL_SMART_SCAN_MAX_FILES = '250'
     $env:BC_SENTINEL_SMART_SCAN_MAX_TOTAL_BYTES = [string](128MB)
     $env:BC_SENTINEL_SMART_SCAN_MAX_FILE_BYTES = [string](64MB)
@@ -87,7 +81,7 @@ if(-not $SkipRuntime){
     Write-Host ('scanner.py SHA256: ' + $ActualScannerSha)
     Write-Host 'Smart Scan live test budget: 250 files / 128 MB / 64 MB per file / 90 days'
 
-    $ProbeFile = Join-Path $env:TEMP ('bc-sentinel-b653-ui-preflight-' + [guid]::NewGuid().ToString('N') + '.json')
+    $ProbeFile = Join-Path $env:TEMP ('bc-sentinel-b654-ui-preflight-' + [guid]::NewGuid().ToString('N') + '.json')
     try{
         & $Py -m tools.v011_beta6_b63_live_runtime_probe --output $ProbeFile | Out-Null
         if($LASTEXITCODE -ne 0){
@@ -115,15 +109,15 @@ if(-not $SkipRuntime){
 
 if(-not $SkipSelfCheck){
     Write-Host ''
-    Write-Host '[2/3] B6-5.3 self-check prima di aprire la UI...' -ForegroundColor Cyan
-    $SelfCheckFile = Join-Path $env:TEMP ('bc-sentinel-b653-self-check-' + [guid]::NewGuid().ToString('N') + '.json')
+    Write-Host '[2/3] B6-5.4 self-check prima di aprire la UI...' -ForegroundColor Cyan
+    $SelfCheckFile = Join-Path $env:TEMP ('bc-sentinel-b654-self-check-' + [guid]::NewGuid().ToString('N') + '.json')
     try{
         & $Py -m sentinel.home_guided_resolution_window --self-check *> $SelfCheckFile
         if($LASTEXITCODE -ne 0){
             Get-Content -LiteralPath $SelfCheckFile -ErrorAction SilentlyContinue | Write-Host
-            throw "B6-5.3 self-check fallito (exit=$LASTEXITCODE). UI non avviata."
+            throw "B6-5.4 self-check fallito (exit=$LASTEXITCODE). UI non avviata."
         }
-        Write-Host 'B6-5.3 self-check: PASS' -ForegroundColor Green
+        Write-Host 'B6-5.4 self-check: PASS' -ForegroundColor Green
     }
     finally{
         Remove-Item -LiteralPath $SelfCheckFile -Force -ErrorAction SilentlyContinue
@@ -134,8 +128,9 @@ if(-not $SkipSelfCheck){
 
 Write-Host ''
 Write-Host '[3/3] Apertura della nuova UI BC Sentinel...' -ForegroundColor Cyan
-Write-Host 'Controlla soprattutto: testi completi, icone distinte per Aggiorna stato/Aggiorna lista e Smart Scan.'
+Write-Host 'Controlla soprattutto Scansione, Quarantena e Cronologia: nessun testo deve essere tagliato.'
 Write-Host 'La Smart Scan resta esplicita: parte solo quando premi tu il pulsante.'
+Write-Host 'B6-5.4 resta fail-closed: nessuna remediation reale e disponibile.'
 Write-Host ''
 
 & $Py -m sentinel.home_guided_resolution_window
@@ -146,4 +141,4 @@ if($UiExit -ne 0){
 }
 
 Write-Host ''
-Write-Host 'Sessione UI B6-5.3 terminata correttamente.' -ForegroundColor Green
+Write-Host 'Sessione UI B6-5.4 terminata correttamente.' -ForegroundColor Green
