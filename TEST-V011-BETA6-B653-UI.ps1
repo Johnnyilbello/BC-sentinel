@@ -6,12 +6,22 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
+# Keep Windows PowerShell 5.1 output readable when the repository contains UTF-8
+# copy. The visible launcher header intentionally stays ASCII-safe as well.
+try {
+    $Utf8 = New-Object System.Text.UTF8Encoding($false)
+    [Console]::OutputEncoding = $Utf8
+    $OutputEncoding = $Utf8
+} catch {
+    # Encoding setup is cosmetic and must never block the safety preflight.
+}
+
 $ExpectedBranch = 'feature/v011-beta6-b65-guided-resolution'
 $ExpectedScannerSha = '7874df734f6146f8848d8a55f5eb6be37bb5cbaee1638e051357f978f5275433'
 
 Write-Host ''
-Write-Host 'BC Sentinel B6-5.3 — live UI test' -ForegroundColor Cyan
-Write-Host '----------------------------------'
+Write-Host 'BC Sentinel B6-5.3 - live UI test / UI polish R3' -ForegroundColor Cyan
+Write-Host '------------------------------------------------'
 
 $Py = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if(-not (Test-Path -LiteralPath $Py -PathType Leaf)){
@@ -124,7 +134,7 @@ if(-not $SkipSelfCheck){
 
 Write-Host ''
 Write-Host '[3/3] Apertura della nuova UI BC Sentinel...' -ForegroundColor Cyan
-Write-Host 'Puoi navigare Dashboard, Scansione, Quarantena, Cronologia, Protezione e Impostazioni.'
+Write-Host 'Controlla soprattutto: testi completi, icone distinte per Aggiorna stato/Aggiorna lista e Smart Scan.'
 Write-Host 'La Smart Scan resta esplicita: parte solo quando premi tu il pulsante.'
 Write-Host ''
 
