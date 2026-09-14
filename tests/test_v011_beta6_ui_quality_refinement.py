@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import os
+import warnings
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("BC_SENTINEL_REDUCED_MOTION", "1")
 
-from PySide6.QtWidgets import QApplication, QSpinBox
+from PySide6.QtWidgets import QApplication, QLabel, QSizePolicy, QSpinBox
 
 from sentinel import home_smart_scan as smart
 from sentinel import home_threat_cards as threat
+from sentinel import ui_live_polish
 from sentinel import ui_quality_refinement as quality
 from sentinel.home_guided_resolution_ui import B65ThreatCardWidget
 from sentinel.home_guided_resolution_window import B65SecurityOverviewWindow
@@ -177,3 +179,69 @@ def test_current_home_applies_quality_layer_without_quantity_controls_or_overflo
         assert window.full_scan_button.isEnabled() is False
     finally:
         window.close()
+
+
+def test_live_ui_polish_removes_hard_caps_from_wrapped_primary_copy() -> None:
+    app = _app()
+    window = B65SecurityOverviewWindow()
+    try:
+        window.resize(720, 720)
+        window.show()
+        window._navigate("Scansione")
+        window._apply_responsive_layout(force=True)
+        app.processEvents()
+
+        assert window.scan_page.panel.maximumHeight() == 16777215
+        assert window.scan_page.panel.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+        assert window.scan_page.task_subtitle.maximumWidth() == 16777215
+        assert window.scan_page.task_subtitle.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+
+        window._navigate("Quarantena")
+        app.processEvents()
+        empty = window.quarantine_page.empty
+        body = empty.findChild(QLabel, "EmptyBody")
+        assert empty.maximumHeight() == 16777215
+        assert empty.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+        assert body is not None
+        assert body.maximumWidth() == 16777215
+        assert body.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+    finally:
+        window.close()
+
+
+def test_status_and_quarantine_refresh_controls_use_distinct_semantic_icons() -> None:
+    app = _app()
+    window = B65SecurityOverviewWindow()
+    try:
+        window.show()
+        app.processEvents()
+        status_button = window.refresh_button
+        list_button = window.quarantine_page.refresh_button
+        assert status_button.property("semanticIcon") == "status_refresh"
+        assert list_button.property("semanticIcon") == "list_refresh"
+        assert status_button.property("semanticIcon") != list_button.property("semanticIcon")
+        assert status_button.icon().isNull() is False
+        assert list_button.icon().isNull() is False
+    finally:
+        window.close()
+
+
+def test_b653_window_hides_known_pyside_disconnect_noise_from_user_session() -> None:
+    _app()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        window = B65SecurityOverviewWindow()
+        try:
+            assert not any("Failed to disconnect" in str(item.message) for item in caught)
+        finally:
+            window.close()
+
+
+def test_live_ui_polish_contract_preserves_security_authority() -> None:
+    contract = ui_live_polish.validate_live_ui_polish_contract()
+    assert contract["passed"] is True
+    assert contract["wrapped_text_uses_content_driven_height"] is True
+    assert contract["refresh_icons_semantically_distinct"] is True
+    assert contract["automatic_quarantine"] is False
+    assert contract["automatic_repair"] is False
+    assert contract["automatic_destructive_action"] is False
