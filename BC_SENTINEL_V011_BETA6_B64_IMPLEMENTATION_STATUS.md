@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-4 Implementation Status
 
-Status: **B6-4 THREAT CARD FOUNDATION WINDOWS CI GREEN / LIVE WINDOWS THREAT CARD ACCEPTANCE PENDING**
+Status: **B6-4 THREAT CARDS WINDOWS CI GREEN / LIVE WINDOWS ACCEPTANCE PASS / FINAL PROMOTION CI PENDING**
 
 Primary branch:
 
@@ -13,9 +13,11 @@ Parent stable checkpoint:
 ```text
 B6-3 Smart Scan
 f9fab1768d6a4c185ff3a83f01e4a6ed90aaf81c
+checkpoint/v011-beta6-b63-pass
+stable/v011-beta6-b63
 ```
 
-B6-4 is **not stable yet**. `main`, `checkpoint/v011-beta6-b63-pass` and `stable/v011-beta6-b63` remain the accepted promotion state until the B6-4 live Windows acceptance and final stabilization gate are complete.
+B6-4 has passed its real-Windows Threat Card acceptance. It is not promoted to checkpoint/stable refs until the final branch-head Windows gate completes successfully.
 
 ## Goal
 
@@ -101,7 +103,7 @@ B6-4 must never:
 - claim quarantine/repair/deletion when none occurred;
 - remove source evidence from Advanced details.
 
-Static B6-4 contract currently reports:
+Static B6-4 contract:
 
 ```text
 severity_mutation=false
@@ -118,14 +120,14 @@ Guided remediation belongs to B6-5 and remains out of scope.
 
 ## Deterministic tests
 
-Added:
+B6-4 coverage:
 
 ```text
 tests/test_v011_beta6_b64_threat_cards.py
 tests/test_v011_beta6_b64_window.py
 ```
 
-Coverage includes:
+The regression suite covers:
 
 - B6-4 profile/schema and authority contract;
 - exact severity preservation;
@@ -140,7 +142,7 @@ Coverage includes:
 - no horizontal overflow in the B6-4 scan surface;
 - no implicit scan dispatch during construction/render tests.
 
-## Windows CI — FOUNDATION PASS
+## Windows CI — GREEN
 
 Workflow:
 
@@ -148,7 +150,15 @@ Workflow:
 B6-4 Threat Cards Gate
 ```
 
-Latest explicitly observed full run for the current implementation foundation:
+Latest observed green run before the promotion-evidence commit:
+
+```text
+Run: 34841481988
+Head: 7a9cdd8862975b7affee206c8a3006131d490024
+Result: success
+```
+
+The previous full foundation run recorded:
 
 ```text
 Run: 34841323180
@@ -157,52 +167,68 @@ Result: success
 Regression suite: 122 passed, 36 warnings
 ```
 
-All workflow stages passed:
+All required workflow stages passed, including predecessor regression, B6-3 acceptance, passive B6-4 self-check and Qt offscreen smoke. Known PySide `clicked().disconnect()` warnings and GitHub Actions Node deprecation warnings remain non-blocking and do not change security authority.
 
-- compile B6-4 + predecessor modules;
-- B6-0 through B6-4 deterministic regression suite;
-- B6-3 predecessor acceptance;
-- passive B6-4 self-check;
-- B6-4 Qt offscreen smoke.
+## Live Windows acceptance — PASS
 
-Warnings remain the already known non-blocking PySide `clicked().disconnect()` warnings plus GitHub Actions Node deprecation warnings. They do not represent an accepted security verdict or runtime authority change.
-
-## Live Windows acceptance prepared
-
-Created:
+Acceptance date:
 
 ```text
-tools/v011_beta6_b64_live_ui_probe.py
-RUN-V011-BETA6-B64-LIVE-UI.ps1
+2026-09-14
 ```
 
-The probe reuses the already accepted B6-3.5 live UI path but instantiates the B6-4 Home. A valid B6-4 live PASS requires a real `COMPLETED_FINDINGS` Smart Scan and verifies:
+Detailed record:
 
-- B6-3 live UI contract still passes;
-- at least one live finding exists;
-- one rendered B6-4 card exists for every returned finding;
-- the threat section is visible;
-- the first card exposes per-card Advanced details;
-- the Advanced payload contains provider provenance and the live finding ID;
-- displayed severity equals the canonical result severity;
-- displayed confidence equals the canonical result confidence, including `None` when unavailable;
-- scan-page and Dashboard horizontal overflow remain zero;
-- no destructive authority is present.
+```text
+BC_SENTINEL_V011_BETA6_B64_LIVE_ACCEPTANCE_2026-09-14.md
+```
 
-If a particular live run happens to return zero findings, that does **not** mean B6-4 failed functionally; it means that run cannot prove the threat-card live requirement and a harmless controlled finding fixture will be required for the acceptance gate.
+Observed real Smart Scan result:
 
-## Remaining B6-4 stabilization gate
+```text
+state: COMPLETED_FINDINGS
+coverage: COMPLETE
+completed_checks: 5/5
+elapsed_ms: 13438
+findings_count: 7
+highest_severity: HIGH
+full_filesystem_coverage: false
+no_destructive_authority: true
+```
 
-Before B6-4 can be promoted:
+Observed B6-4 presentation acceptance:
 
-1. run the B6-4 live Windows helper against the accepted pinned runtime;
-2. obtain at least one live accepted finding and verify it is rendered as a truthful threat card;
-3. verify per-card Advanced details against that live finding;
-4. commit the supported-Windows acceptance evidence;
-5. re-run the final B6-0/B6-1/B6-2/B6-3/B6-4 Windows gate on the final promotion commit;
-6. only then create the B6-4 checkpoint/stable refs and advance the roadmap to B6-5.
+```text
+card_count: 7
+severity_matches_result: true
+confidence_matches_result: true
+per_card_advanced_available: true
+per_card_advanced_payload_present: true
+threat_section_visible: true
+scan_page_horizontal_scroll_max: 0
+dashboard_horizontal_scroll_max: 0
+failures: []
+passed: true
+```
 
-Do not advance B6-5 before this gate closes.
+Terminal result:
+
+```text
+B6-4 live Threat Cards UI acceptance PASS.
+```
+
+This closes the real-Windows finding-to-card and Advanced Details gate. `coverage: COMPLETE` applies only to the declared bounded Smart Scope and must not be represented as whole-filesystem coverage.
+
+## Remaining promotion gate
+
+Only final stabilization remains:
+
+1. run the `B6-4 Threat Cards Gate` on the promotion-evidence branch head;
+2. require a green result with predecessor gates preserved;
+3. create `checkpoint/v011-beta6-b64-pass` and `stable/v011-beta6-b64` at that accepted head;
+4. advance the active development line to B6-5 Guided Resolution.
+
+No additional live B6-4 scan is required unless the final code changes security behavior or invalidates the accepted evidence.
 
 ## Reasoning level
 
