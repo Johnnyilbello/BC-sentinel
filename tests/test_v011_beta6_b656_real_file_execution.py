@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -28,7 +27,8 @@ def test_contract_is_single_action_reversible_and_home_stays_disabled() -> None:
     assert contract["terminate_process_authorized"] is False
 
 
-def test_regular_file_in_documents_is_eligible(tmp_path: Path) -> None:
+def test_regular_file_in_documents_is_eligible(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "OtherLocalData"))
     profile = _profile(tmp_path)
     target = profile / "Documents" / "sample.txt"
     target.write_text("safe fixture", encoding="utf-8")
@@ -37,7 +37,8 @@ def test_regular_file_in_documents_is_eligible(tmp_path: Path) -> None:
     assert decision["reasons"] == []
 
 
-def test_file_outside_allowed_user_roots_fails_closed(tmp_path: Path) -> None:
+def test_file_outside_allowed_user_roots_fails_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "OtherLocalData"))
     profile = _profile(tmp_path)
     other = profile / "Pictures"
     other.mkdir()
@@ -48,7 +49,8 @@ def test_file_outside_allowed_user_roots_fails_closed(tmp_path: Path) -> None:
     assert "outside_allowed_user_roots" in decision["reasons"]
 
 
-def test_explicit_protected_root_is_refused(tmp_path: Path) -> None:
+def test_explicit_protected_root_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "OtherLocalData"))
     profile = _profile(tmp_path)
     protected = profile / "Documents" / "BC-Sentinel-SelfManaged"
     protected.mkdir()
@@ -59,7 +61,8 @@ def test_explicit_protected_root_is_refused(tmp_path: Path) -> None:
     assert "protected_or_self_managed_path" in decision["reasons"]
 
 
-def test_oversized_file_is_refused_without_reading_contents(tmp_path: Path) -> None:
+def test_oversized_file_is_refused_without_reading_contents(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "OtherLocalData"))
     profile = _profile(tmp_path)
     target = profile / "Downloads" / "large.bin"
     with target.open("wb") as handle:
@@ -69,7 +72,8 @@ def test_oversized_file_is_refused_without_reading_contents(tmp_path: Path) -> N
     assert "target_too_large" in decision["reasons"]
 
 
-def test_symlink_target_is_refused_when_supported(tmp_path: Path) -> None:
+def test_symlink_target_is_refused_when_supported(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "OtherLocalData"))
     profile = _profile(tmp_path)
     original = profile / "Documents" / "original.txt"
     original.write_text("x", encoding="utf-8")
