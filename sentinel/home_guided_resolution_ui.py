@@ -92,7 +92,9 @@ class GuidedResolutionPanel(QFrame):
         self.next_step_label.setMinimumWidth(0)
         root.addWidget(self.next_step_label)
 
-        self.safety_label = QLabel("Nessuna azione sul sistema viene eseguita automaticamente.")
+        self.safety_label = QLabel(
+            "Nessuna quarantena, riparazione, eliminazione o altra azione sul sistema viene eseguita automaticamente."
+        )
         self.safety_label.setObjectName("SafetyNote")
         self.safety_label.setWordWrap(True)
         root.addWidget(self.safety_label)
