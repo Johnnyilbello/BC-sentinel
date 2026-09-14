@@ -5,6 +5,7 @@ import json
 import os
 import sys
 
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from sentinel import guided_resolution_action_plan as action_plan
@@ -12,6 +13,7 @@ from sentinel import guided_resolution_provider_loader as resolution_provider
 from sentinel import home_guided_resolution as guided
 from sentinel import home_threat_cards_window as b64
 from sentinel import home_smart_scan_window as b63
+from sentinel import ui_quality_refinement as ui_quality
 from sentinel.home_guided_resolution_ui import B65SmartScanPage
 
 PROFILE = action_plan.PROFILE
@@ -24,6 +26,16 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
         # B6-5.2 adds only a planning contract; neither checkpoint exposes execution.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
         super().__init__()
+
+    def _apply_theme(self) -> None:
+        super()._apply_theme()
+        app = QApplication.instance()
+        if app is not None:
+            font = QFont()
+            font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Plus Jakarta Sans"])
+            font.setPointSize(10)
+            app.setFont(font)
+        self.setStyleSheet(self.styleSheet() + ui_quality.quality_stylesheet())
 
     def _install_b63_scan_surface(self) -> None:
         old_scroll = self.scan_scroll
@@ -51,6 +63,7 @@ def self_check() -> dict:
     provider_load = resolution_provider.load_default_provider()
     provider_payload = provider_load.to_dict()
     planning_contract = action_plan.validate_b652_planning_contract()
+    ui_contract = ui_quality.validate_ui_quality_contract()
     failures: list[str] = []
     if parent.get("passed") is not True:
         failures.append("b64_parent_not_green")
@@ -74,6 +87,8 @@ def self_check() -> dict:
         failures.append("b652_journal_write_authority_exposed")
     if planning_contract.get("rollback_execution_authority") is not False:
         failures.append("b652_rollback_execution_authority_exposed")
+    if ui_contract.get("passed") is not True:
+        failures.append("ui_quality_contract_not_green")
     return {
         "profile": PROFILE,
         "schema": action_plan.SCHEMA,
@@ -83,6 +98,7 @@ def self_check() -> dict:
         "guided_resolution_contract": contract,
         "capability_provider": provider_payload,
         "action_plan_contract": planning_contract,
+        "ui_quality": ui_contract,
         "window_created": False,
         "startup_scan_dispatch": False,
         "navigation_scan_dispatch": False,
@@ -121,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         app.processEvents()
         provider_payload = window.guided_resolution_provider_load.to_dict()
         planning_contract = action_plan.validate_b652_planning_contract()
+        ui_contract = ui_quality.validate_ui_quality_contract()
         payload = {
             "profile": PROFILE,
             "passed": (
@@ -130,12 +147,14 @@ def main(argv: list[str] | None = None) -> int:
                 and provider_payload.get("destructive_authority") is False
                 and planning_contract.get("passed") is True
                 and planning_contract.get("execution_authorized") is False
+                and ui_contract.get("passed") is True
             ),
             "window_title": window.windowTitle(),
             "page_count": window.stack.count(),
             "smart_scan_provider_available": window.smart_scan_coordinator.is_available(),
             "capability_provider": provider_payload,
             "action_plan_contract": planning_contract,
+            "ui_quality": ui_contract,
             "startup_scan_dispatch": False,
             "capability_provider_boundary_verified": window.guided_resolution_provider_load.accepted,
             "remediation_provider_boundary_verified": False,
