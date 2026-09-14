@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 from sentinel import guided_resolution_action_plan as action_plan
 from sentinel import guided_resolution_confirmation as confirmation
+from sentinel import guided_resolution_execution_gate as execution_gate
 from sentinel import guided_resolution_provider_loader as resolution_provider
 from sentinel import home_guided_resolution as guided
 from sentinel import home_threat_cards_window as b64
@@ -19,22 +20,18 @@ from sentinel import ui_live_polish
 from sentinel import ui_quality_refinement as ui_quality
 from sentinel.ui_live_polish import PolishedB65SmartScanPage
 
-PROFILE = confirmation.PROFILE
+PROFILE = execution_gate.PROFILE
 WINDOW_TITLE = b63.WINDOW_TITLE
 
 
 class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
     def __init__(self) -> None:
         # B6-5.1 performs only the fixed, side-effect-free capability probe.
-        # B6-5.2 adds planning and B6-5.3 adds an explicit confirmation record.
-        # Confirmation is deliberately not execution authorization.
+        # B6-5.2 adds planning, B6-5.3 explicit confirmation and B6-5.4 the
+        # separate execution-readiness boundary. The current provider still has
+        # no execution API, so no UI mutation control is exposed here.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
 
-        # The predecessor shells call parameterless Qt disconnect() on buttons
-        # that can legitimately have no receiver. PySide reports that as a
-        # RuntimeWarning even though construction continues correctly. Keep the
-        # B6-5.3 user-facing launcher clean while predecessor regression tests
-        # remain available unchanged.
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
@@ -82,6 +79,7 @@ def self_check() -> dict:
     provider_payload = provider_load.to_dict()
     planning_contract = action_plan.validate_b652_planning_contract()
     confirmation_contract = confirmation.validate_b653_confirmation_contract()
+    execution_contract = execution_gate.validate_b654_execution_gate_contract()
     ui_contract = ui_quality.validate_ui_quality_contract()
     live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
     failures: list[str] = []
@@ -121,13 +119,25 @@ def self_check() -> dict:
         failures.append("b653_journal_write_authority_exposed")
     if confirmation_contract.get("rollback_execution_authority") is not False:
         failures.append("b653_rollback_execution_authority_exposed")
+    if execution_contract.get("passed") is not True:
+        failures.append("b654_execution_gate_contract_not_green")
+    if execution_contract.get("confirmed_receipt_is_not_execution_authority") is not True:
+        failures.append("b654_confirmation_execution_separation_missing")
+    if execution_contract.get("execution_api") is not False:
+        failures.append("b654_execution_api_exposed")
+    if execution_contract.get("execution_authorized") is not False:
+        failures.append("b654_execution_authority_exposed")
+    if execution_contract.get("journal_write_authority") is not False:
+        failures.append("b654_journal_write_authority_exposed")
+    if execution_contract.get("rollback_execution_authority") is not False:
+        failures.append("b654_rollback_execution_authority_exposed")
     if ui_contract.get("passed") is not True:
         failures.append("ui_quality_contract_not_green")
     if live_ui_contract.get("passed") is not True:
         failures.append("ui_live_polish_contract_not_green")
     return {
         "profile": PROFILE,
-        "schema": confirmation.SCHEMA,
+        "schema": execution_gate.SCHEMA,
         "passed": not failures,
         "failures": failures,
         "parent_b64": parent,
@@ -135,6 +145,7 @@ def self_check() -> dict:
         "capability_provider": provider_payload,
         "action_plan_contract": planning_contract,
         "confirmation_contract": confirmation_contract,
+        "execution_gate_contract": execution_contract,
         "ui_quality": ui_contract,
         "ui_live_polish": live_ui_contract,
         "window_created": False,
@@ -156,7 +167,7 @@ def self_check() -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.3 explicit-confirmation Guided Resolution Home")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.4 fail-closed Guided Resolution execution boundary")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--offscreen-smoke", action="store_true")
     args = parser.parse_args(argv)
@@ -178,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         provider_payload = window.guided_resolution_provider_load.to_dict()
         planning_contract = action_plan.validate_b652_planning_contract()
         confirmation_contract = confirmation.validate_b653_confirmation_contract()
+        execution_contract = execution_gate.validate_b654_execution_gate_contract()
         ui_contract = ui_quality.validate_ui_quality_contract()
         live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
         payload = {
@@ -193,8 +205,12 @@ def main(argv: list[str] | None = None) -> int:
                 and confirmation_contract.get("confirmation_requires_explicit_intent") is True
                 and confirmation_contract.get("confirmation_is_execution_authority") is False
                 and confirmation_contract.get("execution_authorized") is False
+                and execution_contract.get("passed") is True
+                and execution_contract.get("execution_api") is False
+                and execution_contract.get("execution_authorized") is False
                 and ui_contract.get("passed") is True
                 and live_ui_contract.get("passed") is True
+                and live_ui_contract.get("history_empty_state_hard_height_cap_removed") is True
                 and window.refresh_button.property("semanticIcon") == "status_refresh"
                 and window.quarantine_page.refresh_button.property("semanticIcon") == "list_refresh"
             ),
@@ -204,6 +220,7 @@ def main(argv: list[str] | None = None) -> int:
             "capability_provider": provider_payload,
             "action_plan_contract": planning_contract,
             "confirmation_contract": confirmation_contract,
+            "execution_gate_contract": execution_contract,
             "ui_quality": ui_contract,
             "ui_live_polish": live_ui_contract,
             "refresh_icon_roles": {
