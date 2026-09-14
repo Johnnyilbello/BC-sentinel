@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-5 Implementation Status
 
-Status: **B6-5.0→B6-5.6 ACCEPTED INCREMENTALLY / B6-5.6 WINDOWS CI GREEN / LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **B6-5.0→B6-5.6 ACCEPTED INCREMENTALLY / B6-5.6 WINDOWS + LOCAL DEVICE PASS / B6-5.7 IMPLEMENTED — FINAL CI GATE PENDING**
 
 Active development branch:
 
@@ -17,7 +17,7 @@ checkpoint/v011-beta6-b64-pass
 stable/v011-beta6-b64
 ```
 
-Accepted B6-5 development checkpoints:
+## Accepted B6-5 checkpoints
 
 ```text
 B6-5.0 Passive Guided Resolution
@@ -37,19 +37,34 @@ B6-5.3 Explicit confirmation gate
 checkpoint/v011-beta6-b653-pass
 
 B6-5.4 Execution-readiness boundary
-105901b753da925fd5b3b8ec9d74c8e448bc7d7b
 checkpoint/v011-beta6-b654-pass
 
 B6-5.5 Harmless fixture execution + rollback
 checkpoint/v011-beta6-b655-pass
 Windows CI run 34855442176: SUCCESS
-Local Windows device acceptance: PASS (2026-09-14)
+Local Windows device acceptance: PASS
 
 B6-5.6 Real-file quarantine boundary
-b5c5cb518a4adfcee744a7c7374ae5bd982eb910
 checkpoint/v011-beta6-b656-pass
-Windows CI run 34857491930: SUCCESS
-Local Windows device acceptance: PENDING
+Windows CI: PASS
+Local Windows device acceptance: PASS on 2026-09-14
+```
+
+Local B6-5.6 evidence:
+
+```text
+7 deterministic tests passed
+real_user_profile_scope = true
+restored_state_verified = true
+journal_passed = true
+cleanup_verified = true
+live_home_execution_authorized = false
+```
+
+Evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B656_LOCAL_DEVICE_ACCEPTANCE_2026-09-14.md
 ```
 
 ## Progress
@@ -61,106 +76,67 @@ B6-5.2  Reversible action-plan + journal blueprint     PASS / CHECKPOINTED
 B6-5.3  Explicit user confirmation gate                PASS / CHECKPOINTED
 B6-5.4  Execution-readiness boundary                   PASS / CHECKPOINTED
 B6-5.5  Harmless fixture execution + rollback          PASS / WINDOWS + LOCAL DEVICE
-B6-5.6  Real-file quarantine boundary                  WINDOWS PASS / LOCAL DEVICE PENDING
-B6-5.7  Home quarantine UX/execution integration       NOT STARTED
+B6-5.6  Real-file quarantine boundary                  PASS / WINDOWS + LOCAL DEVICE
+B6-5.7  Home quarantine UX/execution integration       IMPLEMENTED / CI PENDING
 ```
 
-## Current Home authority
+## B6-5.7 Home quarantine integration
 
-The normal product Home remains non-executing. B6-5.6 does not silently turn a detection or a confirmation into quarantine authority.
+B6-5.7 exposes only the accepted reversible B6-5.6 `QUARANTINE` action inside the everyday Home flow. It does not create general remediation authority.
+
+The per-finding Home action is available only when all of the following are true:
+
+- severity is `HIGH` or `CRITICAL`;
+- the Threat Card contains one explicit SHA-256 for a file target;
+- the target is a regular file under Desktop, Documents or Downloads;
+- the target is not AppData, Windows/system, Program Files, ProgramData, BC Sentinel source/runtime, a protected/self-managed path or a symlink/reparse escape;
+- the current SHA-256 still matches the scan evidence;
+- the user clicks `Metti in quarantena` explicitly;
+- a second confirmation dialog is accepted;
+- SHA-256 is revalidated at confirmation and again after confirmation;
+- the one-shot B6-5.6 execution permit is valid.
+
+The execution provider is lazy: opening Home, navigating, refreshing or rendering findings does not instantiate the mutating provider and does not create quarantine storage.
+
+After successful quarantine the same Threat Card exposes `Ripristina file`. Rollback remains session-bound in B6-5.7 and verifies the restored SHA-256. The Quarantine page now reads active quarantine rows from the persistent B6-5.6 hash-chained journal without creating or mutating storage during startup.
+
+Important limitation intentionally kept for the next gate:
 
 ```text
-Guided Resolution authority = REPORT_ONLY
-Home capability provider = passive introspection only
-Home execution provider loaded = false
-Home execution_available = false
-live_home_execution_authorized = false
-Home journal_write_authority = false
-Home rollback_execution_authority = false
-automatic_quarantine = false
-automatic_repair = false
-automatic_destructive_action = false
+persistent_restore_after_restart = false
 ```
 
-## B6-5.6 controlled real-file authority
+If the application is closed while a B6-5.7 item is quarantined, the persistent quarantine artifact, rollback snapshot and journal remain preserved, but the everyday Home does not yet reconstruct a restart-safe Restore command. That belongs to B6-5.8+.
 
-B6-5.6 introduces a separate execution provider for one explicit, non-privileged user file.
+## Home authority after B6-5.7
 
 ```text
-authority_scope = EXPLICIT_NON_PRIVILEGED_USER_FILE_ONLY
-supported action = QUARANTINE
-allowed roots = Desktop / Documents / Downloads
-maximum target size = 64 MiB
-explicit confirmation = required
-fresh SHA-256 revalidation = required
-one-shot permit = required
-hash-chained journal = required
-verified rollback snapshot = required
-live_home_execution_authorized = false
-automatic_action = false
-destructive_authority = false
+Passive capability provider = accepted
+General Home execution = false
+General live_home_execution_authorized = false
+Home explicit quarantine action = true, gated
+Eligible severity = HIGH / CRITICAL only
+Automatic quarantine = false
+Automatic repair = false
+DELETE = false
+REPAIR = false
+TERMINATE_PROCESS = false
+TRUST/ALLOWLIST mutation = false
+Privileged/system-file mutation = false
 ```
 
-Fail-closed eligibility refuses targets outside the allowed roots, AppData, Windows/system areas, Program Files, ProgramData, BC Sentinel source/runtime paths, protected/self-managed roots, symlink/path escapes, unresolved/non-regular targets and oversized files.
-
-The Windows acceptance creates its own controlled file under the current user's Documents folder, executes the complete quarantine path, verifies the moved file and snapshot SHA-256, performs verified rollback, validates the journal chain and cleans up only acceptance-owned artifacts. It never selects an existing personal file automatically.
-
-## B6-5.6 Windows acceptance
-
-Verified implementation commit:
-
-```text
-b5c5cb518a4adfcee744a7c7374ae5bd982eb910
-```
-
-GitHub Actions run:
-
-```text
-34857491930
-```
-
-Result:
-
-```text
-197 passed, 36 warnings
-B6-3 predecessor acceptance: PASS
-B6-4 predecessor self-check: PASS
-B6-5.5 fixture execution predecessor acceptance: PASS
-B6-5.6 controlled real-file quarantine + rollback acceptance: PASS
-B6-5.6 Qt offscreen smoke: PASS
-```
-
-B6-5.6 acceptance evidence:
-
-```text
-passed = true
-real_user_profile_scope = true
-restored_state_verified = true
-journal_passed = true
-cleanup_verified = true
-live_home_execution_authorized = false
-```
-
-Evidence document:
-
-```text
-BC_SENTINEL_V011_BETA6_B656_REAL_FILE_QUARANTINE_ACCEPTANCE_2026-09-14.md
-```
-
-The 36 warnings are existing non-blocking predecessor PySide disconnect warnings plus GitHub runner/action deprecation noise.
+This distinction is intentional: B6-5.7 authorizes one narrow, reversible, user-mediated action class; it does not authorize broad remediation.
 
 ## UI quality state
 
-The current B6-5 Home carries the accepted UI polish from the real Windows visual review:
+The accepted screenshot-driven polish remains in force:
 
 - Smart Scan wrapped copy uses content-driven height;
-- Quarantine empty state no longer uses a hard vertical cap;
-- History/Cronologia empty state and command container no longer use hard vertical caps;
-- `Aggiorna stato` and `Aggiorna lista` use distinct semantic icon roles;
-- primary historical-runtime recommendation copy is localized without mutating raw evidence;
-- Home remains six-page, scroll-safe and non-executing.
-
-B6-5.6 itself does not yet add a Home quarantine button. Home integration belongs to the next separately gated milestone so the accepted execution provider cannot leak into the everyday UI before local-device acceptance and UX review.
+- Quarantine empty state has no hard vertical cap;
+- Cronologia empty state and command container have no hard vertical caps;
+- `Aggiorna stato` and `Aggiorna lista` use distinct semantic icons;
+- historical runtime recommendation copy is localized without mutating raw evidence;
+- all B6-5.7 quarantine controls are subordinate to Threat Card evidence and use explicit confirmation.
 
 ## Safety sequence
 
@@ -169,10 +145,8 @@ B6-5.6 itself does not yet add a Home quarantine button. Home integration belong
 3. explicit confirmation bound to the exact plan — B6-5.3 ✅;
 4. separate execution-readiness gate — B6-5.4 ✅;
 5. harmless fixture-only execution + journal + rollback — B6-5.5 ✅;
-6. explicit non-privileged real-file quarantine boundary — B6-5.6 Windows ✅ / local device pending;
-7. only after local acceptance: Home quarantine UX/integration, still explicit and reversible — B6-5.7;
-8. broader action classes require their own future gates.
+6. explicit non-privileged real-file quarantine boundary — B6-5.6 ✅ Windows + local device;
+7. explicit Home quarantine UX/integration — B6-5.7 implemented, final CI gate pending;
+8. restart-safe restore/persistent Home recovery and any broader action classes require separate future gates.
 
-B6-5.6 does not authorize DELETE, REPAIR, TERMINATE_PROCESS, TRUST/ALLOWLIST mutation, privileged/system-file mutation or automatic remediation.
-
-Recommended reasoning for B6-5.7 and later execution-authority work: **Extra High**.
+Recommended reasoning for B6-5.7+ execution-authority work: **Extra High**.

@@ -14,25 +14,28 @@ from sentinel import guided_resolution_confirmation as confirmation
 from sentinel import guided_resolution_execution_gate as execution_gate
 from sentinel import guided_resolution_fixture_execution as fixture_execution
 from sentinel import guided_resolution_provider_loader as resolution_provider
+from sentinel import guided_resolution_real_file_execution as real_file_execution
 from sentinel import home_guided_resolution as guided
+from sentinel import home_quarantine
 from sentinel import home_threat_cards_window as b64
 from sentinel import home_smart_scan_window as b63
 from sentinel import ui_live_polish
 from sentinel import ui_quality_refinement as ui_quality
-from sentinel.ui_live_polish import PolishedB65SmartScanPage
+from sentinel.home_quarantine_ui import B657SmartScanPage
 
-PROFILE = fixture_execution.PROFILE
+PROFILE = home_quarantine.PROFILE
 WINDOW_TITLE = b63.WINDOW_TITLE
 
 
 class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
     def __init__(self) -> None:
-        # B6-5.1 performs only the fixed, side-effect-free capability probe.
-        # B6-5.2 adds planning, B6-5.3 explicit confirmation and B6-5.4 the
-        # separate execution-readiness boundary. B6-5.5 proves execution only in
-        # an isolated harmless TEMP fixture; Home still loads no execution
-        # provider and exposes no mutation control.
+        # The passive capability provider remains the planning/confirmation
+        # source of truth. B6-5.7 adds a separate Home controller, but it creates
+        # the mutating B6-5.6 provider lazily only after explicit confirmation.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
+        self.home_quarantine_controller = home_quarantine.HomeQuarantineController(
+            self.guided_resolution_provider_load
+        )
 
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -42,6 +45,10 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
             )
             super().__init__()
 
+        # Connect the existing Quarantine surface to persistent read-only journal
+        # rows. Merely opening Home still performs no quarantine or remediation.
+        self.quarantine_page.rows_provider = self.home_quarantine_controller.quarantine_rows
+        self.quarantine_page.refresh()
         ui_live_polish.apply_window_live_polish(self)
 
     def _apply_theme(self) -> None:
@@ -62,16 +69,22 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
             self.secondary_scrolls.remove(old_scroll)
         old_scroll.deleteLater()
 
-        self.scan_page = PolishedB65SmartScanPage(
+        self.scan_page = B657SmartScanPage(
             start_callback=self._start_smart_scan,
             cancel_callback=self._cancel_smart_scan,
             provider_available=self.smart_scan_coordinator.is_available(),
             unavailable_reason=str(self.smart_scan_contract.get("reason") or ""),
+            quarantine_controller=self.home_quarantine_controller,
+            quarantine_changed_callback=self._refresh_quarantine_rows,
         )
         self.scan_scroll = b63.base_ui._PageScroll(self.scan_page)
         self.secondary_scrolls.insert(0, self.scan_scroll)
         self.stack.insertWidget(old_index if old_index >= 0 else 1, self.scan_scroll)
         self._apply_responsive_layout(force=True)
+
+    def _refresh_quarantine_rows(self) -> None:
+        if hasattr(self, "quarantine_page"):
+            self.quarantine_page.refresh()
 
 
 def self_check() -> dict:
@@ -83,78 +96,43 @@ def self_check() -> dict:
     confirmation_contract = confirmation.validate_b653_confirmation_contract()
     execution_contract = execution_gate.validate_b654_execution_gate_contract()
     fixture_execution_contract = fixture_execution.validate_b655_fixture_execution_contract()
+    real_file_contract = real_file_execution.validate_b656_contract()
+    home_quarantine_contract = home_quarantine.validate_b657_contract()
     ui_contract = ui_quality.validate_ui_quality_contract()
     live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
     failures: list[str] = []
-    if parent.get("passed") is not True:
-        failures.append("b64_parent_not_green")
-    if contract.get("passed") is not True:
-        failures.append("b650_guided_resolution_contract_not_green")
-    if contract.get("execution_available") is not False:
-        failures.append("b650_execution_authority_exposed")
-    if provider_load.loaded is not True or provider_load.accepted is not True:
-        failures.append("b651_capability_provider_not_accepted")
-    if provider_payload.get("execution_available") is not False:
-        failures.append("b651_execution_authority_exposed")
-    if provider_payload.get("automatic_action") is not False:
-        failures.append("b651_automatic_action_exposed")
-    if provider_payload.get("destructive_authority") is not False:
-        failures.append("b651_destructive_authority_exposed")
-    if planning_contract.get("passed") is not True:
-        failures.append("b652_action_plan_contract_not_green")
-    if planning_contract.get("execution_authorized") is not False:
-        failures.append("b652_execution_authority_exposed")
-    if planning_contract.get("journal_write_authority") is not False:
-        failures.append("b652_journal_write_authority_exposed")
-    if planning_contract.get("rollback_execution_authority") is not False:
-        failures.append("b652_rollback_execution_authority_exposed")
-    if confirmation_contract.get("passed") is not True:
-        failures.append("b653_confirmation_contract_not_green")
-    if confirmation_contract.get("confirmation_requires_explicit_intent") is not True:
-        failures.append("b653_explicit_confirmation_not_required")
-    if confirmation_contract.get("confirmation_is_execution_authority") is not False:
-        failures.append("b653_confirmation_became_execution_authority")
-    if confirmation_contract.get("execution_authorized") is not False:
-        failures.append("b653_execution_authority_exposed")
-    if confirmation_contract.get("execution_nonce_issued") is not False:
-        failures.append("b653_execution_nonce_exposed")
-    if confirmation_contract.get("journal_write_authority") is not False:
-        failures.append("b653_journal_write_authority_exposed")
-    if confirmation_contract.get("rollback_execution_authority") is not False:
-        failures.append("b653_rollback_execution_authority_exposed")
-    if execution_contract.get("passed") is not True:
-        failures.append("b654_execution_gate_contract_not_green")
-    if execution_contract.get("confirmed_receipt_is_not_execution_authority") is not True:
-        failures.append("b654_confirmation_execution_separation_missing")
-    if execution_contract.get("execution_api") is not False:
-        failures.append("b654_execution_api_exposed")
-    if execution_contract.get("execution_authorized") is not False:
-        failures.append("b654_execution_authority_exposed")
-    if execution_contract.get("journal_write_authority") is not False:
-        failures.append("b654_journal_write_authority_exposed")
-    if execution_contract.get("rollback_execution_authority") is not False:
-        failures.append("b654_rollback_execution_authority_exposed")
-    if fixture_execution_contract.get("passed") is not True:
-        failures.append("b655_fixture_execution_contract_not_green")
-    if fixture_execution_contract.get("execution_provider_loaded_by_home") is not False:
-        failures.append("b655_execution_provider_leaked_into_home")
-    if fixture_execution_contract.get("live_home_execution_authorized") is not False:
-        failures.append("b655_live_home_execution_authority_exposed")
-    if fixture_execution_contract.get("automatic_action") is not False:
-        failures.append("b655_automatic_action_exposed")
-    if fixture_execution_contract.get("destructive_authority") is not False:
-        failures.append("b655_destructive_authority_exposed")
-    if fixture_execution_contract.get("real_user_or_system_file_scope") is not False:
-        failures.append("b655_real_file_scope_exposed")
-    if ui_contract.get("passed") is not True:
-        failures.append("ui_quality_contract_not_green")
-    if live_ui_contract.get("passed") is not True:
-        failures.append("ui_live_polish_contract_not_green")
+
+    checks = {
+        "b64_parent_green": parent.get("passed") is True,
+        "b650_guided_resolution_green": contract.get("passed") is True,
+        "b651_passive_provider_accepted": provider_load.loaded is True and provider_load.accepted is True,
+        "b651_execution_still_disabled": provider_payload.get("execution_available") is False,
+        "b652_planning_green": planning_contract.get("passed") is True,
+        "b653_confirmation_green": confirmation_contract.get("passed") is True,
+        "b653_confirmation_not_execution": confirmation_contract.get("confirmation_is_execution_authority") is False,
+        "b654_execution_gate_green": execution_contract.get("passed") is True,
+        "b654_broad_execution_disabled": execution_contract.get("execution_api") is False,
+        "b655_fixture_green": fixture_execution_contract.get("passed") is True,
+        "b655_home_execution_disabled": fixture_execution_contract.get("live_home_execution_authorized") is False,
+        "b656_real_file_green": real_file_contract.get("passed") is True,
+        "b656_general_home_execution_disabled": real_file_contract.get("live_home_execution_authorized") is False,
+        "b657_home_quarantine_green": home_quarantine_contract.get("passed") is True,
+        "b657_explicit_click_required": home_quarantine_contract.get("explicit_user_click_required") is True,
+        "b657_second_confirmation_required": home_quarantine_contract.get("second_confirmation_required") is True,
+        "b657_lazy_execution_provider": home_quarantine_contract.get("lazy_execution_provider") is True,
+        "b657_general_home_execution_disabled": home_quarantine_contract.get("general_home_execution_authorized") is False,
+        "b657_no_automatic_quarantine": home_quarantine_contract.get("automatic_quarantine") is False,
+        "ui_quality_green": ui_contract.get("passed") is True,
+        "ui_live_polish_green": live_ui_contract.get("passed") is True,
+    }
+    failures.extend(name for name, passed in checks.items() if not passed)
+
     return {
         "profile": PROFILE,
-        "schema": fixture_execution.SCHEMA,
+        "schema": home_quarantine.SCHEMA,
         "passed": not failures,
         "failures": failures,
+        "checks": checks,
         "parent_b64": parent,
         "guided_resolution_contract": contract,
         "capability_provider": provider_payload,
@@ -162,6 +140,8 @@ def self_check() -> dict:
         "confirmation_contract": confirmation_contract,
         "execution_gate_contract": execution_contract,
         "fixture_execution_contract": fixture_execution_contract,
+        "real_file_execution_contract": real_file_contract,
+        "home_quarantine_contract": home_quarantine_contract,
         "ui_quality": ui_contract,
         "ui_live_polish": live_ui_contract,
         "window_created": False,
@@ -169,10 +149,13 @@ def self_check() -> dict:
         "navigation_scan_dispatch": False,
         "refresh_scan_dispatch": False,
         "capability_provider_boundary_verified": provider_load.accepted,
+        # Kept false for backward compatibility: the general remediation provider
+        # is still not exposed by Home. Only the B6-5.7 quarantine path is gated.
         "remediation_provider_boundary_verified": False,
-        "fixture_execution_available_for_controlled_acceptance": True,
         "execution_available": False,
         "live_home_execution_authorized": False,
+        "home_quarantine_action_available": True,
+        "live_home_quarantine_authorized": True,
         "confirmation_issued": False,
         "confirmation_is_execution_authority": False,
         "execution_nonce_issued": False,
@@ -185,7 +168,7 @@ def self_check() -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.5 fixture-only execution acceptance boundary")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.7 explicit Home quarantine integration")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--offscreen-smoke", action="store_true")
     args = parser.parse_args(argv)
@@ -204,66 +187,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.offscreen_smoke:
         window.show()
         app.processEvents()
-        provider_payload = window.guided_resolution_provider_load.to_dict()
-        planning_contract = action_plan.validate_b652_planning_contract()
-        confirmation_contract = confirmation.validate_b653_confirmation_contract()
-        execution_contract = execution_gate.validate_b654_execution_gate_contract()
-        fixture_execution_contract = fixture_execution.validate_b655_fixture_execution_contract()
-        ui_contract = ui_quality.validate_ui_quality_contract()
-        live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
-        payload = {
-            "profile": PROFILE,
-            "passed": (
-                window.stack.count() == 6
-                and window.guided_resolution_provider_load.accepted is True
-                and provider_payload.get("execution_available") is False
-                and provider_payload.get("destructive_authority") is False
-                and planning_contract.get("passed") is True
-                and planning_contract.get("execution_authorized") is False
-                and confirmation_contract.get("passed") is True
-                and confirmation_contract.get("confirmation_requires_explicit_intent") is True
-                and confirmation_contract.get("confirmation_is_execution_authority") is False
-                and confirmation_contract.get("execution_authorized") is False
-                and execution_contract.get("passed") is True
-                and execution_contract.get("execution_api") is False
-                and execution_contract.get("execution_authorized") is False
-                and fixture_execution_contract.get("passed") is True
-                and fixture_execution_contract.get("execution_provider_loaded_by_home") is False
-                and fixture_execution_contract.get("live_home_execution_authorized") is False
-                and fixture_execution_contract.get("real_user_or_system_file_scope") is False
-                and ui_contract.get("passed") is True
-                and live_ui_contract.get("passed") is True
-                and live_ui_contract.get("history_empty_state_hard_height_cap_removed") is True
-                and window.refresh_button.property("semanticIcon") == "status_refresh"
-                and window.quarantine_page.refresh_button.property("semanticIcon") == "list_refresh"
-            ),
-            "window_title": window.windowTitle(),
-            "page_count": window.stack.count(),
-            "smart_scan_provider_available": window.smart_scan_coordinator.is_available(),
-            "capability_provider": provider_payload,
-            "action_plan_contract": planning_contract,
-            "confirmation_contract": confirmation_contract,
-            "execution_gate_contract": execution_contract,
-            "fixture_execution_contract": fixture_execution_contract,
-            "ui_quality": ui_contract,
-            "ui_live_polish": live_ui_contract,
-            "refresh_icon_roles": {
-                "status": window.refresh_button.property("semanticIcon"),
-                "quarantine_list": window.quarantine_page.refresh_button.property("semanticIcon"),
-            },
-            "startup_scan_dispatch": False,
-            "capability_provider_boundary_verified": window.guided_resolution_provider_load.accepted,
-            "remediation_provider_boundary_verified": False,
-            "fixture_execution_available_for_controlled_acceptance": True,
-            "execution_available": False,
-            "live_home_execution_authorized": False,
-            "confirmation_issued": False,
-            "confirmation_is_execution_authority": False,
-            "execution_nonce_issued": False,
-            "journal_write_authority": False,
-            "rollback_execution_authority": False,
-            "automatic_destructive_action": False,
-        }
+        payload = self_check()
+        payload.update(
+            {
+                "window_created": True,
+                "window_title": window.windowTitle(),
+                "page_count": window.stack.count(),
+                "scan_page_b657": isinstance(window.scan_page, B657SmartScanPage),
+                "quarantine_rows_provider_connected": callable(window.quarantine_page.rows_provider),
+                "startup_scan_dispatch": False,
+                "automatic_quarantine": False,
+            }
+        )
+        payload["passed"] = bool(
+            payload["passed"]
+            and window.stack.count() == 6
+            and isinstance(window.scan_page, B657SmartScanPage)
+            and callable(window.quarantine_page.rows_provider)
+            and window.refresh_button.property("semanticIcon") == "status_refresh"
+            and window.quarantine_page.refresh_button.property("semanticIcon") == "list_refresh"
+        )
         print(json.dumps(payload, indent=2, sort_keys=True))
         window.close()
         return 0 if payload["passed"] else 4
