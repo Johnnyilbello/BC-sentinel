@@ -43,11 +43,13 @@ Write-Host ("pytest: " + (($PytestVersion | Out-String).Trim()))
 Write-Host "Dipendenze test: PASS"
 Write-Host ""
 
-# Do not use pytest's default Windows temp root here. A stale or privileged
-# pytest-current junction from an older/admin run can make pytest fail during
-# session cleanup even when every B6-5.6 test passed. A unique repository-local
-# basetemp keeps this acceptance isolated from that machine-global pytest state.
-$PytestBase = Join-Path (Get-Location) (".b656-pytest-tmp-" + [guid]::NewGuid().ToString("N"))
+# Use a unique explicit basetemp so pytest never touches a stale machine-global
+# pytest-current junction. It must also stay OUTSIDE the BC Sentinel repository:
+# the B6-5.6 security contract correctly marks the repository/source tree as a
+# protected self-managed path, and putting synthetic Documents under the repo
+# would make the eligibility test fail for the right security reason.
+$PytestBase = Join-Path ([System.IO.Path]::GetTempPath()) ("BCSentinel-B656-Pytest-" + [guid]::NewGuid().ToString("N"))
+Write-Host ("pytest basetemp: " + $PytestBase)
 
 Write-Host "[1/2] Contract + deterministic regression..."
 try {
