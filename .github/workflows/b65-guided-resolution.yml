@@ -13,6 +13,7 @@ on:
       - 'sentinel/home_guided_resolution_ui.py'
       - 'sentinel/home_guided_resolution_window.py'
       - 'sentinel/ui_quality_refinement.py'
+      - 'sentinel/ui_motion_components.py'
       - 'sentinel/guided_resolution_provider_loader.py'
       - 'sentinel/guided_resolution_live_provider.py'
       - 'sentinel/guided_resolution_action_plan.py'
@@ -44,7 +45,7 @@ jobs:
       - name: Compile B6-5.2 plus UI quality and predecessors
         shell: pwsh
         run: |
-          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py sentinel/home_guided_resolution.py sentinel/home_guided_resolution_ui.py sentinel/ui_quality_refinement.py sentinel/guided_resolution_provider_loader.py sentinel/guided_resolution_live_provider.py sentinel/guided_resolution_action_plan.py sentinel/home_guided_resolution_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_ui_quality_refinement.py
+          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py sentinel/home_guided_resolution.py sentinel/home_guided_resolution_ui.py sentinel/ui_quality_refinement.py sentinel/ui_motion_components.py sentinel/guided_resolution_provider_loader.py sentinel/guided_resolution_live_provider.py sentinel/guided_resolution_action_plan.py sentinel/home_guided_resolution_window.py tests/test_v011_beta6_b650_guided_resolution.py tests/test_v011_beta6_b650_window.py tests/test_v011_beta6_b651_provider_loader.py tests/test_v011_beta6_b652_action_plan.py tests/test_v011_beta6_ui_quality_refinement.py
       - name: B6-0 through B6-5.2 deterministic regression suite
         shell: pwsh
         run: |
