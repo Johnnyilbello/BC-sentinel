@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-"""Minimal B6-3 Smart Scan presentation surface.
+"""B6-3 Smart Scan presentation surface.
 
-Visual refinement is intentionally deferred; this component focuses on truthful
-functional states while reusing the accepted Dashboard design vocabulary.
+This component keeps the accepted truthful scan contract while presenting the
+primary task, live status and advanced evidence with clearer hierarchy.
 """
 
 import json
@@ -12,9 +12,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QBoxLayout,
     QFrame,
-    QHBoxLayout,
     QLabel,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
@@ -53,7 +53,7 @@ class SmartScanPage(QWidget):
         root.addWidget(
             PageHeader(
                 "Scansione",
-                "Smart Scan usa un solo flusso controllato: avvio esplicito, progresso reale, risultati e copertura verificabile.",
+                "Controlla rapidamente le aree più rilevanti, segui il progresso reale e verifica ogni risultato prima di agire.",
             )
         )
 
@@ -80,21 +80,29 @@ class SmartScanPage(QWidget):
         initial_copy = (
             "Avvia una scansione rapida controllata. Nessuna quarantena o riparazione viene eseguita automaticamente."
             if self._provider_available
-            else "Il provider live accettato non è disponibile in questa build sincronizzata. Nessuna scansione viene simulata."
+            else "Il motore di scansione verificato non è disponibile in questa build. Nessun risultato viene simulato."
         )
         self.task_subtitle = QLabel(initial_copy)
         self.task_subtitle.setObjectName("TaskSubtitle")
         self.task_subtitle.setWordWrap(True)
         self.task_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.task_subtitle.setMaximumWidth(760)
+        self.task_subtitle.setMaximumWidth(720)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setObjectName("ScanProgressBar")
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setAccessibleName("Progresso Smart Scan")
+        self.progress_bar.setVisible(False)
 
         self.progress_label = QLabel("Progresso 0%")
-        self.progress_label.setObjectName("Microcopy")
+        self.progress_label.setObjectName("ScanProgressText")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.progress_label.setVisible(False)
 
         self.coverage_label = QLabel("")
-        self.coverage_label.setObjectName("SectionHint")
+        self.coverage_label.setObjectName("ScanSummary")
         self.coverage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.coverage_label.setWordWrap(True)
         self.coverage_label.setVisible(False)
@@ -111,8 +119,8 @@ class SmartScanPage(QWidget):
         self.full_scan = QPushButton("Scansione completa")
         self.full_scan.setObjectName("SecondaryDisabled")
         self.full_scan.setEnabled(False)
-        self.full_scan.setAccessibleName("Scansione completa non disponibile in B6-3")
-        self.full_scan.setToolTip("La scansione completa richiede un contratto bounded dedicato in un milestone successivo.")
+        self.full_scan.setAccessibleName("Scansione completa non disponibile")
+        self.full_scan.setToolTip("La scansione completa sarà mostrata quando avrà un contratto di esecuzione verificato.")
         apply_icon(self.full_scan, "search", COLORS["disabled_text"], 18)
         self.actions.addWidget(self.full_scan)
 
@@ -125,9 +133,10 @@ class SmartScanPage(QWidget):
         self.actions.addStretch(1)
 
         self.advanced_button = QPushButton("Dettagli avanzati")
-        self.advanced_button.setObjectName("InlineButton")
+        self.advanced_button.setObjectName("AdvancedToggle")
         self.advanced_button.setCheckable(True)
         self.advanced_button.setVisible(False)
+        self.advanced_button.setAccessibleName("Mostra dettagli avanzati della Smart Scan")
         self.advanced_button.toggled.connect(self._toggle_advanced)
 
         self.advanced_text = QPlainTextEdit()
@@ -141,6 +150,7 @@ class SmartScanPage(QWidget):
         lay.addWidget(self.mark, 0, Qt.AlignmentFlag.AlignHCenter)
         lay.addWidget(self.task_title)
         lay.addWidget(self.task_subtitle, 0, Qt.AlignmentFlag.AlignHCenter)
+        lay.addWidget(self.progress_bar)
         lay.addWidget(self.progress_label)
         lay.addWidget(self.coverage_label)
         lay.addLayout(self.actions)
@@ -161,6 +171,7 @@ class SmartScanPage(QWidget):
 
     def _toggle_advanced(self, checked: bool) -> None:
         self.advanced_text.setVisible(bool(checked))
+        self.advanced_button.setText("Nascondi dettagli avanzati" if checked else "Dettagli avanzati")
         self.panel.setMaximumHeight(760 if checked else 520)
 
     def configure_provider(self, available: bool, reason: str = "") -> None:
@@ -177,7 +188,7 @@ class SmartScanPage(QWidget):
         if not self._provider_available and self._last_result is None:
             self.task_title.setText("Smart Scan non disponibile")
             self.task_subtitle.setText(
-                "Il provider live accettato non è disponibile in questa build sincronizzata. Nessuna scansione viene simulata."
+                "Il motore di scansione verificato non è disponibile in questa build. Nessun risultato viene simulato."
             )
             self.quick_scan.setToolTip(self._unavailable_reason or "Provider Smart Scan non disponibile")
         elif self._last_result is None:
@@ -195,6 +206,8 @@ class SmartScanPage(QWidget):
         self.full_scan.setEnabled(False)
         self.cancel_scan.setVisible(True)
         self.cancel_scan.setEnabled(True)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
         self.progress_label.setVisible(True)
         self.progress_label.setText("Progresso 0%")
         self.coverage_label.setVisible(False)
@@ -203,10 +216,12 @@ class SmartScanPage(QWidget):
         self.advanced_text.setVisible(False)
         self.advanced_text.clear()
         self.task_title.setText("Smart Scan in corso")
-        self.task_subtitle.setText("BC Sentinel sta eseguendo esclusivamente i controlli dichiarati dal provider accettato.")
+        self.task_subtitle.setText("BC Sentinel sta eseguendo solo i controlli previsti dal piano di scansione verificato.")
 
     def set_progress(self, progress: smart.SmartScanProgress) -> None:
         progress.validate()
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(int(progress.percent))
         self.progress_label.setVisible(True)
         suffix = f" · {progress.message}" if progress.message else ""
         self.progress_label.setText(
@@ -218,6 +233,7 @@ class SmartScanPage(QWidget):
         self._last_result = result
         self.cancel_scan.setVisible(False)
         self.cancel_scan.setEnabled(False)
+        self.progress_bar.setVisible(False)
         self.progress_label.setVisible(False)
         self.task_title.setText(self._title_for_state(result.state))
         self.task_subtitle.setText(f"{result.summary} {result.recommendation}")
