@@ -10,6 +10,8 @@ on:
       - 'sentinel/home_threat_cards_ui.py'
       - 'sentinel/home_threat_cards_window.py'
       - 'tests/test_v011_beta6_b64_*.py'
+      - 'tools/v011_beta6_b64_live_ui_probe.py'
+      - 'RUN-V011-BETA6-B64-LIVE-UI.ps1'
       - '.github/workflows/b64-threat-cards.yml'
   workflow_dispatch:
 
@@ -34,7 +36,7 @@ jobs:
       - name: Compile B6-4 and predecessors
         shell: pwsh
         run: |
-          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py
+          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py tools/v011_beta6_b64_live_ui_probe.py
       - name: B6-0 through B6-4 deterministic regression suite
         shell: pwsh
         run: |
