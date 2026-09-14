@@ -6,6 +6,7 @@ import json
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QBoxLayout,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -22,19 +23,20 @@ from sentinel.home_smart_scan_ui import SmartScanPage
 
 
 class ThreatCardWidget(QFrame):
-    """Review-only threat card with per-finding Advanced details."""
+    """Review-only threat card with clear hierarchy and progressive disclosure."""
 
     def __init__(self, model: threat.ThreatCardModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         model.validate()
         self.model = model
-        self.setObjectName("ProtectionCard")
+        self.setObjectName("ThreatCard")
+        self.setProperty("severity", model.severity)
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(20, 18, 20, 18)
-        root.setSpacing(10)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(14)
 
         header = QHBoxLayout()
         header.setSpacing(12)
@@ -44,44 +46,67 @@ class ThreatCardWidget(QFrame):
         self.title_label.setMinimumWidth(0)
         header.addWidget(self.title_label, 1)
 
-        self.severity_badge = QLabel(f"{model.severity_label} · {model.severity}")
-        self.severity_badge.setObjectName("StatusBadge")
-        self.severity_badge.setProperty(
-            "statusRole", "attention" if model.severity_role == "danger" else "neutral"
-        )
+        self.severity_badge = QLabel(model.severity_label)
+        self.severity_badge.setObjectName("ThreatSeverityBadge")
+        self.severity_badge.setProperty("severity", model.severity)
+        self.severity_badge.setToolTip(f"Severità canonica: {model.severity}")
         self.severity_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(self.severity_badge, 0, Qt.AlignmentFlag.AlignTop)
         root.addLayout(header)
 
+        self.reason_heading = QLabel("Perché è stato segnalato")
+        self.reason_heading.setObjectName("ThreatFieldLabel")
+        root.addWidget(self.reason_heading)
+
         self.reason_label = QLabel(model.reason)
-        self.reason_label.setObjectName("CardDescription")
+        self.reason_label.setObjectName("ThreatBodyText")
         self.reason_label.setWordWrap(True)
         self.reason_label.setMinimumWidth(0)
         root.addWidget(self.reason_label)
 
-        self.meta_label = QLabel(
-            f"Categoria: {model.category} · Confidenza: {model.confidence_label} · Fonte: {model.source_check_id}"
-        )
-        self.meta_label.setObjectName("CardSummary")
-        self.meta_label.setWordWrap(True)
-        self.meta_label.setMinimumWidth(0)
-        root.addWidget(self.meta_label)
+        self.meta_layout = QBoxLayout(QBoxLayout.Direction.LeftToRight)
+        self.meta_layout.setSpacing(10)
+        self.meta_blocks: list[QFrame] = []
+        for label, value in (
+            ("Categoria", model.category),
+            ("Confidenza", model.confidence_label),
+            ("Fonte", model.source_check_id),
+        ):
+            block = self._build_meta_block(label, value)
+            self.meta_layout.addWidget(block, 1)
+            self.meta_blocks.append(block)
+        root.addLayout(self.meta_layout)
 
-        self.location_label = QLabel(f"Posizione: {model.location}")
-        self.location_label.setObjectName("CardSummary")
+        self.location_heading = QLabel("Posizione")
+        self.location_heading.setObjectName("ThreatFieldLabel")
+        root.addWidget(self.location_heading)
+
+        self.location_label = QLabel(model.location)
+        self.location_label.setObjectName("ThreatLocation")
         self.location_label.setWordWrap(True)
         self.location_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.location_label.setMinimumWidth(0)
         root.addWidget(self.location_label)
 
+        self.recommendation_panel = QFrame()
+        self.recommendation_panel.setObjectName("ThreatRecommendationPanel")
+        recommendation_layout = QVBoxLayout(self.recommendation_panel)
+        recommendation_layout.setContentsMargins(14, 12, 14, 12)
+        recommendation_layout.setSpacing(5)
+
+        self.recommendation_heading = QLabel("Cosa fare adesso")
+        self.recommendation_heading.setObjectName("ThreatRecommendationTitle")
+        recommendation_layout.addWidget(self.recommendation_heading)
+
         self.recommendation_label = QLabel(model.recommendation)
-        self.recommendation_label.setObjectName("CardDescription")
+        self.recommendation_label.setObjectName("ThreatRecommendationText")
         self.recommendation_label.setWordWrap(True)
         self.recommendation_label.setMinimumWidth(0)
-        root.addWidget(self.recommendation_label)
+        recommendation_layout.addWidget(self.recommendation_label)
+        root.addWidget(self.recommendation_panel)
 
         self.advanced_button = QPushButton("Dettagli avanzati")
-        self.advanced_button.setObjectName("InlineButton")
+        self.advanced_button.setObjectName("AdvancedToggle")
         self.advanced_button.setCheckable(True)
         self.advanced_button.setAccessibleName(f"Dettagli avanzati: {model.title}")
         self.advanced_button.toggled.connect(self._toggle_advanced)
@@ -91,16 +116,45 @@ class ThreatCardWidget(QFrame):
         self.advanced_text.setObjectName("AdvancedText")
         self.advanced_text.setReadOnly(True)
         self.advanced_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.advanced_text.setMinimumHeight(150)
-        self.advanced_text.setMaximumHeight(260)
+        self.advanced_text.setMinimumHeight(160)
+        self.advanced_text.setMaximumHeight(280)
         self.advanced_text.setPlainText(
             json.dumps(model.advanced_details, indent=2, ensure_ascii=False, sort_keys=True)
         )
         self.advanced_text.setVisible(False)
         root.addWidget(self.advanced_text)
 
+    @staticmethod
+    def _build_meta_block(label: str, value: str) -> QFrame:
+        block = QFrame()
+        block.setObjectName("ThreatMetaBlock")
+        block.setMinimumWidth(0)
+        layout = QVBoxLayout(block)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(3)
+
+        key = QLabel(label)
+        key.setObjectName("ThreatMetaLabel")
+        value_label = QLabel(value)
+        value_label.setObjectName("ThreatMetaValue")
+        value_label.setWordWrap(True)
+        value_label.setMinimumWidth(0)
+
+        layout.addWidget(key)
+        layout.addWidget(value_label)
+        return block
+
     def _toggle_advanced(self, checked: bool) -> None:
         self.advanced_text.setVisible(bool(checked))
+        self.advanced_button.setText("Nascondi dettagli avanzati" if checked else "Dettagli avanzati")
+
+    def set_compact(self, compact: bool, mobile: bool = False) -> None:
+        self.meta_layout.setDirection(
+            QBoxLayout.Direction.TopToBottom if compact else QBoxLayout.Direction.LeftToRight
+        )
+        pad = 16 if mobile else 18 if compact else 22
+        if self.layout() is not None:
+            self.layout().setContentsMargins(pad, 18 if compact else 20, pad, 18 if compact else 20)
 
 
 class B64SmartScanPage(SmartScanPage):
@@ -124,10 +178,11 @@ class B64SmartScanPage(SmartScanPage):
         section_layout.addWidget(self.threat_title)
 
         self.threat_hint = QLabel(
-            "Ogni scheda riassume solo ciò che il provider ha rilevato. Nessuna azione viene eseguita automaticamente."
+            "Controlla ogni rilevamento prima di agire. Le prove tecniche restano disponibili nei Dettagli avanzati."
         )
         self.threat_hint.setObjectName("PanelDescription")
         self.threat_hint.setWordWrap(True)
+        self.threat_hint.setMaximumWidth(840)
         section_layout.addWidget(self.threat_hint)
 
         self.threat_cards_host = QWidget()
@@ -135,7 +190,7 @@ class B64SmartScanPage(SmartScanPage):
         self.threat_cards_host.setMinimumWidth(0)
         self.threat_cards_layout = QVBoxLayout(self.threat_cards_host)
         self.threat_cards_layout.setContentsMargins(0, 0, 0, 0)
-        self.threat_cards_layout.setSpacing(12)
+        self.threat_cards_layout.setSpacing(14)
         section_layout.addWidget(self.threat_cards_host)
 
         self.threat_section.setVisible(False)
@@ -165,8 +220,7 @@ class B64SmartScanPage(SmartScanPage):
         count = len(cards)
         self.threat_title.setText(f"Rilevamenti da verificare · {count}")
         self.threat_hint.setText(
-            "I rilevamenti sono mostrati senza modificare severità, confidenza o prove del provider. "
-            "Apri Dettagli avanzati per l'evidenza tecnica completa."
+            "Ogni scheda mantiene severità, confidenza e prove originali. Verifica il contesto prima di qualsiasi intervento."
         )
         for card_model in cards:
             widget = ThreatCardWidget(card_model, self.threat_cards_host)
@@ -178,3 +232,6 @@ class B64SmartScanPage(SmartScanPage):
         super().set_compact(compact, mobile)
         for widget in self.threat_card_widgets:
             widget.setMinimumWidth(0)
+            setter = getattr(widget, "set_compact", None)
+            if callable(setter):
+                setter(compact, mobile)
