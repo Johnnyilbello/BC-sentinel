@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-5 Implementation Status
 
-Status: **B6-5.0→B6-5.5 ACCEPTED INCREMENTALLY / B6-5.5 WINDOWS CI GREEN / LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **B6-5.0→B6-5.5 ACCEPTED INCREMENTALLY / B6-5.5 WINDOWS CI GREEN + LOCAL DEVICE PASS / B6-5.6 NEXT**
 
 Active development branch:
 
@@ -44,6 +44,7 @@ B6-5.5 Harmless fixture execution + rollback
 14f633819c9d90d1daea18c162b5631b367e3399
 checkpoint/v011-beta6-b655-pass
 Windows CI run 34855442176: SUCCESS
+Local Windows device acceptance: PASS (2026-09-14)
 ```
 
 ## Progress
@@ -54,8 +55,8 @@ B6-5.1  Passive provider boundary                      PASS / CHECKPOINTED
 B6-5.2  Reversible action-plan + journal blueprint     PASS / CHECKPOINTED
 B6-5.3  Explicit user confirmation gate                PASS / CHECKPOINTED
 B6-5.4  Execution-readiness boundary                   PASS / CHECKPOINTED
-B6-5.5  Harmless fixture execution + rollback          WINDOWS PASS / CHECKPOINTED
-B6-5.6  Real-file quarantine boundary                  NOT STARTED
+B6-5.5  Harmless fixture execution + rollback          PASS / WINDOWS + LOCAL DEVICE
+B6-5.6  Real-file quarantine boundary                  NEXT
 ```
 
 ## Current Home authority
@@ -108,7 +109,7 @@ GitHub Actions run:
 34855442176
 ```
 
-Result:
+CI result:
 
 ```text
 190 passed, 36 warnings
@@ -119,7 +120,7 @@ B6-5.5 harmless fixture execution + rollback: PASS
 B6-5.5 Qt offscreen smoke: PASS
 ```
 
-Live fixture acceptance evidence:
+CI fixture acceptance evidence:
 
 ```text
 passed = true
@@ -129,7 +130,24 @@ restored_state_verified = true
 cleanup_verified = true
 ```
 
-The 36 warnings are existing non-blocking PySide disconnect warnings in predecessor tests plus GitHub runner/action deprecation noise.
+Local Windows device acceptance on 2026-09-14 reported the same safety outcome:
+
+```text
+passed = true
+fixture_only = true
+journal_passed = true
+restored_state_verified = true
+cleanup_verified = true
+live_home_execution_authorized = false
+```
+
+Evidence document:
+
+```text
+BC_SENTINEL_V011_BETA6_B655_LOCAL_DEVICE_ACCEPTANCE_2026-09-14.md
+```
+
+The 36 CI warnings are existing non-blocking PySide disconnect warnings in predecessor tests plus GitHub runner/action deprecation noise.
 
 ## UI quality state
 
