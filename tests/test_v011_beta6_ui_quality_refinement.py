@@ -119,7 +119,7 @@ def test_guided_resolution_keeps_internal_state_out_of_primary_copy() -> None:
     assert "REPORT_ONLY" not in panel.authority_badge.text()
     assert "B6-5" not in panel.next_step_label.text()
     assert panel.details_text.isHidden() is True
-    assert panel.resolution_model.execution_available is False
+    assert panel.model.execution_available is False
 
 
 def test_current_home_applies_quality_layer_without_quantity_controls_or_overflow() -> None:
