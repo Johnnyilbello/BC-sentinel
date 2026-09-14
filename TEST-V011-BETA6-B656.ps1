@@ -19,19 +19,27 @@ if (-not $ConfirmRealFileAcceptance) {
 }
 
 # Local machines do not always have the repository test dependencies installed.
-# Bootstrap only pytest when it is missing so the one-command acceptance remains
-# self-contained without creating or mutating a project virtual environment.
+# Detect pytest without invoking `python -m pytest` first: on Windows PowerShell,
+# a missing module writes to stderr and can terminate immediately because this
+# launcher intentionally uses $ErrorActionPreference = 'Stop'.
 Write-Host "[0/2] Verifica dipendenze di test locali..."
-python -m pytest --version *> $null
+$PytestAvailable = python -c "import importlib.util; print('yes' if importlib.util.find_spec('pytest') else 'no')"
 if ($LASTEXITCODE -ne 0) {
+    throw "Impossibile interrogare il Python corrente."
+}
+$PytestAvailable = ($PytestAvailable | Out-String).Trim()
+
+if ($PytestAvailable -ne "yes") {
     Write-Host "pytest non disponibile: installazione minima nel Python corrente..."
     python -m pip install --disable-pip-version-check "pytest>=8,<10"
     if ($LASTEXITCODE -ne 0) {
         throw "Impossibile installare pytest nel Python corrente."
     }
 }
-python -m pytest --version
+
+$PytestVersion = python -c "import pytest; print(pytest.__version__)"
 if ($LASTEXITCODE -ne 0) { throw "pytest non disponibile dopo il bootstrap." }
+Write-Host ("pytest: " + (($PytestVersion | Out-String).Trim()))
 Write-Host "Dipendenze test: PASS"
 Write-Host ""
 
