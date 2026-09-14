@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-5 Implementation Status
 
-Status: **B6-5.0→B6-5.6 ACCEPTED INCREMENTALLY / B6-5.6 WINDOWS + LOCAL DEVICE PASS / B6-5.7 IMPLEMENTED — FINAL CI GATE PENDING**
+Status: **B6-5.0→B6-5.7 ACCEPTED INCREMENTALLY / B6-5.7 WINDOWS + LOCAL DEVICE PASS / B6-5.8 IMPLEMENTED — WINDOWS CI PASS / LOCAL DEVICE ACCEPTANCE PENDING**
 
 Active development branch:
 
@@ -48,24 +48,30 @@ B6-5.6 Real-file quarantine boundary
 checkpoint/v011-beta6-b656-pass
 Windows CI: PASS
 Local Windows device acceptance: PASS on 2026-09-14
+
+B6-5.7 Home quarantine UX/execution integration
+checkpoint/v011-beta6-b657-pass
+Accepted commit: c7ae2ee14d7a2551b632d003c4d174a6d6ae63c1
+Windows CI: PASS
+Local Windows device acceptance: PASS on 2026-09-14
 ```
 
-Local B6-5.6 evidence:
+## Local B6-5.7 evidence
 
 ```text
-7 deterministic tests passed
-real_user_profile_scope = true
-restored_state_verified = true
-journal_passed = true
-cleanup_verified = true
-live_home_execution_authorized = false
+4 deterministic tests passed
+quarantine_verified = true
+quarantine_page_rows_verified = true
+rollback_verified = true
+second_confirmation_required = true
+lazy_execution_provider = true
+general_home_execution_authorized = false
+automatic_quarantine = false
+delete_authorized = false
+repair_authorized = false
 ```
 
-Evidence:
-
-```text
-BC_SENTINEL_V011_BETA6_B656_LOCAL_DEVICE_ACCEPTANCE_2026-09-14.md
-```
+B6-5.7 is closed. The accepted checkpoint remains fixed at the commit above while B6-5.8 continues on the development branch.
 
 ## Progress
 
@@ -77,14 +83,15 @@ B6-5.3  Explicit user confirmation gate                PASS / CHECKPOINTED
 B6-5.4  Execution-readiness boundary                   PASS / CHECKPOINTED
 B6-5.5  Harmless fixture execution + rollback          PASS / WINDOWS + LOCAL DEVICE
 B6-5.6  Real-file quarantine boundary                  PASS / WINDOWS + LOCAL DEVICE
-B6-5.7  Home quarantine UX/execution integration       IMPLEMENTED / CI PENDING
+B6-5.7  Home quarantine UX/execution integration       PASS / WINDOWS + LOCAL DEVICE
+B6-5.8  Persistent restore after application restart   IMPLEMENTED / WINDOWS CI PASS / LOCAL PENDING
 ```
 
-## B6-5.7 Home quarantine integration
+## B6-5.7 accepted Home quarantine integration
 
-B6-5.7 exposes only the accepted reversible B6-5.6 `QUARANTINE` action inside the everyday Home flow. It does not create general remediation authority.
+B6-5.7 exposed only the accepted reversible B6-5.6 `QUARANTINE` action inside the everyday Home flow. It did not create general remediation authority.
 
-The per-finding Home action is available only when all of the following are true:
+The per-finding Home quarantine action remains available only when all of the following are true:
 
 - severity is `HIGH` or `CRITICAL`;
 - the Threat Card contains one explicit SHA-256 for a file target;
@@ -96,27 +103,91 @@ The per-finding Home action is available only when all of the following are true
 - SHA-256 is revalidated at confirmation and again after confirmation;
 - the one-shot B6-5.6 execution permit is valid.
 
-The execution provider is lazy: opening Home, navigating, refreshing or rendering findings does not instantiate the mutating provider and does not create quarantine storage.
+The execution provider remains lazy: opening Home, navigating, refreshing or rendering findings does not instantiate the mutating provider and does not create quarantine storage.
 
-After successful quarantine the same Threat Card exposes `Ripristina file`. Rollback remains session-bound in B6-5.7 and verifies the restored SHA-256. The Quarantine page now reads active quarantine rows from the persistent B6-5.6 hash-chained journal without creating or mutating storage during startup.
+## B6-5.8 persistent restore after restart
 
-Important limitation intentionally kept for the next gate:
+B6-5.8 removes the B6-5.7 session-bound restore limitation without broadening remediation authority.
+
+After explicit confirmation and before the target file is moved, Home writes an atomic recovery record under the dedicated B6-5.6 LocalAppData storage:
 
 ```text
-persistent_restore_after_restart = false
+%LOCALAPPDATA%\BCSentinel\B656\home-restore\
 ```
 
-If the application is closed while a B6-5.7 item is quarantined, the persistent quarantine artifact, rollback snapshot and journal remain preserved, but the everyday Home does not yet reconstruct a restart-safe Restore command. That belongs to B6-5.8+.
+The recovery record binds the exact finding and B6-5.6 execution permit. After verified quarantine it is finalized with the verified execution result. If finalization is interrupted, the durable `PREPARED` record plus the hash-chained B6-5.6 journal can reconstruct the same verified result after restart.
 
-## Home authority after B6-5.7
+Restart discovery is read-only. Merely opening BC Sentinel:
+
+- does not instantiate the mutating quarantine provider;
+- does not rewrite the recovery record;
+- does not append to the journal;
+- does not restore or quarantine anything automatically.
+
+A persisted restore candidate is exposed only if all required evidence still agrees:
+
+- recovery-record integrity is valid;
+- finding ID and permit are bound;
+- B6-5.6 permit integrity validates;
+- B6-5.6 result integrity validates or can be reconstructed from the journal;
+- the journal hash chain validates;
+- the `ACTION_RESULT` journal anchor matches the permit, target, SHA-256 and quarantine artifact;
+- the original target location is still absent;
+- quarantine artifact is still inside the dedicated quarantine root;
+- rollback snapshot is still inside the dedicated rollback root;
+- quarantine artifact SHA-256 equals the original target SHA-256;
+- rollback snapshot SHA-256 equals the original target SHA-256.
+
+The **Quarantena** page now reconstructs verified active rows after a new application process starts and exposes `Ripristina file`. The restore command is explicit and asks for confirmation in the UI. The B6-5.6 provider is created only at that point, then performs the existing verified rollback. The restored file must have the original SHA-256.
+
+If the persistent record, journal, target state or artifacts do not validate, restore fails closed and no file is overwritten.
+
+## B6-5.8 automated evidence
+
+Windows GitHub Actions:
+
+```text
+Run: 34883835093
+Conclusion: SUCCESS
+
+Compile B6-5.8 + predecessors: PASS
+B6-0 → B6-5.8 deterministic regression suite: PASS
+B6-5.5 predecessor acceptance: PASS
+B6-5.6 predecessor acceptance: PASS
+B6-5.7 predecessor acceptance: PASS
+B6-5.8 fresh-process persistent restore acceptance: PASS
+B6-5.8 Qt offscreen smoke: PASS
+```
+
+The B6-5.8 acceptance uses two separate Python processes:
+
+```text
+Process A
+  explicit confirmation
+  -> quarantine
+  -> durable recovery record + journal
+
+Process B
+  fresh process
+  -> read-only recovery discovery
+  -> Quarantine row reconstructed
+  -> explicit restore
+  -> SHA-256 identical to original
+```
+
+The deterministic B6-5.8 tests also verify fail-closed behavior for a tampered recovery record and an occupied original target path.
+
+## Home authority after B6-5.8
 
 ```text
 Passive capability provider = accepted
 General Home execution = false
 General live_home_execution_authorized = false
 Home explicit quarantine action = true, gated
+Persistent explicit restore = true, gated
 Eligible severity = HIGH / CRITICAL only
 Automatic quarantine = false
+Automatic restore = false
 Automatic repair = false
 DELETE = false
 REPAIR = false
@@ -125,7 +196,29 @@ TRUST/ALLOWLIST mutation = false
 Privileged/system-file mutation = false
 ```
 
-This distinction is intentional: B6-5.7 authorizes one narrow, reversible, user-mediated action class; it does not authorize broad remediation.
+This distinction remains intentional: B6-5.8 authorizes only the narrow reversible quarantine/restore lifecycle. It does not authorize broad remediation.
+
+## B6-5.8 local acceptance
+
+Local Windows device acceptance is the remaining release gate. Run from the repository root:
+
+```powershell
+git fetch origin; git checkout feature/v011-beta6-b65-guided-resolution; git pull --ff-only origin feature/v011-beta6-b65-guided-resolution; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA6-B658.ps1" -ConfirmPersistentRestoreAcceptance -OpenUI
+```
+
+The launcher verifies:
+
+1. B6-5.7 regression plus B6-5.8 deterministic tests;
+2. controlled quarantine in Process A;
+3. restart-safe discovery in a completely fresh Process B;
+4. Quarantine row reconstruction after restart;
+5. read-only discovery before the explicit restore;
+6. verified rollback;
+7. restored SHA-256 identical to the original;
+8. B6-5.8 self-check;
+9. optional opening of the real UI for final visual acceptance.
+
+Do not create `checkpoint/v011-beta6-b658-pass` until this local-device gate passes.
 
 ## UI quality state
 
@@ -136,7 +229,8 @@ The accepted screenshot-driven polish remains in force:
 - Cronologia empty state and command container have no hard vertical caps;
 - `Aggiorna stato` and `Aggiorna lista` use distinct semantic icons;
 - historical runtime recommendation copy is localized without mutating raw evidence;
-- all B6-5.7 quarantine controls are subordinate to Threat Card evidence and use explicit confirmation.
+- quarantine controls remain subordinate to verified evidence;
+- active persistent rows expose a real `Ripristina file` control rather than a text-only placeholder.
 
 ## Safety sequence
 
@@ -146,7 +240,8 @@ The accepted screenshot-driven polish remains in force:
 4. separate execution-readiness gate — B6-5.4 ✅;
 5. harmless fixture-only execution + journal + rollback — B6-5.5 ✅;
 6. explicit non-privileged real-file quarantine boundary — B6-5.6 ✅ Windows + local device;
-7. explicit Home quarantine UX/integration — B6-5.7 implemented, final CI gate pending;
-8. restart-safe restore/persistent Home recovery and any broader action classes require separate future gates.
+7. explicit Home quarantine UX/integration — B6-5.7 ✅ Windows + local device;
+8. restart-safe persistent restore — B6-5.8 ✅ Windows CI / local device pending;
+9. any broader action class requires a separate future gate.
 
-Recommended reasoning for B6-5.7+ execution-authority work: **Extra High**.
+Recommended reasoning for B6-5.8+ execution-authority work: **Extra High**.
