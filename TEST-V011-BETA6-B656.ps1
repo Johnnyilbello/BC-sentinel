@@ -18,6 +18,23 @@ if (-not $ConfirmRealFileAcceptance) {
     throw "B6-5.6 requires -ConfirmRealFileAcceptance. The test creates its own controlled file under Documents and never selects an existing personal file."
 }
 
+# Local machines do not always have the repository test dependencies installed.
+# Bootstrap only pytest when it is missing so the one-command acceptance remains
+# self-contained without creating or mutating a project virtual environment.
+Write-Host "[0/2] Verifica dipendenze di test locali..."
+python -m pytest --version *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "pytest non disponibile: installazione minima nel Python corrente..."
+    python -m pip install --disable-pip-version-check "pytest>=8,<10"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Impossibile installare pytest nel Python corrente."
+    }
+}
+python -m pytest --version
+if ($LASTEXITCODE -ne 0) { throw "pytest non disponibile dopo il bootstrap." }
+Write-Host "Dipendenze test: PASS"
+Write-Host ""
+
 Write-Host "[1/2] Contract + deterministic regression..."
 python -m pytest -q tests/test_v011_beta6_b656_real_file_execution.py
 if ($LASTEXITCODE -ne 0) { throw "B6-5.6 deterministic regression failed." }
