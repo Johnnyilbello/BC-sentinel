@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 from sentinel import guided_resolution_action_plan as action_plan
 from sentinel import guided_resolution_confirmation as confirmation
 from sentinel import guided_resolution_execution_gate as execution_gate
+from sentinel import guided_resolution_fixture_execution as fixture_execution
 from sentinel import guided_resolution_provider_loader as resolution_provider
 from sentinel import home_guided_resolution as guided
 from sentinel import home_threat_cards_window as b64
@@ -20,7 +21,7 @@ from sentinel import ui_live_polish
 from sentinel import ui_quality_refinement as ui_quality
 from sentinel.ui_live_polish import PolishedB65SmartScanPage
 
-PROFILE = execution_gate.PROFILE
+PROFILE = fixture_execution.PROFILE
 WINDOW_TITLE = b63.WINDOW_TITLE
 
 
@@ -28,8 +29,9 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
     def __init__(self) -> None:
         # B6-5.1 performs only the fixed, side-effect-free capability probe.
         # B6-5.2 adds planning, B6-5.3 explicit confirmation and B6-5.4 the
-        # separate execution-readiness boundary. The current provider still has
-        # no execution API, so no UI mutation control is exposed here.
+        # separate execution-readiness boundary. B6-5.5 proves execution only in
+        # an isolated harmless TEMP fixture; Home still loads no execution
+        # provider and exposes no mutation control.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
 
         with warnings.catch_warnings():
@@ -80,6 +82,7 @@ def self_check() -> dict:
     planning_contract = action_plan.validate_b652_planning_contract()
     confirmation_contract = confirmation.validate_b653_confirmation_contract()
     execution_contract = execution_gate.validate_b654_execution_gate_contract()
+    fixture_execution_contract = fixture_execution.validate_b655_fixture_execution_contract()
     ui_contract = ui_quality.validate_ui_quality_contract()
     live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
     failures: list[str] = []
@@ -131,13 +134,25 @@ def self_check() -> dict:
         failures.append("b654_journal_write_authority_exposed")
     if execution_contract.get("rollback_execution_authority") is not False:
         failures.append("b654_rollback_execution_authority_exposed")
+    if fixture_execution_contract.get("passed") is not True:
+        failures.append("b655_fixture_execution_contract_not_green")
+    if fixture_execution_contract.get("execution_provider_loaded_by_home") is not False:
+        failures.append("b655_execution_provider_leaked_into_home")
+    if fixture_execution_contract.get("live_home_execution_authorized") is not False:
+        failures.append("b655_live_home_execution_authority_exposed")
+    if fixture_execution_contract.get("automatic_action") is not False:
+        failures.append("b655_automatic_action_exposed")
+    if fixture_execution_contract.get("destructive_authority") is not False:
+        failures.append("b655_destructive_authority_exposed")
+    if fixture_execution_contract.get("real_user_or_system_file_scope") is not False:
+        failures.append("b655_real_file_scope_exposed")
     if ui_contract.get("passed") is not True:
         failures.append("ui_quality_contract_not_green")
     if live_ui_contract.get("passed") is not True:
         failures.append("ui_live_polish_contract_not_green")
     return {
         "profile": PROFILE,
-        "schema": execution_gate.SCHEMA,
+        "schema": fixture_execution.SCHEMA,
         "passed": not failures,
         "failures": failures,
         "parent_b64": parent,
@@ -146,6 +161,7 @@ def self_check() -> dict:
         "action_plan_contract": planning_contract,
         "confirmation_contract": confirmation_contract,
         "execution_gate_contract": execution_contract,
+        "fixture_execution_contract": fixture_execution_contract,
         "ui_quality": ui_contract,
         "ui_live_polish": live_ui_contract,
         "window_created": False,
@@ -154,7 +170,9 @@ def self_check() -> dict:
         "refresh_scan_dispatch": False,
         "capability_provider_boundary_verified": provider_load.accepted,
         "remediation_provider_boundary_verified": False,
+        "fixture_execution_available_for_controlled_acceptance": True,
         "execution_available": False,
+        "live_home_execution_authorized": False,
         "confirmation_issued": False,
         "confirmation_is_execution_authority": False,
         "execution_nonce_issued": False,
@@ -167,7 +185,7 @@ def self_check() -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.4 fail-closed Guided Resolution execution boundary")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.5 fixture-only execution acceptance boundary")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--offscreen-smoke", action="store_true")
     args = parser.parse_args(argv)
@@ -190,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
         planning_contract = action_plan.validate_b652_planning_contract()
         confirmation_contract = confirmation.validate_b653_confirmation_contract()
         execution_contract = execution_gate.validate_b654_execution_gate_contract()
+        fixture_execution_contract = fixture_execution.validate_b655_fixture_execution_contract()
         ui_contract = ui_quality.validate_ui_quality_contract()
         live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
         payload = {
@@ -208,6 +227,10 @@ def main(argv: list[str] | None = None) -> int:
                 and execution_contract.get("passed") is True
                 and execution_contract.get("execution_api") is False
                 and execution_contract.get("execution_authorized") is False
+                and fixture_execution_contract.get("passed") is True
+                and fixture_execution_contract.get("execution_provider_loaded_by_home") is False
+                and fixture_execution_contract.get("live_home_execution_authorized") is False
+                and fixture_execution_contract.get("real_user_or_system_file_scope") is False
                 and ui_contract.get("passed") is True
                 and live_ui_contract.get("passed") is True
                 and live_ui_contract.get("history_empty_state_hard_height_cap_removed") is True
@@ -221,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
             "action_plan_contract": planning_contract,
             "confirmation_contract": confirmation_contract,
             "execution_gate_contract": execution_contract,
+            "fixture_execution_contract": fixture_execution_contract,
             "ui_quality": ui_contract,
             "ui_live_polish": live_ui_contract,
             "refresh_icon_roles": {
@@ -230,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
             "startup_scan_dispatch": False,
             "capability_provider_boundary_verified": window.guided_resolution_provider_load.accepted,
             "remediation_provider_boundary_verified": False,
+            "fixture_execution_available_for_controlled_acceptance": True,
             "execution_available": False,
+            "live_home_execution_authorized": False,
             "confirmation_issued": False,
             "confirmation_is_execution_authority": False,
             "execution_nonce_issued": False,
