@@ -77,6 +77,15 @@ class ThreatCardWidget(QFrame):
             self.meta_blocks.append(block)
         root.addLayout(self.meta_layout)
 
+        # Backward-compatible diagnostic aggregate. Kept hidden because the
+        # refined UI presents the same information as three scannable fields.
+        self.meta_label = QLabel(
+            f"Categoria: {model.category} · Confidenza: {model.confidence_label} · Fonte: {model.source_check_id}",
+            self,
+        )
+        self.meta_label.setObjectName("ThreatMetaCompatibility")
+        self.meta_label.setVisible(False)
+
         self.location_heading = QLabel("Posizione")
         self.location_heading.setObjectName("ThreatFieldLabel")
         root.addWidget(self.location_heading)
