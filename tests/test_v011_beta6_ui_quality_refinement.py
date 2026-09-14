@@ -205,6 +205,20 @@ def test_live_ui_polish_removes_hard_caps_from_wrapped_primary_copy() -> None:
         assert body is not None
         assert body.maximumWidth() == 16777215
         assert body.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+
+        window._navigate("Cronologia")
+        app.processEvents()
+        history_empty = window.history_page.empty
+        history_body = history_empty.findChild(QLabel, "EmptyBody")
+        history_panel = history_empty.parentWidget()
+        assert history_empty.maximumHeight() == 16777215
+        assert history_empty.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+        assert history_body is not None
+        assert history_body.maximumWidth() == 16777215
+        assert history_body.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
+        assert history_panel is not None
+        assert history_panel.maximumHeight() == 16777215
+        assert history_panel.sizePolicy().verticalPolicy() != QSizePolicy.Policy.Fixed
     finally:
         window.close()
 
@@ -241,6 +255,9 @@ def test_live_ui_polish_contract_preserves_security_authority() -> None:
     contract = ui_live_polish.validate_live_ui_polish_contract()
     assert contract["passed"] is True
     assert contract["wrapped_text_uses_content_driven_height"] is True
+    assert contract["quarantine_empty_state_hard_height_cap_removed"] is True
+    assert contract["history_empty_state_hard_height_cap_removed"] is True
+    assert contract["history_command_container_content_driven"] is True
     assert contract["refresh_icons_semantically_distinct"] is True
     assert contract["automatic_quarantine"] is False
     assert contract["automatic_repair"] is False
