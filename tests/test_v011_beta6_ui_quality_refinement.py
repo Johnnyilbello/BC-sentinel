@@ -101,7 +101,8 @@ def test_threat_card_uses_plain_language_hierarchy_and_progressive_details() -> 
     widget = ThreatCardWidget(_card_model())
     assert widget.objectName() == "ThreatCard"
     assert widget.property("severity") == smart.SEVERITY_HIGH
-    assert widget.severity_badge.text() == "Alta"
+    assert widget.severity_badge.text().startswith("Alta")
+    assert "HIGH" in widget.severity_badge.text()
     assert widget.reason_heading.text() == "Perché è stato segnalato"
     assert widget.recommendation_heading.text() == "Cosa fare adesso"
     assert widget.advanced_text.isHidden() is True
@@ -118,6 +119,8 @@ def test_guided_resolution_keeps_internal_state_out_of_primary_copy() -> None:
     assert panel.authority_badge.text() == "Solo verifica"
     assert "REPORT_ONLY" not in panel.authority_badge.text()
     assert "B6-5" not in panel.next_step_label.text()
+    assert panel.state_label.isHidden() is True
+    assert "REPORT_ONLY" in panel.state_label.text()
     assert panel.details_text.isHidden() is True
     assert panel.model.execution_available is False
 
