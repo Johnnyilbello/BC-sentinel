@@ -5,13 +5,34 @@ from __future__ import annotations
 import json
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QPlainTextEdit, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QBoxLayout,
+    QFrame,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sentinel import home_guided_resolution as guided
 from sentinel import home_smart_scan as smart
 from sentinel import home_threat_cards as threat
 from sentinel.home_smart_scan_ui import SmartScanPage
 from sentinel.home_threat_cards_ui import B64SmartScanPage, ThreatCardWidget
+
+
+def _review_label(model: guided.GuidedResolutionModel) -> str:
+    if model.review_state == guided.EVIDENCE_INCOMPLETE:
+        return "Evidenza da completare"
+    return "Revisione richiesta"
+
+
+def _plain_next_step(model: guided.GuidedResolutionModel) -> str:
+    if model.review_state == guided.EVIDENCE_INCOMPLETE:
+        return "Apri i Dettagli avanzati e completa la verifica delle prove prima di qualsiasi intervento."
+    return "Apri i Dettagli avanzati e verifica prove e contesto del rilevamento prima di intervenire."
 
 
 class GuidedResolutionPanel(QFrame):
@@ -27,41 +48,48 @@ class GuidedResolutionPanel(QFrame):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
-        root.setSpacing(8)
+        root.setSpacing(9)
 
         self.eyebrow = QLabel("Risoluzione guidata")
-        self.eyebrow.setObjectName("CardSummary")
+        self.eyebrow.setObjectName("GuidanceEyebrow")
         root.addWidget(self.eyebrow)
 
         self.headline_label = QLabel(model.headline)
-        self.headline_label.setObjectName("CardTitle")
+        self.headline_label.setObjectName("GuidanceHeadline")
         self.headline_label.setWordWrap(True)
         self.headline_label.setMinimumWidth(0)
         root.addWidget(self.headline_label)
 
-        self.state_label = QLabel(
-            f"Stato: {model.review_state} · Autorità: {model.authority_state} · Azione: solo verifica"
-        )
-        self.state_label.setObjectName("CardSummary")
-        self.state_label.setWordWrap(True)
-        self.state_label.setMinimumWidth(0)
-        root.addWidget(self.state_label)
+        self.status_layout = QBoxLayout(QBoxLayout.Direction.LeftToRight)
+        self.status_layout.setSpacing(8)
+        self.review_badge = QLabel(_review_label(model))
+        self.review_badge.setObjectName("GuidanceStatus")
+        self.review_badge.setToolTip(f"Stato tecnico: {model.review_state}")
+        self.authority_badge = QLabel("Solo verifica")
+        self.authority_badge.setObjectName("GuidanceStatus")
+        self.authority_badge.setToolTip(f"Autorità tecnica: {model.authority_state}")
+        self.status_layout.addWidget(self.review_badge)
+        self.status_layout.addWidget(self.authority_badge)
+        self.status_layout.addStretch(1)
+        root.addLayout(self.status_layout)
 
-        self.next_step_label = QLabel(model.next_step)
-        self.next_step_label.setObjectName("CardDescription")
+        self.next_step_heading = QLabel("Prossimo passo")
+        self.next_step_heading.setObjectName("GuidanceStepLabel")
+        root.addWidget(self.next_step_heading)
+
+        self.next_step_label = QLabel(_plain_next_step(model))
+        self.next_step_label.setObjectName("GuidanceStepText")
         self.next_step_label.setWordWrap(True)
         self.next_step_label.setMinimumWidth(0)
         root.addWidget(self.next_step_label)
 
-        self.safety_label = QLabel(
-            "Nessuna quarantena, riparazione, eliminazione o terminazione viene eseguita in questo checkpoint."
-        )
-        self.safety_label.setObjectName("CardSummary")
+        self.safety_label = QLabel("Nessuna azione sul sistema viene eseguita automaticamente.")
+        self.safety_label.setObjectName("SafetyNote")
         self.safety_label.setWordWrap(True)
         root.addWidget(self.safety_label)
 
         self.details_button = QPushButton("Dettagli risoluzione")
-        self.details_button.setObjectName("InlineButton")
+        self.details_button.setObjectName("AdvancedToggle")
         self.details_button.setCheckable(True)
         self.details_button.setAccessibleName(f"Dettagli risoluzione: {model.title}")
         self.details_button.toggled.connect(self._toggle_details)
@@ -71,8 +99,8 @@ class GuidedResolutionPanel(QFrame):
         self.details_text.setObjectName("AdvancedText")
         self.details_text.setReadOnly(True)
         self.details_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.details_text.setMinimumHeight(150)
-        self.details_text.setMaximumHeight(260)
+        self.details_text.setMinimumHeight(160)
+        self.details_text.setMaximumHeight(280)
         self.details_text.setPlainText(
             json.dumps(model.advanced_details, indent=2, ensure_ascii=False, sort_keys=True)
         )
@@ -81,6 +109,15 @@ class GuidedResolutionPanel(QFrame):
 
     def _toggle_details(self, checked: bool) -> None:
         self.details_text.setVisible(bool(checked))
+        self.details_button.setText("Nascondi dettagli risoluzione" if checked else "Dettagli risoluzione")
+
+    def set_compact(self, compact: bool, mobile: bool = False) -> None:
+        self.status_layout.setDirection(
+            QBoxLayout.Direction.TopToBottom if mobile else QBoxLayout.Direction.LeftToRight
+        )
+        pad = 13 if mobile else 14 if compact else 16
+        if self.layout() is not None:
+            self.layout().setContentsMargins(pad, 13, pad, 13)
 
 
 class B65ThreatCardWidget(ThreatCardWidget):
@@ -94,13 +131,15 @@ class B65ThreatCardWidget(ThreatCardWidget):
         if layout is not None:
             layout.addWidget(self.resolution_panel)
 
+    def set_compact(self, compact: bool, mobile: bool = False) -> None:
+        super().set_compact(compact, mobile)
+        self.resolution_panel.set_compact(compact, mobile)
+
 
 class B65SmartScanPage(B64SmartScanPage):
     """B6-4 findings with non-executing B6-5.0 Guided Resolution guidance."""
 
     def set_result(self, result: smart.SmartScanResult) -> None:
-        # Call the accepted B6-3 page directly so B6-4 does not first create
-        # transient B64 widgets that we would immediately replace.
         SmartScanPage.set_result(self, result)
         self._clear_threat_cards()
         cards = threat.build_threat_cards(result)
@@ -110,8 +149,7 @@ class B65SmartScanPage(B64SmartScanPage):
         count = len(cards)
         self.threat_title.setText(f"Rilevamenti da verificare · {count}")
         self.threat_hint.setText(
-            "Ogni rilevamento mantiene severità, confidenza e prove originali. "
-            "Risoluzione guidata indica il prossimo passo ma non modifica ancora il sistema."
+            "Verifica ogni rilevamento prima di agire. La Risoluzione guidata indica il prossimo passo senza modificare il sistema."
         )
         for card_model in cards:
             widget = B65ThreatCardWidget(card_model, self.threat_cards_host)
