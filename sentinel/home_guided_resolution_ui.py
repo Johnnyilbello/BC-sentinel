@@ -73,6 +73,15 @@ class GuidedResolutionPanel(QFrame):
         self.status_layout.addStretch(1)
         root.addLayout(self.status_layout)
 
+        # Preserve the accepted predecessor API for deterministic tests and
+        # assistive/diagnostic inspection, but keep raw internal enums out of the
+        # primary visual hierarchy. The full payload remains in advanced details.
+        self.state_label = QLabel(
+            f"Stato: {model.review_state} · Autorità: {model.authority_state} · Azione: solo verifica"
+        )
+        self.state_label.setObjectName("TechnicalStateCompatibility")
+        self.state_label.setVisible(False)
+
         self.next_step_heading = QLabel("Prossimo passo")
         self.next_step_heading.setObjectName("GuidanceStepLabel")
         root.addWidget(self.next_step_heading)
