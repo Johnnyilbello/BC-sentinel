@@ -7,7 +7,7 @@ import sys
 import warnings
 
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
 
 from sentinel import guided_resolution_action_plan as action_plan
 from sentinel import guided_resolution_confirmation as confirmation
@@ -30,8 +30,8 @@ WINDOW_TITLE = b63.WINDOW_TITLE
 class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
     def __init__(self) -> None:
         # The passive capability provider remains the planning/confirmation
-        # source of truth. B6-5.7 adds a separate Home controller, but it creates
-        # the mutating B6-5.6 provider lazily only after explicit confirmation.
+        # source of truth. B6-5.8 keeps the mutating B6-5.6 provider lazy: it is
+        # created only after explicit quarantine confirmation or restore click.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
         self.home_quarantine_controller = home_quarantine.HomeQuarantineController(
             self.guided_resolution_provider_load
@@ -45,10 +45,10 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
             )
             super().__init__()
 
-        # Connect the existing Quarantine surface to persistent read-only journal
-        # rows. Merely opening Home still performs no quarantine or remediation.
+        # B6-5.8 reconstructs verified active rows from durable recovery metadata
+        # plus the hash-chained B6-5.6 journal. Discovery remains read-only.
         self.quarantine_page.rows_provider = self.home_quarantine_controller.quarantine_rows
-        self.quarantine_page.refresh()
+        self._refresh_quarantine_rows()
         ui_live_polish.apply_window_live_polish(self)
 
     def _apply_theme(self) -> None:
@@ -82,9 +82,65 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
         self.stack.insertWidget(old_index if old_index >= 0 else 1, self.scan_scroll)
         self._apply_responsive_layout(force=True)
 
+    def _install_quarantine_restore_actions(self) -> None:
+        rows = self.home_quarantine_controller.quarantine_rows()
+        for row_index, payload in enumerate(rows):
+            key = str(payload.get("restore_key") or "")
+            if not key:
+                continue
+            button = QPushButton("Ripristina file")
+            button.setObjectName("SecondaryAction")
+            button.setAccessibleName(
+                f"Ripristina {payload.get('file') or 'il file'} dalla quarantena"
+            )
+            button.setToolTip(
+                "Ripristina il file nella posizione originale dopo una nuova verifica SHA-256."
+            )
+            button.clicked.connect(
+                lambda checked=False, finding_id=key: self._restore_from_quarantine_page(
+                    finding_id
+                )
+            )
+            self.quarantine_page.table.setCellWidget(row_index, 6, button)
+
+    def _restore_from_quarantine_page(self, finding_id: str) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Ripristina file",
+            "Vuoi ripristinare questo file nella posizione originale?\n\n"
+            "BC Sentinel verificherà nuovamente quarantena, snapshot e SHA-256 "
+            "prima di eseguire il ripristino.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            rollback = self.home_quarantine_controller.rollback(finding_id)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Ripristino non eseguito",
+                "BC Sentinel ha bloccato il ripristino perché lo stato persistente "
+                f"non ha superato tutte le verifiche.\n\nDettaglio: {exc}",
+            )
+            self._refresh_quarantine_rows()
+            return
+
+        self._refresh_quarantine_rows()
+        QMessageBox.information(
+            self,
+            "File ripristinato",
+            "Ripristino completato e SHA-256 verificato."
+            if rollback.state == "RESTORED_VERIFIED"
+            else "Ripristino completato.",
+        )
+
     def _refresh_quarantine_rows(self) -> None:
         if hasattr(self, "quarantine_page"):
             self.quarantine_page.refresh()
+            self._install_quarantine_restore_actions()
 
 
 def self_check() -> dict:
@@ -97,7 +153,8 @@ def self_check() -> dict:
     execution_contract = execution_gate.validate_b654_execution_gate_contract()
     fixture_execution_contract = fixture_execution.validate_b655_fixture_execution_contract()
     real_file_contract = real_file_execution.validate_b656_contract()
-    home_quarantine_contract = home_quarantine.validate_b657_contract()
+    b657_contract = home_quarantine.validate_b657_contract()
+    home_quarantine_contract = home_quarantine.validate_b658_contract()
     ui_contract = ui_quality.validate_ui_quality_contract()
     live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
     failures: list[str] = []
@@ -116,12 +173,16 @@ def self_check() -> dict:
         "b655_home_execution_disabled": fixture_execution_contract.get("live_home_execution_authorized") is False,
         "b656_real_file_green": real_file_contract.get("passed") is True,
         "b656_general_home_execution_disabled": real_file_contract.get("live_home_execution_authorized") is False,
-        "b657_home_quarantine_green": home_quarantine_contract.get("passed") is True,
-        "b657_explicit_click_required": home_quarantine_contract.get("explicit_user_click_required") is True,
-        "b657_second_confirmation_required": home_quarantine_contract.get("second_confirmation_required") is True,
-        "b657_lazy_execution_provider": home_quarantine_contract.get("lazy_execution_provider") is True,
-        "b657_general_home_execution_disabled": home_quarantine_contract.get("general_home_execution_authorized") is False,
-        "b657_no_automatic_quarantine": home_quarantine_contract.get("automatic_quarantine") is False,
+        "b657_home_quarantine_green": b657_contract.get("passed") is True,
+        "b658_persistent_restore_green": home_quarantine_contract.get("passed") is True,
+        "b658_persistent_restore_enabled": home_quarantine_contract.get("persistent_restore_after_restart") is True,
+        "b658_restart_discovery_read_only": home_quarantine_contract.get("restart_discovery_read_only") is True,
+        "b658_quarantine_page_restore": home_quarantine_contract.get("quarantine_page_restore_action_available") is True,
+        "b658_explicit_click_required": home_quarantine_contract.get("explicit_user_click_required") is True,
+        "b658_second_confirmation_required": home_quarantine_contract.get("second_confirmation_required") is True,
+        "b658_lazy_execution_provider": home_quarantine_contract.get("lazy_execution_provider") is True,
+        "b658_general_home_execution_disabled": home_quarantine_contract.get("general_home_execution_authorized") is False,
+        "b658_no_automatic_quarantine": home_quarantine_contract.get("automatic_quarantine") is False,
         "ui_quality_green": ui_contract.get("passed") is True,
         "ui_live_polish_green": live_ui_contract.get("passed") is True,
     }
@@ -141,6 +202,7 @@ def self_check() -> dict:
         "execution_gate_contract": execution_contract,
         "fixture_execution_contract": fixture_execution_contract,
         "real_file_execution_contract": real_file_contract,
+        "b657_home_quarantine_contract": b657_contract,
         "home_quarantine_contract": home_quarantine_contract,
         "ui_quality": ui_contract,
         "ui_live_polish": live_ui_contract,
@@ -149,13 +211,14 @@ def self_check() -> dict:
         "navigation_scan_dispatch": False,
         "refresh_scan_dispatch": False,
         "capability_provider_boundary_verified": provider_load.accepted,
-        # Kept false for backward compatibility: the general remediation provider
-        # is still not exposed by Home. Only the B6-5.7 quarantine path is gated.
+        # General remediation remains closed. Only the narrow B6-5.8
+        # quarantine/restore path is authorized after explicit user action.
         "remediation_provider_boundary_verified": False,
         "execution_available": False,
         "live_home_execution_authorized": False,
         "home_quarantine_action_available": True,
         "live_home_quarantine_authorized": True,
+        "persistent_restore_after_restart": True,
         "confirmation_issued": False,
         "confirmation_is_execution_authority": False,
         "execution_nonce_issued": False,
@@ -168,7 +231,7 @@ def self_check() -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.7 explicit Home quarantine integration")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.8 restart-safe quarantine restore")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--offscreen-smoke", action="store_true")
     args = parser.parse_args(argv)
@@ -195,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
                 "page_count": window.stack.count(),
                 "scan_page_b657": isinstance(window.scan_page, B657SmartScanPage),
                 "quarantine_rows_provider_connected": callable(window.quarantine_page.rows_provider),
+                "persistent_restore_after_restart": True,
                 "startup_scan_dispatch": False,
                 "automatic_quarantine": False,
             }
