@@ -14,6 +14,7 @@ from sentinel.home_guided_resolution_ui import B65ThreatCardWidget
 from sentinel.home_guided_resolution_window import B65SecurityOverviewWindow
 from sentinel.home_smart_scan_ui import SmartScanPage
 from sentinel.home_threat_cards_ui import ThreatCardWidget
+from sentinel.ui_motion_components import AnimatedNumberLabel, StatusOrb, reduced_motion_enabled
 
 
 def _app() -> QApplication:
@@ -75,6 +76,12 @@ def test_ui_quality_contract_prioritizes_task_clarity_without_new_authority() ->
     assert contract["progressive_disclosure"] is True
     assert contract["native_windows_typography"] is True
     assert contract["minimum_control_height_px"] == 40
+    assert contract["motion_is_state_relevant_only"] is True
+    assert contract["reduced_motion_supported"] is True
+    assert "number_flow_to_scan_progress" in contract["reference_patterns_adapted"]
+    assert "thinking_orb_to_scan_status" in contract["reference_patterns_adapted"]
+    assert "cursor_attractor" in contract["reference_patterns_intentionally_not_used"]
+    assert "gooey_filter" in contract["reference_patterns_intentionally_not_used"]
     assert contract["decorative_product_imagery"] is False
     assert contract["quantity_selector_present"] is False
     assert contract["automatic_quarantine"] is False
@@ -82,18 +89,41 @@ def test_ui_quality_contract_prioritizes_task_clarity_without_new_authority() ->
     assert contract["automatic_destructive_action"] is False
 
 
+def test_motion_primitives_respect_reduced_motion_and_plain_state_semantics() -> None:
+    _app()
+    assert reduced_motion_enabled() is True
+
+    number = AnimatedNumberLabel(0)
+    number.set_target(42)
+    assert number.text() == "42%"
+
+    orb = StatusOrb(48)
+    assert orb.state == "idle"
+    orb.set_state("working")
+    assert orb.state == "working"
+    assert "scansione in corso" in orb.accessibleName()
+    assert orb._timer.isActive() is False
+    orb.set_state("clean")
+    assert "senza rilevamenti" in orb.accessibleName()
+
+
 def test_smart_scan_exposes_visual_progress_and_secondary_advanced_evidence() -> None:
     _app()
     page = SmartScanPage(provider_available=True)
+    assert page.mark.state == "idle"
     page.set_running()
+    assert page.mark.state == "working"
+    assert page.progress_value.isHidden() is False
+    assert page.progress_value.text() == "0%"
     assert page.progress_bar.isHidden() is False
     assert page.progress_bar.value() == 0
     assert page.advanced_button.objectName() == "AdvancedToggle"
 
     progress = smart.SmartScanProgress(42, 1, 3, "files", "Analisi in corso")
     page.set_progress(progress)
+    assert page.progress_value.text() == "42%"
     assert page.progress_bar.value() == 42
-    assert "42%" in page.progress_label.text()
+    assert "1/3 controlli" in page.progress_label.text()
 
 
 def test_threat_card_uses_plain_language_hierarchy_and_progressive_details() -> None:
@@ -102,7 +132,7 @@ def test_threat_card_uses_plain_language_hierarchy_and_progressive_details() -> 
     assert widget.objectName() == "ThreatCard"
     assert widget.property("severity") == smart.SEVERITY_HIGH
     assert widget.severity_badge.text().startswith("Alta")
-    assert "HIGH" in widget.severity_badge.text()
+    assert smart.SEVERITY_HIGH in widget.severity_badge.text()
     assert widget.reason_heading.text() == "Perché è stato segnalato"
     assert widget.recommendation_heading.text() == "Cosa fare adesso"
     assert widget.advanced_text.isHidden() is True
@@ -140,6 +170,8 @@ def test_current_home_applies_quality_layer_without_quantity_controls_or_overflo
         stylesheet = window.styleSheet()
         assert "#ThreatCard" in stylesheet
         assert "#ScanProgressBar" in stylesheet
+        assert "#ScanProgressValue" in stylesheet
+        assert "QToolTip" in stylesheet
         assert window.findChildren(QSpinBox) == []
         assert window.scan_scroll.horizontalScrollBar().maximum() == 0
         assert window.full_scan_button.isEnabled() is False
