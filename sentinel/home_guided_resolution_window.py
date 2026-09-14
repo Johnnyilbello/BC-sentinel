@@ -7,20 +7,21 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+from sentinel import guided_resolution_action_plan as action_plan
 from sentinel import guided_resolution_provider_loader as resolution_provider
 from sentinel import home_guided_resolution as guided
 from sentinel import home_threat_cards_window as b64
 from sentinel import home_smart_scan_window as b63
 from sentinel.home_guided_resolution_ui import B65SmartScanPage
 
-PROFILE = resolution_provider.PROFILE
+PROFILE = action_plan.PROFILE
 WINDOW_TITLE = b63.WINDOW_TITLE
 
 
 class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
     def __init__(self) -> None:
         # B6-5.1 performs only the fixed, side-effect-free capability probe.
-        # The accepted provider intentionally has no execution API.
+        # B6-5.2 adds only a planning contract; neither checkpoint exposes execution.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
         super().__init__()
 
@@ -49,6 +50,7 @@ def self_check() -> dict:
     contract = guided.validate_b650_guided_resolution_contract()
     provider_load = resolution_provider.load_default_provider()
     provider_payload = provider_load.to_dict()
+    planning_contract = action_plan.validate_b652_planning_contract()
     failures: list[str] = []
     if parent.get("passed") is not True:
         failures.append("b64_parent_not_green")
@@ -64,14 +66,23 @@ def self_check() -> dict:
         failures.append("b651_automatic_action_exposed")
     if provider_payload.get("destructive_authority") is not False:
         failures.append("b651_destructive_authority_exposed")
+    if planning_contract.get("passed") is not True:
+        failures.append("b652_action_plan_contract_not_green")
+    if planning_contract.get("execution_authorized") is not False:
+        failures.append("b652_execution_authority_exposed")
+    if planning_contract.get("journal_write_authority") is not False:
+        failures.append("b652_journal_write_authority_exposed")
+    if planning_contract.get("rollback_execution_authority") is not False:
+        failures.append("b652_rollback_execution_authority_exposed")
     return {
         "profile": PROFILE,
-        "schema": resolution_provider.SCHEMA,
+        "schema": action_plan.SCHEMA,
         "passed": not failures,
         "failures": failures,
         "parent_b64": parent,
         "guided_resolution_contract": contract,
         "capability_provider": provider_payload,
+        "action_plan_contract": planning_contract,
         "window_created": False,
         "startup_scan_dispatch": False,
         "navigation_scan_dispatch": False,
@@ -79,6 +90,9 @@ def self_check() -> dict:
         "capability_provider_boundary_verified": provider_load.accepted,
         "remediation_provider_boundary_verified": False,
         "execution_available": False,
+        "confirmation_issued": False,
+        "journal_write_authority": False,
+        "rollback_execution_authority": False,
         "automatic_quarantine": False,
         "automatic_repair": False,
         "automatic_destructive_action": False,
@@ -86,7 +100,7 @@ def self_check() -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.1 passive Guided Resolution Home")
+    parser = argparse.ArgumentParser(description="BC Sentinel B6-5.2 planning-only Guided Resolution Home")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--offscreen-smoke", action="store_true")
     args = parser.parse_args(argv)
@@ -106,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         window.show()
         app.processEvents()
         provider_payload = window.guided_resolution_provider_load.to_dict()
+        planning_contract = action_plan.validate_b652_planning_contract()
         payload = {
             "profile": PROFILE,
             "passed": (
@@ -113,15 +128,21 @@ def main(argv: list[str] | None = None) -> int:
                 and window.guided_resolution_provider_load.accepted is True
                 and provider_payload.get("execution_available") is False
                 and provider_payload.get("destructive_authority") is False
+                and planning_contract.get("passed") is True
+                and planning_contract.get("execution_authorized") is False
             ),
             "window_title": window.windowTitle(),
             "page_count": window.stack.count(),
             "smart_scan_provider_available": window.smart_scan_coordinator.is_available(),
             "capability_provider": provider_payload,
+            "action_plan_contract": planning_contract,
             "startup_scan_dispatch": False,
             "capability_provider_boundary_verified": window.guided_resolution_provider_load.accepted,
             "remediation_provider_boundary_verified": False,
             "execution_available": False,
+            "confirmation_issued": False,
+            "journal_write_authority": False,
+            "rollback_execution_authority": False,
             "automatic_destructive_action": False,
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
