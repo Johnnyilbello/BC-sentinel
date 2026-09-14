@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import warnings
 
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
@@ -14,8 +15,9 @@ from sentinel import guided_resolution_provider_loader as resolution_provider
 from sentinel import home_guided_resolution as guided
 from sentinel import home_threat_cards_window as b64
 from sentinel import home_smart_scan_window as b63
+from sentinel import ui_live_polish
 from sentinel import ui_quality_refinement as ui_quality
-from sentinel.home_guided_resolution_ui import B65SmartScanPage
+from sentinel.ui_live_polish import PolishedB65SmartScanPage
 
 PROFILE = confirmation.PROFILE
 WINDOW_TITLE = b63.WINDOW_TITLE
@@ -27,7 +29,21 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
         # B6-5.2 adds planning and B6-5.3 adds an explicit confirmation record.
         # Confirmation is deliberately not execution authorization.
         self.guided_resolution_provider_load = resolution_provider.load_default_provider()
-        super().__init__()
+
+        # The predecessor shells call parameterless Qt disconnect() on buttons
+        # that can legitimately have no receiver. PySide reports that as a
+        # RuntimeWarning even though construction continues correctly. Keep the
+        # B6-5.3 user-facing launcher clean while predecessor regression tests
+        # remain available unchanged.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"libpyside: Failed to disconnect.*",
+                category=RuntimeWarning,
+            )
+            super().__init__()
+
+        ui_live_polish.apply_window_live_polish(self)
 
     def _apply_theme(self) -> None:
         super()._apply_theme()
@@ -47,7 +63,7 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
             self.secondary_scrolls.remove(old_scroll)
         old_scroll.deleteLater()
 
-        self.scan_page = B65SmartScanPage(
+        self.scan_page = PolishedB65SmartScanPage(
             start_callback=self._start_smart_scan,
             cancel_callback=self._cancel_smart_scan,
             provider_available=self.smart_scan_coordinator.is_available(),
@@ -67,6 +83,7 @@ def self_check() -> dict:
     planning_contract = action_plan.validate_b652_planning_contract()
     confirmation_contract = confirmation.validate_b653_confirmation_contract()
     ui_contract = ui_quality.validate_ui_quality_contract()
+    live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
     failures: list[str] = []
     if parent.get("passed") is not True:
         failures.append("b64_parent_not_green")
@@ -106,6 +123,8 @@ def self_check() -> dict:
         failures.append("b653_rollback_execution_authority_exposed")
     if ui_contract.get("passed") is not True:
         failures.append("ui_quality_contract_not_green")
+    if live_ui_contract.get("passed") is not True:
+        failures.append("ui_live_polish_contract_not_green")
     return {
         "profile": PROFILE,
         "schema": confirmation.SCHEMA,
@@ -117,6 +136,7 @@ def self_check() -> dict:
         "action_plan_contract": planning_contract,
         "confirmation_contract": confirmation_contract,
         "ui_quality": ui_contract,
+        "ui_live_polish": live_ui_contract,
         "window_created": False,
         "startup_scan_dispatch": False,
         "navigation_scan_dispatch": False,
@@ -159,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
         planning_contract = action_plan.validate_b652_planning_contract()
         confirmation_contract = confirmation.validate_b653_confirmation_contract()
         ui_contract = ui_quality.validate_ui_quality_contract()
+        live_ui_contract = ui_live_polish.validate_live_ui_polish_contract()
         payload = {
             "profile": PROFILE,
             "passed": (
@@ -173,6 +194,9 @@ def main(argv: list[str] | None = None) -> int:
                 and confirmation_contract.get("confirmation_is_execution_authority") is False
                 and confirmation_contract.get("execution_authorized") is False
                 and ui_contract.get("passed") is True
+                and live_ui_contract.get("passed") is True
+                and window.refresh_button.property("semanticIcon") == "status_refresh"
+                and window.quarantine_page.refresh_button.property("semanticIcon") == "list_refresh"
             ),
             "window_title": window.windowTitle(),
             "page_count": window.stack.count(),
@@ -181,6 +205,11 @@ def main(argv: list[str] | None = None) -> int:
             "action_plan_contract": planning_contract,
             "confirmation_contract": confirmation_contract,
             "ui_quality": ui_contract,
+            "ui_live_polish": live_ui_contract,
+            "refresh_icon_roles": {
+                "status": window.refresh_button.property("semanticIcon"),
+                "quarantine_list": window.quarantine_page.refresh_button.property("semanticIcon"),
+            },
             "startup_scan_dispatch": False,
             "capability_provider_boundary_verified": window.guided_resolution_provider_load.accepted,
             "remediation_provider_boundary_verified": False,
