@@ -3,7 +3,7 @@ from __future__ import annotations
 """Small presentation-only motion primitives for BC Sentinel.
 
 The components in this module translate selected interaction ideas from web UI
-references into native PySide6 without adding web/runtime dependencies.  They do
+references into native PySide6 without adding web/runtime dependencies. They do
 not start scans, change security state, mutate findings, or expose remediation
 authority.
 """
@@ -11,7 +11,7 @@ authority.
 import math
 import os
 
-from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, QRectF, QTimer, Qt
+from PySide6.QtCore import Property, QEasingCurve, QPointF, QPropertyAnimation, QRectF, QTimer, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QLabel, QSizePolicy, QWidget
 
@@ -154,7 +154,7 @@ class StatusOrb(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         s = float(self._size)
-        center = self.rect().center()
+        center = QPointF(s / 2.0, s / 2.0)
         color = self._state_color()
 
         painter.setPen(Qt.PenStyle.NoPen)
