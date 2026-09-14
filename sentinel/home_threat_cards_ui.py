@@ -28,8 +28,7 @@ class ThreatCardWidget(QFrame):
         super().__init__(parent)
         model.validate()
         self.model = model
-        self.setObjectName("ThreatCard")
-        self.setProperty("severityRole", model.severity_role)
+        self.setObjectName("ProtectionCard")
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
@@ -40,41 +39,43 @@ class ThreatCardWidget(QFrame):
         header = QHBoxLayout()
         header.setSpacing(12)
         self.title_label = QLabel(model.title)
-        self.title_label.setObjectName("ThreatCardTitle")
+        self.title_label.setObjectName("CardTitle")
         self.title_label.setWordWrap(True)
         self.title_label.setMinimumWidth(0)
         header.addWidget(self.title_label, 1)
 
         self.severity_badge = QLabel(f"{model.severity_label} · {model.severity}")
-        self.severity_badge.setObjectName("ThreatSeverityBadge")
-        self.severity_badge.setProperty("severityRole", model.severity_role)
+        self.severity_badge.setObjectName("StatusBadge")
+        self.severity_badge.setProperty(
+            "statusRole", "attention" if model.severity_role == "danger" else "neutral"
+        )
         self.severity_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(self.severity_badge, 0, Qt.AlignmentFlag.AlignTop)
         root.addLayout(header)
 
         self.reason_label = QLabel(model.reason)
-        self.reason_label.setObjectName("ThreatCardReason")
+        self.reason_label.setObjectName("CardDescription")
         self.reason_label.setWordWrap(True)
         self.reason_label.setMinimumWidth(0)
         root.addWidget(self.reason_label)
 
-        meta = QLabel(
+        self.meta_label = QLabel(
             f"Categoria: {model.category} · Confidenza: {model.confidence_label} · Fonte: {model.source_check_id}"
         )
-        meta.setObjectName("ThreatCardMeta")
-        meta.setWordWrap(True)
-        meta.setMinimumWidth(0)
-        root.addWidget(meta)
+        self.meta_label.setObjectName("CardSummary")
+        self.meta_label.setWordWrap(True)
+        self.meta_label.setMinimumWidth(0)
+        root.addWidget(self.meta_label)
 
         self.location_label = QLabel(f"Posizione: {model.location}")
-        self.location_label.setObjectName("ThreatCardLocation")
+        self.location_label.setObjectName("CardSummary")
         self.location_label.setWordWrap(True)
         self.location_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.location_label.setMinimumWidth(0)
         root.addWidget(self.location_label)
 
         self.recommendation_label = QLabel(model.recommendation)
-        self.recommendation_label.setObjectName("ThreatCardRecommendation")
+        self.recommendation_label.setObjectName("CardDescription")
         self.recommendation_label.setWordWrap(True)
         self.recommendation_label.setMinimumWidth(0)
         root.addWidget(self.recommendation_label)
@@ -87,7 +88,7 @@ class ThreatCardWidget(QFrame):
         root.addWidget(self.advanced_button, 0, Qt.AlignmentFlag.AlignLeft)
 
         self.advanced_text = QPlainTextEdit()
-        self.advanced_text.setObjectName("AdvancedEvidence")
+        self.advanced_text.setObjectName("AdvancedText")
         self.advanced_text.setReadOnly(True)
         self.advanced_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.advanced_text.setMinimumHeight(150)
