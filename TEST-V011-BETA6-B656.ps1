@@ -43,9 +43,22 @@ Write-Host ("pytest: " + (($PytestVersion | Out-String).Trim()))
 Write-Host "Dipendenze test: PASS"
 Write-Host ""
 
+# Do not use pytest's default Windows temp root here. A stale or privileged
+# pytest-current junction from an older/admin run can make pytest fail during
+# session cleanup even when every B6-5.6 test passed. A unique repository-local
+# basetemp keeps this acceptance isolated from that machine-global pytest state.
+$PytestBase = Join-Path (Get-Location) (".b656-pytest-tmp-" + [guid]::NewGuid().ToString("N"))
+
 Write-Host "[1/2] Contract + deterministic regression..."
-python -m pytest -q tests/test_v011_beta6_b656_real_file_execution.py
-if ($LASTEXITCODE -ne 0) { throw "B6-5.6 deterministic regression failed." }
+try {
+    python -m pytest -q --basetemp "$PytestBase" tests/test_v011_beta6_b656_real_file_execution.py
+    if ($LASTEXITCODE -ne 0) { throw "B6-5.6 deterministic regression failed." }
+}
+finally {
+    if (Test-Path -LiteralPath $PytestBase) {
+        Remove-Item -LiteralPath $PytestBase -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 Write-Host "Deterministic gate: PASS"
 Write-Host ""
 
