@@ -97,7 +97,7 @@ class RecommendationCandidate:
             "confidence": self.confidence,
             "reversibility": self.reversibility,
             "potential_damage": self.potential_damage,
-            "evidence_ids": list(self.evidence_ids),
+            "evidence_ids": sorted(self.evidence_ids),
             "rationale": self.rationale,
         }
 
