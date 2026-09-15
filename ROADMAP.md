@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-2 — Defense-Evasion / Tamper Detection
+B8-3 — Credential-Access Indicator Detection
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b81-pass
-5d25da3fcb8cd67d9faefbf2440eda19a6086eba
+checkpoint/v011-beta8-b82-pass
+a4f4b53bf2ea2dcd00744438c716a18ef5287262
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -39,7 +39,7 @@ GAP       3
 VERIFIED  0
 ```
 
-B8-1 has produced accepted detector evidence supporting `B7-RANSOMWARE-001` as `PARTIAL`; the canonical aggregate baseline is intentionally not recomputed until B8-4 Coverage Verification Campaign.
+Accepted B8-1 and B8-2 detector evidence supports `B7-RANSOMWARE-001` and `B7-DEFENSE-EVASION-001` as `PARTIAL`. Aggregate coverage is intentionally recomputed only in B8-4.
 
 ## Engineering contract
 
@@ -174,7 +174,7 @@ Acceptance summary:
 - `BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1` retained because accepted Beta6 regression tests still bind to that build contract;
 - no immutable checkpoint rewritten or moved.
 
-Repository policy from this point forward: keep the public root compact; put engineering tooling under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, `coverage/`) unless a root-level file is required by an accepted compatibility contract.
+Repository policy: keep the public root compact; put engineering tooling under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, `coverage/`) unless a root-level file is required by an accepted compatibility contract.
 
 ### B8-1 — Ransomware-like Detector Acceptance ✅ ACCEPTED / FROZEN
 
@@ -190,38 +190,57 @@ Acceptance summary:
 - local Windows acceptance PASS;
 - exact-head Windows CI PASS;
 - 462 Beta5/Beta6/Beta7/B8-0/B8-1 tests PASS;
-- protected B2 unchanged;
-- accepted B8-0 baseline sources unchanged;
-- repository-hygiene contract PASS;
 - positive ransomware-like fixture => `DETECTED`;
 - backup-like fixture => `REVIEW_REQUIRED`, never `DETECTED`;
 - benign fixture => `NO_MATCH`;
 - deterministic serialization and stable round-trip PASS;
 - evidence IDs preserved into Security Graph and Incident Correlation;
-- detection latency in controlled fixture = 2.0 seconds;
+- controlled fixture detection latency = 2.0 seconds;
 - accepted detector evidence status for `B7-RANSOMWARE-001` = `PARTIAL`;
-- `VERIFIED` remains prohibited because the milestone uses synthetic in-memory fixtures only;
+- `VERIFIED` remains prohibited because fixtures are synthetic in-memory evidence;
 - all execution/remediation authority flags remain false.
 
-### B8-2 — Defense-Evasion / Tamper Detection 🟡 CURRENT
+### B8-2 — Defense-Evasion / Tamper Detection ✅ ACCEPTED / FROZEN
 
-Objective: validate safe detector coverage for defense-evasion/control-tampering indicators with explicit provenance and false-positive controls, targeting `B7-DEFENSE-EVASION-001`.
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b82-pass
+a4f4b53bf2ea2dcd00744438c716a18ef5287262
+```
+
+Acceptance summary:
+
+- local Windows acceptance PASS;
+- exact-head Windows CI PASS;
+- 476 Beta5/Beta6/Beta7/B8-0/B8-1/B8-2 tests PASS;
+- positive defense-evasion fixture => `DETECTED` with multi-signal control-tamper evidence;
+- approved admin/maintenance fixture => `REVIEW_REQUIRED`, never `DETECTED`;
+- benign status fixture => `NO_MATCH`;
+- deterministic serialization and stable round-trip PASS;
+- graph/correlation provenance and evidence binding PASS;
+- bounded self-check resource budget PASS;
+- accepted detector evidence status for `B7-DEFENSE-EVASION-001` = `PARTIAL`;
+- `VERIFIED` remains prohibited because fixtures are normalized synthetic in-memory evidence only;
+- no security-control mutation, service control, registry access/mutation, process execution, file I/O, network I/O, credential access, remediation, quarantine, repair, restore, delete, termination, allowlist mutation, or privileged mutation authority was added.
+
+### B8-3 — Credential-Access Indicator Detection 🟡 CURRENT
+
+Objective: validate safe, non-secret-stealing indicators associated with credential-access behavior, targeting `B7-CREDENTIAL-001`.
 
 Required acceptance properties:
 
-- harmless normalized/synthetic indicators only;
-- no actual security-control disabling or registry/service mutation;
+- normalized synthetic/in-memory indicators only;
+- no password, token, cookie, secret, credential material, LSASS memory, browser database, registry secret, or protected-store extraction;
+- no credential values may be accepted as detector input, logged, serialized, or emitted;
 - explicit evidence IDs and provenance;
 - deterministic scoring and stable serialization;
-- negative fixtures for legitimate configuration/admin activity;
+- false-positive controls for approved administrative/security tooling and declared maintenance activity;
+- benign status/metadata fixtures must produce `NO_MATCH`;
 - Security Graph + Incident Correlation integration;
 - measurable detection latency/resource cost;
 - scenario may move only as far as accepted evidence supports;
-- no automatic quarantine/repair/restore, process termination, trust mutation, delete, repair, or privileged mutation authority.
-
-### B8-3 — Credential-Access Indicator Detection
-
-Validate safe, non-secret-stealing indicators associated with credential-access behavior. Fixtures must not extract or expose real credentials.
+- no automatic quarantine/repair/restore, process termination, trust mutation, delete, repair, credential access, or privileged mutation authority.
 
 ### B8-4 — Coverage Verification Campaign
 
