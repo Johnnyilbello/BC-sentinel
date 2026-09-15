@@ -6,6 +6,7 @@ on:
       - chore/v011-beta8-repository-hygiene
   pull_request:
     paths:
+      - 'BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1'
       - 'README.md'
       - 'ROADMAP.md'
       - 'tools/acceptance/TEST-V011-BETA8-REPOSITORY-HYGIENE.ps1'
@@ -53,6 +54,7 @@ jobs:
         shell: pwsh
         run: |
           $allowed = @(
+            'BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1',
             'README.md',
             'ROADMAP.md',
             'SECURITY.md',
