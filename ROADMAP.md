@@ -224,23 +224,41 @@ Acceptance summary:
 - `VERIFIED` remains prohibited because fixtures are normalized synthetic in-memory evidence only;
 - no security-control mutation, service control, registry access/mutation, process execution, file I/O, network I/O, credential access, remediation, quarantine, repair, restore, delete, termination, allowlist mutation, or privileged mutation authority was added.
 
-### B8-3 — Credential-Access Indicator Detection 🟡 CURRENT
+### B8-3 — Credential-Access Indicator Detection 🟡 IMPLEMENTED / LOCAL ACCEPTANCE PENDING
 
 Objective: validate safe, non-secret-stealing indicators associated with credential-access behavior, targeting `B7-CREDENTIAL-001`.
 
-Required acceptance properties:
+Implemented scope:
 
-- normalized synthetic/in-memory indicators only;
-- no password, token, cookie, secret, credential material, LSASS memory, browser database, registry secret, or protected-store extraction;
-- no credential values may be accepted as detector input, logged, serialized, or emitted;
-- explicit evidence IDs and provenance;
-- deterministic scoring and stable serialization;
-- false-positive controls for approved administrative/security tooling and declared maintenance activity;
-- benign status/metadata fixtures must produce `NO_MATCH`;
-- Security Graph + Incident Correlation integration;
-- measurable detection latency/resource cost;
-- scenario may move only as far as accepted evidence supports;
-- no automatic quarantine/repair/restore, process termination, trust mutation, delete, repair, credential access, or privileged mutation authority.
+- deterministic metadata-only detector in `sentinel/credential_access_detector.py`;
+- normalized synthetic/in-memory indicators for protected-auth-process targeting, credential-store targeting, browser-auth-store targeting, token-cache targeting, and credential-tool markers;
+- explicit fail-closed rejection of secret-bearing provenance fields before detection;
+- no password, token, cookie, secret, credential material, LSASS memory, browser database, registry secret, protected store, process memory, or token-cache content is read or collected;
+- credential values are never serialized or emitted;
+- false-positive controls for approved security tooling, maintenance windows, and signed administrative workflows;
+- positive, approved-admin, benign, and rejected-sensitive-input fixtures;
+- evidence IDs and provenance preserved into Security Graph and Incident Correlation;
+- deterministic serialization/digest and stable round-trip validation;
+- bounded self-check resource measurement;
+- `B7-CREDENTIAL-001` may move only to `PARTIAL` at this milestone; `VERIFIED` remains prohibited because evidence is synthetic metadata only;
+- no credential-access, process-memory, protected-store, browser-store, token-cache, file, registry, network, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
+
+Current acceptance evidence:
+
+- exact-head Windows CI PASS on `314ae64824d22f0dc9b190f3b671eec15c53537e`;
+- 486 Beta5/Beta6/Beta7/B8-0/B8-1/B8-2/B8-3 tests PASS with 36 non-blocking pre-existing UI warnings;
+- positive fixture => `DETECTED`, score 10;
+- approved security/admin fixture => `REVIEW_REQUIRED`, never `DETECTED`;
+- benign metadata fixture => `NO_MATCH`;
+- secret-bearing provenance fixture => rejected before detection;
+- `metadata_only=true`, deterministic serialization and stable round-trip PASS;
+- Security Graph / Incident Correlation evidence binding PASS;
+- resource budget PASS;
+- all credential-access, data-read, execution, remediation, and privileged authority flags remain false.
+
+Remaining freeze requirement:
+
+- local Windows acceptance must PASS on the final exact source state before `checkpoint/v011-beta8-b83-pass` may be created and B8-3 may be marked `ACCEPTED / FROZEN`.
 
 ### B8-4 — Coverage Verification Campaign
 
