@@ -11,11 +11,24 @@ Beta7  COMPLETE / FROZEN
 Beta8  IN PROGRESS
 ```
 
+Current milestone:
+
+```text
+B8-1 — Ransomware-like Detector Acceptance
+```
+
 Latest accepted engineering checkpoint:
 
 ```text
 checkpoint/v011-beta8-b80-pass
 969781bd7633d0b2bc92840e8f12220f00de4279
+```
+
+Latest accepted repository-structure checkpoint:
+
+```text
+checkpoint/v011-beta8-repository-hygiene-pass
+c33a06d6487115f5ae080edede75f5e63c6bf188
 ```
 
 Current coverage baseline:
@@ -138,28 +151,56 @@ Verification targets inherited by Beta8:
 2. `B7-DEFENSE-EVASION-001`
 3. `B7-CREDENTIAL-001`
 
-### Repository hygiene pass ✅ ACTIVE WORKING-TREE POLICY
+### Repository hygiene pass ✅ ACCEPTED / FROZEN
 
-After B8-0 acceptance, the public repository root is kept intentionally compact. Historical milestone launchers, old test/retest/update scripts, diagnostic/recovery helpers, obsolete integration patches, superseded checksums, and historical reports belong in Git history/checkpoints rather than the public root.
+Accepted source:
 
-Root-facing project files are limited to current project metadata/documentation and the stable launcher. Engineering implementation remains organized under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, and later structured script folders when needed).
+```text
+checkpoint/v011-beta8-repository-hygiene-pass
+c33a06d6487115f5ae080edede75f5e63c6bf188
+```
 
-This hygiene work does **not** rewrite or move immutable checkpoints.
+Acceptance summary:
 
-### B8-1 — Ransomware-like Detector Acceptance ⏭ NEXT
+- local Windows hygiene gate PASS;
+- exact-head Windows CI PASS;
+- 450 Beta5/Beta6/Beta7/B8-0 regression tests PASS;
+- accepted B8-0 engineering paths unchanged;
+- canonical single-roadmap rule PASS;
+- root allowlist reduced to 10 files;
+- historical test/retest/update/diagnostic/recovery launchers, obsolete patches/checksums, and superseded reports removed from the public working tree;
+- `BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1` retained because accepted Beta6 regression tests still bind to that build contract;
+- no immutable checkpoint rewritten or moved.
+
+Repository policy from this point forward: keep the public root compact; put engineering tooling under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, `coverage/`) unless a root-level file is required by an accepted compatibility contract.
+
+### B8-1 — Ransomware-like Detector Acceptance 🟡 IMPLEMENTED / ACCEPTANCE PENDING
 
 Objective: establish a reproducible, harmless detector path for ransomware-like behavior and determine whether `B7-RANSOMWARE-001` can legitimately move beyond GAP.
 
-Required acceptance properties:
+Implemented scope:
 
-- controlled non-destructive fixtures only;
-- explicit detector inputs and emitted evidence;
-- deterministic result for identical evidence;
-- false-positive controls/negative fixtures;
-- graph/correlation/evidence provenance preserved;
-- measurable detection latency and resource cost;
-- no automatic quarantine/repair/restore or destructive authority;
-- scenario remains GAP/PARTIAL unless the acceptance evidence truly supports promotion.
+- deterministic normalized file-activity detector in `sentinel/ransomware_detector.py`;
+- multi-signal scoring for bulk rewrite, bulk rename, entropy shift, extension churn, and controlled canary-touch evidence;
+- false-positive controls for known backup workflows and explicit user-initiated bulk operations;
+- positive, backup-like, and benign in-memory fixtures;
+- evidence IDs and provenance preserved into the accepted Security Graph;
+- detector graph passed into the accepted Incident Correlation Engine;
+- stable serialization/digest and exact round-trip validation;
+- `B7-RANSOMWARE-001` may move only to `PARTIAL` at this milestone; `VERIFIED` remains prohibited because fixtures are synthetic;
+- no file I/O, process execution, network I/O, registry mutation, credential access, remediation, quarantine, repair, restore, delete, process termination, allowlist mutation, or privileged mutation authority.
+
+Acceptance required before freeze:
+
+- exact-head Windows CI PASS;
+- local Windows acceptance PASS;
+- predecessor regression PASS;
+- positive ransomware-like fixture => `DETECTED`;
+- backup-like fixture => never `DETECTED`;
+- benign save fixture => `NO_MATCH`;
+- graph/correlation provenance and evidence binding PASS;
+- deterministic result/digest PASS;
+- authority flags remain false.
 
 ### B8-2 — Defense-Evasion / Tamper Detection
 
