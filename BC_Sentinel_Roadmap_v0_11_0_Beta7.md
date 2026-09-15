@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-5 — Explainable Security
-checkpoint/v011-beta7-b75-pass
-40f1e9985905ceccc070e8f73d09308a8406d059
+B7-6 — Coverage Expansion Campaign
+checkpoint/v011-beta7-b76-pass
+1bd66f4f9e55313388e871e26c6a35d55a3dbb20
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -132,39 +132,46 @@ Accepted outcomes:
 - 404 tests passed in local Windows acceptance;
 - Windows CI and local Windows acceptance passed.
 
-### B7-6 — Coverage Expansion Campaign — CURRENT
+### B7-6 — Coverage Expansion Campaign ✅ ACCEPTED
 
-Run controlled scenario-family evaluation across script abuse, persistence, ransomware-like behavior, defense evasion, suspicious network/DNS activity and credential-access indicators. Convert missing scenario-specific evidence into explicit engineering gaps instead of unsupported coverage claims.
+Accepted conservative scenario-family coverage campaign over the six B7-0 ledger entries.
 
-Required outcomes:
-- consume the accepted B7-0 six-scenario ledger read-only;
-- preserve the accepted ledger file unchanged;
-- evaluate exactly the six accepted scenario IDs in deterministic order;
-- B7-4 synthetic chain evidence may support `PARTIAL` only for script abuse, persistence and suspicious DNS/network scenarios;
-- synthetic evidence alone must never produce `VERIFIED` detector coverage;
-- ransomware-like, defense-evasion and credential-access families remain explicit `GAP` entries until dedicated harmless detector-path acceptance exists;
-- every PARTIAL result carries exact B7-4 report/stage evidence refs plus a remaining coverage gap;
-- every GAP carries a concrete reason and next engineering step;
-- expected campaign summary is `PARTIAL=3`, `GAP=3`, `VERIFIED=0`;
-- deterministic campaign ID, ordering, serialization and SHA-256 campaign digest;
+Accepted outcomes:
+- accepted B7-0 ledger preserved read-only;
+- exactly six scenario IDs evaluated in deterministic order;
+- B7-4 synthetic evidence supports `PARTIAL` only for script abuse, persistence and suspicious DNS/network;
+- ransomware-like, defense-evasion and credential-access remain explicit `GAP` entries;
+- exact campaign summary: `PARTIAL=3`, `GAP=3`, `VERIFIED=0`;
+- no synthetic evidence promoted to VERIFIED detector coverage;
+- every PARTIAL/GAP carries evidence or explicit engineering follow-up;
+- deterministic campaign digest and stable round-trip;
 - no real process execution, file writes, network I/O, registry mutation, credential access or remediation execution;
 - no execution authority added;
 - protected B2 and accepted B7-0/B7-1/B7-2/B7-3/B7-4/B7-5 foundations unchanged;
-- Beta5/Beta6/all accepted Beta7 predecessor regression remains green;
-- Windows CI + local Windows acceptance required before checkpoint freeze.
+- 413 tests passed in local Windows acceptance;
+- Windows CI and local Windows acceptance passed.
 
-### B7-7 — Beta7 Windows Acceptance & Freeze
+### B7-7 — Beta7 Windows Acceptance & Freeze — CURRENT
 
-Acceptance:
-- Beta6 predecessor regression green;
-- all Beta7 deterministic tests green;
-- ledger contains no unsupported positive claims;
-- Security Graph/correlation/confidence/explainability outputs remain reproducible;
-- safe attack-chain fixtures pass on Windows;
-- B7-6 campaign contains explicit gaps and no unsupported VERIFIED claims;
-- resource cost measured;
-- protected B2 state unchanged unless a separately accepted security milestone explicitly supersedes it;
-- final Beta7 checkpoint freeze.
+Final Beta7 release gate. This milestone does not add detector or remediation authority; it proves that the complete accepted Beta7 intelligence stack remains reproducible, conservative and compatible with the frozen Beta6 portable boundary.
+
+Required outcomes:
+- start only from `checkpoint/v011-beta7-b76-pass` / `1bd66f4f9e55313388e871e26c6a35d55a3dbb20`;
+- Beta5 + Beta6 + complete Beta7 deterministic regression green on Windows;
+- B7-0 ledger remains valid with no unsupported positive claims;
+- B7-1 Security Graph remains deterministic and round-trip stable;
+- B7-2 Incident Correlation remains deterministic, explained and conservative;
+- B7-3 Confidence Gate keeps `RECOMMEND`, `REVIEW_REQUIRED`, `BLOCKED_INSUFFICIENT_EVIDENCE` and never grants authority;
+- B7-4 harmless attack-chain remains synthetic/non-executing and preserves exact stage order;
+- B7-5 Explainable Security remains evidence-bound, uncertainty-aware and does not amplify confidence;
+- B7-6 campaign remains exactly `PARTIAL=3`, `GAP=3`, `VERIFIED=0` with no unsupported VERIFIED claims;
+- accepted Beta6 B6-7 portable contract remains unchanged (`onedir`, windowed, portable, explicit operator action, no installer/service/driver/network/cloud requirement);
+- protected B2 state remains unchanged from the accepted Beta6 checkpoint;
+- final synthetic pipeline resource cost is measured (wall time + peak traced memory) without contaminating the deterministic core digest;
+- final core snapshot is reproducible across repeated evaluation;
+- automatic quarantine/repair/restore, DELETE, REPAIR, process termination, trust mutation and privileged system mutation remain false;
+- exact-head Windows CI and local Windows acceptance must both pass before final checkpoint freeze;
+- after both gates pass, create `checkpoint/v011-beta7-b77-pass` on the exact tested code SHA and never move it.
 
 ## Reasoning policy
 
