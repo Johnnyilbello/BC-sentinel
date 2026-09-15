@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-1 — Sentinel Security Graph Foundation
-checkpoint/v011-beta7-b71-pass
-c75697b25c63e59bdfc2ad32374c4232c607fea0
+B7-2 — Incident Correlation Engine
+checkpoint/v011-beta7-b72-pass
+32bf6563eccc7f03c26e08afe6fcb58cf207cd8d
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -59,64 +59,47 @@ Any future authority expansion requires a dedicated milestone, explicit acceptan
 
 Accepted machine-readable attack coverage ledger required by the global roadmap.
 
-Accepted outcomes:
-- versioned JSON ledger in the repository;
-- deterministic schema/semantic validator;
-- stable `scenario_id` contract;
-- ATT&CK technique/sub-technique fields;
-- `PLANNED`, `PARTIAL`, `VERIFIED` and `GAP` states;
-- positive coverage claims require current build provenance and evidence references;
-- untested scenarios cannot silently appear as successful;
-- duplicate scenario IDs rejected;
-- deterministic summary metrics;
-- no detector, remediation or execution behavior changed;
-- Beta5/Beta6 regression green.
-
 ### B7-1 — Sentinel Security Graph Foundation ✅ ACCEPTED
 
 Accepted provenance-preserving graph schema linking processes, files, scripts, persistence, network/DNS, detections, evidence and actions.
 
+### B7-2 — Incident Correlation Engine ✅ ACCEPTED
+
+Accepted deterministic incident grouping over the read-only Security Graph.
+
 Accepted outcomes:
-- typed node and relation classes;
-- source provenance, source ID, collector and trust classification preserved;
-- timestamps, confidence and evidence IDs preserved;
-- deterministic node/relation IDs;
-- stable JSON serialization and SHA-256 graph digest;
-- conflicting duplicates, missing endpoints and self-loops fail closed;
-- every graph relation requires a human-inspectable reason;
-- deterministic subgraph queries and exact round-trip serialization;
-- no detector/remediation execution authority;
-- B7-0 foundation unchanged;
-- Beta5/Beta6/B7-0 regression green;
-- Windows CI + local Windows acceptance passed.
+- validated B7-1 Security Graph input only;
+- source graph digest preserved and source graph unchanged;
+- explicit graph relations preserve incident membership;
+- shared evidence IDs and explicit correlation keys correlate only within configured windows;
+- temporal proximity alone never correlates;
+- every correlation link is explained;
+- deterministic incident IDs, stable serialization and SHA-256 correlation digest;
+- every source node/edge represented exactly once;
+- malformed/duplicate/cross-incident bindings fail closed;
+- protected B2, B7-0 and B7-1 foundations unchanged;
+- Windows CI and local Windows acceptance passed.
 
-### B7-2 — Incident Correlation Engine — CURRENT
+### B7-3 — Confidence Gate — CURRENT
 
-Correlate related Security Graph observations into deterministic incidents while preserving raw evidence and explaining every grouping decision.
+Evaluate advisory actions against severity, evidence strength, confidence, reversibility and potential damage. The gate is deterministic, inspectable and fail closed.
 
 Required outcomes:
-- consume only a validated B7-1 `SecurityGraph`;
-- preserve the exact source graph digest and never mutate the source graph;
-- explicit Security Graph relations always keep their endpoints in the same incident;
-- shared evidence IDs may correlate observations only inside a configured temporal window;
-- collector-provided explicit correlation keys may correlate observations only inside the configured temporal window;
-- **temporal proximity alone must never correlate observations**;
-- every correlation link records rule, reason, endpoints, timestamps and supporting evidence/keys;
-- deterministic incident IDs, ordering, serialization and SHA-256 result digest;
-- every source node assigned to exactly one incident;
-- every source graph edge represented exactly once inside one incident;
-- malformed explicit correlation keys fail closed;
-- invalid/cross-incident/duplicate bindings fail closed;
-- correlation output round-trips deterministically;
-- B7-0 and B7-1 accepted foundations remain unchanged;
-- protected B2 state remains unchanged from accepted Beta6;
-- no detector, quarantine, repair, restore, process termination or trust mutation authority;
-- Beta5/Beta6/B7-0/B7-1 regression remains green;
+- consume accepted B7-2 correlation output and source Security Graph read-only;
+- bind every decision to exact source graph and correlation digests;
+- explicit dimensions for severity, evidence strength, confidence, reversibility and potential damage;
+- distinct `RECOMMEND`, `REVIEW_REQUIRED` and `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes;
+- missing evidence, unsupported evidence, absent confidence and insufficient confidence fail closed;
+- high/unknown damage or insufficient reversibility require explicit review;
+- confidence is never inferred from absent evidence;
+- deterministic decision IDs, stable serialization and SHA-256 decision digest;
+- every decision includes machine-readable reasons and human-inspectable rationale;
+- `RECOMMEND` remains advisory and never grants execution authority;
+- tampered authority-grant outputs fail validation;
+- accepted B7-0/B7-1/B7-2 foundations remain unchanged;
+- protected B2 state remains unchanged;
+- Beta5/Beta6/B7-0/B7-1/B7-2 regression remains green;
 - Windows CI + local Windows acceptance required before checkpoint freeze.
-
-### B7-3 — Confidence Gate
-
-Evaluate recommended actions against severity, evidence strength, confidence, reversibility and potential damage. The gate is inspectable and fail-closed.
 
 ### B7-4 — Attack-Chain Acceptance Harness
 
