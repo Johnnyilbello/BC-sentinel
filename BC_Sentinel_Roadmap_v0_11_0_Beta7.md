@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-4 — Attack-Chain Acceptance Harness
-checkpoint/v011-beta7-b74-pass
-d836aef24480d21e6631c1fe0dac640c7862e7ec
+B7-5 — Explainable Security
+checkpoint/v011-beta7-b75-pass
+40f1e9985905ceccc070e8f73d09308a8406d059
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -114,29 +114,44 @@ Accepted outcomes:
 - 394 tests passed in local Windows acceptance;
 - Windows CI and local Windows acceptance passed.
 
-### B7-5 — Explainable Security — CURRENT
+### B7-5 — Explainable Security ✅ ACCEPTED
 
-Generate two evidence-grounded explanations for significant incidents: a user-level explanation and an advanced technical explanation. No invented certainty.
+Accepted deterministic evidence-grounded explanation layer over B7-1/B7-2/B7-3 outputs.
+
+Accepted outcomes:
+- exact graph/correlation/decision digest binding;
+- one concise user explanation and one advanced technical explanation from the same evidence;
+- every positive claim bound to incident evidence IDs and valid source nodes/edges;
+- explicit limitation/uncertainty notes;
+- missing evidence never interpreted as proof of safety;
+- explanation generation never increases confidence;
+- deterministic claim IDs, explanation ID, ordering, serialization and SHA-256 digest;
+- `RECOMMEND` remains advisory and explanations grant no execution authority;
+- source graph, correlation and decision objects unchanged;
+- protected B2 and B7-0/B7-1/B7-2/B7-3/B7-4 foundations unchanged;
+- 404 tests passed in local Windows acceptance;
+- Windows CI and local Windows acceptance passed.
+
+### B7-6 — Coverage Expansion Campaign — CURRENT
+
+Run controlled scenario-family evaluation across script abuse, persistence, ransomware-like behavior, defense evasion, suspicious network/DNS activity and credential-access indicators. Convert missing scenario-specific evidence into explicit engineering gaps instead of unsupported coverage claims.
 
 Required outcomes:
-- consume only validated B7-1 Security Graph, B7-2 correlation and B7-3 Confidence Gate outputs;
-- bind explanation output to exact graph, correlation and decision digests;
-- generate one concise user explanation and one advanced technical explanation from the same accepted evidence;
-- every positive claim must bind to incident evidence IDs and valid source node/edge IDs;
-- include explicit limitation/uncertainty notes; missing evidence must never be interpreted as proof of safety;
-- explanation generation must never increase or infer confidence beyond source observations/decision values;
-- deterministic claim IDs, explanation ID, ordering, serialization and SHA-256 digest;
-- `RECOMMEND` remains advisory and explanation text must preserve the no-authority boundary;
-- reject tampered source digests, unbound evidence claims, confidence amplification and authority expansion;
-- source graph, correlation and decision objects remain unchanged;
-- accepted B7-0/B7-1/B7-2/B7-3/B7-4 foundations remain unchanged;
-- protected B2 state remains unchanged from accepted Beta6;
+- consume the accepted B7-0 six-scenario ledger read-only;
+- preserve the accepted ledger file unchanged;
+- evaluate exactly the six accepted scenario IDs in deterministic order;
+- B7-4 synthetic chain evidence may support `PARTIAL` only for script abuse, persistence and suspicious DNS/network scenarios;
+- synthetic evidence alone must never produce `VERIFIED` detector coverage;
+- ransomware-like, defense-evasion and credential-access families remain explicit `GAP` entries until dedicated harmless detector-path acceptance exists;
+- every PARTIAL result carries exact B7-4 report/stage evidence refs plus a remaining coverage gap;
+- every GAP carries a concrete reason and next engineering step;
+- expected campaign summary is `PARTIAL=3`, `GAP=3`, `VERIFIED=0`;
+- deterministic campaign ID, ordering, serialization and SHA-256 campaign digest;
+- no real process execution, file writes, network I/O, registry mutation, credential access or remediation execution;
+- no execution authority added;
+- protected B2 and accepted B7-0/B7-1/B7-2/B7-3/B7-4/B7-5 foundations unchanged;
 - Beta5/Beta6/all accepted Beta7 predecessor regression remains green;
 - Windows CI + local Windows acceptance required before checkpoint freeze.
-
-### B7-6 — Coverage Expansion Campaign
-
-Run controlled scenario families across script abuse, persistence, ransomware-like behavior, defense evasion, suspicious network activity and credential-access indicators. Convert missing coverage into explicit engineering gaps.
 
 ### B7-7 — Beta7 Windows Acceptance & Freeze
 
@@ -144,8 +159,9 @@ Acceptance:
 - Beta6 predecessor regression green;
 - all Beta7 deterministic tests green;
 - ledger contains no unsupported positive claims;
-- Security Graph/correlation/confidence outputs remain reproducible;
+- Security Graph/correlation/confidence/explainability outputs remain reproducible;
 - safe attack-chain fixtures pass on Windows;
+- B7-6 campaign contains explicit gaps and no unsupported VERIFIED claims;
 - resource cost measured;
 - protected B2 state unchanged unless a separately accepted security milestone explicitly supersedes it;
 - final Beta7 checkpoint freeze.
