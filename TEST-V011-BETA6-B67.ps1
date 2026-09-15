@@ -164,8 +164,8 @@ try {
             }
         }
         Remove-Item Env:QT_QPA_PLATFORM -ErrorAction SilentlyContinue
-        & $Exe
-        if ($LASTEXITCODE -ne 0) { Fail "artifact-ui" ("Built GUI exited with code " + $LASTEXITCODE) }
+        $UiProcess = Start-Process -FilePath $Exe -PassThru -Wait
+        if ($UiProcess.ExitCode -ne 0) { Fail "artifact-ui" ("Built GUI exited with code " + $UiProcess.ExitCode) }
         Write-Host "Built GUI opened and closed normally: PASS" -ForegroundColor Green
     } else {
         Write-Host "[6/6] Real UI opening not requested; automated built-artifact smoke already PASS." -ForegroundColor Green
