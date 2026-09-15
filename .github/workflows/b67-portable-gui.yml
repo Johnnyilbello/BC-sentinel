@@ -1,0 +1,92 @@
+name: B6-7 Portable Technician GUI Release
+
+on:
+  push:
+    branches:
+      - feature/v011-beta6-b67-portable-gui
+  pull_request:
+    paths:
+      - 'sentinel/portable_gui_release.py'
+      - 'packaging/beta6_portable_gui_entry.py'
+      - 'BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1'
+      - 'TEST-V011-BETA6-B67.ps1'
+      - 'tools/v011_beta6_b67_artifact_acceptance.py'
+      - 'tests/test_v011_beta6_b67_portable_gui.py'
+      - '.github/workflows/b67-portable-gui.yml'
+  workflow_dispatch:
+
+jobs:
+  portable-gui-release:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install frozen project dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile B6-7 packaging and acceptance
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/portable_gui_release.py packaging/beta6_portable_gui_entry.py tools/v011_beta6_b67_artifact_acceptance.py tests/test_v011_beta6_b67_portable_gui.py
+
+      - name: Complete Beta5 + Beta6 deterministic regression
+        shell: pwsh
+        run: |
+          $tests = @()
+          $tests += @(Get-ChildItem -LiteralPath tests -Filter 'test_v011_beta5_*.py' -File | Sort-Object Name | ForEach-Object { $_.FullName })
+          $tests += @(Get-ChildItem -LiteralPath tests -Filter 'test_v011_beta6_*.py' -File | Sort-Object Name | ForEach-Object { $_.FullName })
+          if ($tests.Count -eq 0) { throw 'No Beta5/Beta6 tests discovered.' }
+          Write-Host ('Deterministic test files: ' + $tests.Count)
+          python -m pytest -q @tests
+
+      - name: Build real PyInstaller onedir windowed GUI
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1'
+
+      - name: Accept copied built GUI artifact
+        shell: pwsh
+        run: |
+          python -m tools.v011_beta6_b67_artifact_acceptance --artifact-dir '.\dist\Beta6\BC-Sentinel-Beta6-Portable' --expected-build-commit '${{ github.sha }}' --output '.\acceptance-v011-beta6-b67-ci.json'
+
+      - name: Verify protected B2 sources unchanged
+        shell: pwsh
+        run: |
+          git diff --exit-code -- sentinel/protection_service_core.py sentinel/realtime.py sentinel/edr.py sentinel/edr_service_bridge.py
+          if ($LASTEXITCODE -ne 0) { throw 'Protected B2 source changed during B6-7 gate.' }
+
+      - name: Verify build manifest and artifact SHA-256
+        shell: pwsh
+        run: |
+          $folder = '.\dist\Beta6\BC-Sentinel-Beta6-Portable'
+          $exe = Join-Path $folder 'BC-Sentinel-Beta6-Portable.exe'
+          $manifest = Get-Content -Raw -LiteralPath (Join-Path $folder 'portable-gui-integrity.json') -Encoding UTF8 | ConvertFrom-Json
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ([string]$manifest.sha256 -ne $hash) { throw 'Manifest SHA-256 mismatch.' }
+          if ([string]$manifest.profile -ne 'v0.11.0-beta.6-b67-portable-gui') { throw 'Manifest profile mismatch.' }
+          if ([bool]$manifest.installer_required -or [bool]$manifest.service_install -or [bool]$manifest.driver_install) { throw 'Installer/service/driver authority appeared.' }
+          if ([bool]$manifest.general_home_execution_authorized -or [bool]$manifest.automatic_quarantine -or [bool]$manifest.automatic_restore -or [bool]$manifest.automatic_repair) { throw 'Unexpected remediation authority appeared.' }
+          Write-Host ('B67 CI EXE SHA256=' + $hash)
+
+      - name: Upload accepted portable GUI candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: BC-Sentinel-Beta6-B67-Portable-GUI-${{ github.sha }}
+          path: |
+            dist/Beta6/BC-Sentinel-Beta6-Portable/**
+            acceptance-v011-beta6-b67-ci.json
+          if-no-files-found: error
+          retention-days: 14
