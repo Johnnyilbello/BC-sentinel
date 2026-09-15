@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-1 — Ransomware-like Detector Acceptance
+B8-2 — Defense-Evasion / Tamper Detection
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b80-pass
-969781bd7633d0b2bc92840e8f12220f00de4279
+checkpoint/v011-beta8-b81-pass
+5d25da3fcb8cd67d9faefbf2440eda19a6086eba
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -31,13 +31,15 @@ checkpoint/v011-beta8-repository-hygiene-pass
 c33a06d6487115f5ae080edede75f5e63c6bf188
 ```
 
-Current coverage baseline:
+Current canonical coverage baseline remains:
 
 ```text
 PARTIAL   3
 GAP       3
 VERIFIED  0
 ```
+
+B8-1 has produced accepted detector evidence supporting `B7-RANSOMWARE-001` as `PARTIAL`; the canonical aggregate baseline is intentionally not recomputed until B8-4 Coverage Verification Campaign.
 
 ## Engineering contract
 
@@ -174,37 +176,48 @@ Acceptance summary:
 
 Repository policy from this point forward: keep the public root compact; put engineering tooling under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, `coverage/`) unless a root-level file is required by an accepted compatibility contract.
 
-### B8-1 — Ransomware-like Detector Acceptance 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B8-1 — Ransomware-like Detector Acceptance ✅ ACCEPTED / FROZEN
 
-Objective: establish a reproducible, harmless detector path for ransomware-like behavior and determine whether `B7-RANSOMWARE-001` can legitimately move beyond GAP.
+Accepted source:
 
-Implemented scope:
+```text
+checkpoint/v011-beta8-b81-pass
+5d25da3fcb8cd67d9faefbf2440eda19a6086eba
+```
 
-- deterministic normalized file-activity detector in `sentinel/ransomware_detector.py`;
-- multi-signal scoring for bulk rewrite, bulk rename, entropy shift, extension churn, and controlled canary-touch evidence;
-- false-positive controls for known backup workflows and explicit user-initiated bulk operations;
-- positive, backup-like, and benign in-memory fixtures;
-- evidence IDs and provenance preserved into the accepted Security Graph;
-- detector graph passed into the accepted Incident Correlation Engine;
-- stable serialization/digest and exact round-trip validation;
-- `B7-RANSOMWARE-001` may move only to `PARTIAL` at this milestone; `VERIFIED` remains prohibited because fixtures are synthetic;
-- no file I/O, process execution, network I/O, registry mutation, credential access, remediation, quarantine, repair, restore, delete, process termination, allowlist mutation, or privileged mutation authority.
+Acceptance summary:
 
-Acceptance required before freeze:
-
-- exact-head Windows CI PASS;
 - local Windows acceptance PASS;
-- predecessor regression PASS;
+- exact-head Windows CI PASS;
+- 462 Beta5/Beta6/Beta7/B8-0/B8-1 tests PASS;
+- protected B2 unchanged;
+- accepted B8-0 baseline sources unchanged;
+- repository-hygiene contract PASS;
 - positive ransomware-like fixture => `DETECTED`;
-- backup-like fixture => never `DETECTED`;
-- benign save fixture => `NO_MATCH`;
-- graph/correlation provenance and evidence binding PASS;
-- deterministic result/digest PASS;
-- authority flags remain false.
+- backup-like fixture => `REVIEW_REQUIRED`, never `DETECTED`;
+- benign fixture => `NO_MATCH`;
+- deterministic serialization and stable round-trip PASS;
+- evidence IDs preserved into Security Graph and Incident Correlation;
+- detection latency in controlled fixture = 2.0 seconds;
+- accepted detector evidence status for `B7-RANSOMWARE-001` = `PARTIAL`;
+- `VERIFIED` remains prohibited because the milestone uses synthetic in-memory fixtures only;
+- all execution/remediation authority flags remain false.
 
-### B8-2 — Defense-Evasion / Tamper Detection
+### B8-2 — Defense-Evasion / Tamper Detection 🟡 CURRENT
 
-Validate detector coverage for control tampering/defense-evasion indicators with explicit provenance and false-positive controls. No protection claim without accepted evidence.
+Objective: validate safe detector coverage for defense-evasion/control-tampering indicators with explicit provenance and false-positive controls, targeting `B7-DEFENSE-EVASION-001`.
+
+Required acceptance properties:
+
+- harmless normalized/synthetic indicators only;
+- no actual security-control disabling or registry/service mutation;
+- explicit evidence IDs and provenance;
+- deterministic scoring and stable serialization;
+- negative fixtures for legitimate configuration/admin activity;
+- Security Graph + Incident Correlation integration;
+- measurable detection latency/resource cost;
+- scenario may move only as far as accepted evidence supports;
+- no automatic quarantine/repair/restore, process termination, trust mutation, delete, repair, or privileged mutation authority.
 
 ### B8-3 — Credential-Access Indicator Detection
 
