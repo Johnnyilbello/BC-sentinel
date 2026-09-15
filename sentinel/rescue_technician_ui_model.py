@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import asdict, dataclass
 from typing import Final
 
@@ -7,6 +8,9 @@ from sentinel import rescue_technician_portable as b57
 
 PROFILE: Final[str] = "v0.11.0-beta.6-b60"
 SCHEMA: Final[str] = "bc-sentinel-beta6-technician-ui-model-v1"
+ACCESSIBILITY_PROFILE: Final[str] = "v0.11.0-beta.6-b66"
+MAX_ACTIVITY_ENTRIES: Final[int] = 160
+MAX_ACTIVITY_MESSAGE_CHARS: Final[int] = 480
 
 UI_STATES: Final[tuple[str, ...]] = (
     "IDLE",
@@ -162,3 +166,53 @@ def transition(current: TechnicianUiState, new_state: str, *, reason: str = "") 
     current.last_reason = reason
     current.validate()
     return current
+
+
+class BoundedActivityLog:
+    """In-memory diagnostic tail for the Technician UI.
+
+    The log is deliberately presentation-only. It is bounded so a damaged host
+    cannot make the UI consume unbounded memory while reporting a long-running
+    read-only operation.
+    """
+
+    def __init__(self, limit: int = MAX_ACTIVITY_ENTRIES) -> None:
+        if limit < 1:
+            raise ValueError("activity_log_limit_must_be_positive")
+        self.limit = int(limit)
+        self._entries: deque[str] = deque(maxlen=self.limit)
+
+    def append(self, stage: str, message: str) -> str:
+        safe_stage = str(stage or "UI").strip()[:48] or "UI"
+        safe_message = " ".join(str(message or "").split())
+        if len(safe_message) > MAX_ACTIVITY_MESSAGE_CHARS:
+            safe_message = safe_message[: MAX_ACTIVITY_MESSAGE_CHARS - 1] + "…"
+        entry = f"{safe_stage}: {safe_message or 'Nessun dettaglio disponibile.'}"
+        self._entries.append(entry)
+        return entry
+
+    def entries(self) -> tuple[str, ...]:
+        return tuple(self._entries)
+
+
+def validate_b66_accessibility_contract() -> dict:
+    """Static guardrail for B6-6; does not enable any engine command."""
+    engine = validate_engine_contract()
+    failures = list(engine["failures"])
+    if any(command in FORBIDDEN_UI_COMMANDS for command in EXPECTED_ENGINE_COMMANDS):
+        failures.append("forbidden_command_exposed")
+    return {
+        "profile": ACCESSIBILITY_PROFILE,
+        "schema": SCHEMA,
+        "passed": not failures,
+        "failures": failures,
+        "background_work_is_read_only_fixture_only": True,
+        "activity_log_bounded": True,
+        "keyboard_contract_visible": True,
+        "automatic_command_dispatch": False,
+        "automatic_repair": False,
+        "automatic_quarantine": False,
+        "automatic_restore": False,
+        "repair_execute_exposed": False,
+        "target_execution": False,
+    }

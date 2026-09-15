@@ -1,0 +1,43 @@
+name: B6-6 Accessibility and Low-Spec Gate
+
+on:
+  push:
+    branches: [feature/v011-beta6-b66-accessibility-hardening]
+  pull_request:
+    paths:
+      - 'sentinel/rescue_technician_ui.py'
+      - 'sentinel/rescue_technician_ui_model.py'
+      - 'tests/test_v011_beta6_b60_technician_ux_foundation.py'
+      - 'tests/test_v011_beta6_b66_accessibility_hardening.py'
+      - 'TEST-V011-BETA6-B66.ps1'
+      - 'BC_SENTINEL_V011_BETA6_B66_ACCESSIBILITY_HARDENING.md'
+      - '.github/workflows/b66-accessibility-hardening.yml'
+  workflow_dispatch:
+
+jobs:
+  accessibility:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: python -m pip install -r requirements.txt
+      - name: Compile B6-6 UI and model
+        shell: pwsh
+        run: python -m compileall -q sentinel/rescue_technician_ui.py sentinel/rescue_technician_ui_model.py tests/test_v011_beta6_b66_accessibility_hardening.py
+      - name: Beta5/Beta6 regression and B6-6 Qt interaction gate
+        shell: pwsh
+        run: ./TEST-V011-BETA6-B66.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b66-accessibility-acceptance
+          path: acceptance-v011-beta6-b66.xml
