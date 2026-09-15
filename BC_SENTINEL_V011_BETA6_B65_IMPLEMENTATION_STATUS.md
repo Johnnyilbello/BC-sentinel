@@ -1,6 +1,6 @@
 # BC Sentinel v0.11.0-beta.6 — B6-5 Implementation Status
 
-Status: **B6-5.0→B6-5.8 ACCEPTED / B6-5.9 IMPLEMENTED — WINDOWS CI + LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **B6-5.0→B6-5.8 ACCEPTED / B6-5.9 IMPLEMENTED — WINDOWS CI PASS / LOCAL DEVICE ACCEPTANCE PENDING**
 
 Active development branch:
 
@@ -36,7 +36,7 @@ B6-5.5  Harmless fixture execution + rollback           PASS / WINDOWS + LOCAL D
 B6-5.6  Real-file quarantine boundary                   PASS / WINDOWS + LOCAL DEVICE
 B6-5.7  Home quarantine UX/execution integration        PASS / WINDOWS + LOCAL DEVICE
 B6-5.8  Persistent restore after application restart    PASS / WINDOWS + LOCAL DEVICE
-B6-5.9  Quarantine integrity / degraded-state visibility IMPLEMENTED / CI + LOCAL PENDING
+B6-5.9  Quarantine integrity / degraded-state visibility IMPLEMENTED / WINDOWS CI PASS / LOCAL PENDING
 ```
 
 ## B6-5.8 accepted boundary
@@ -102,6 +102,27 @@ The B6-5.9 audit:
 
 The deterministic gate includes explicit byte-for-byte storage comparison around degraded-state discovery.
 
+## B6-5.9 automated evidence
+
+Windows GitHub Actions:
+
+```text
+Run: 34964434264
+Commit: 98f0ba743dd95f00d61f7c62ac9aa376110af257
+Conclusion: SUCCESS
+
+Compile B6-5.9 + predecessors: PASS
+B6-0 → B6-5.9 deterministic regression suite: PASS
+B6-3 predecessor acceptance: PASS
+B6-4 passive self-check: PASS
+B6-5.5 predecessor acceptance: PASS
+B6-5.6 predecessor acceptance: PASS
+B6-5.7 predecessor acceptance: PASS
+B6-5.8 fresh-process persistent restore acceptance: PASS
+B6-5.9 degraded integrity visibility acceptance: PASS
+B6-5.9 Qt offscreen smoke: PASS
+```
+
 ## B6-5.9 test/acceptance scope
 
 Deterministic tests verify:
@@ -157,7 +178,7 @@ B6-5.9 is intentionally a hardening/observability milestone. It does **not** aut
 
 ## Local acceptance command
 
-After Windows CI is green, run from the repository root:
+Windows CI is green. Run from the repository root:
 
 ```powershell
 git fetch origin; git checkout feature/v011-beta6-b659-quarantine-integrity; git pull --ff-only origin feature/v011-beta6-b659-quarantine-integrity; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA6-B659.ps1" -ConfirmQuarantineIntegrityAcceptance -OpenUI
