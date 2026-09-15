@@ -64,11 +64,6 @@ try {
     Write-Host ("Frozen source checkpoint: " + $SourceCheckpointCommit)
     Write-Host ""
 
-    # B6-7 must preserve the protected B2 paths exactly as represented by the
-    # frozen B6-5.9 predecessor. Two historical B2 files are intentionally not
-    # synchronized in this repository snapshot; absence is therefore a frozen
-    # state, not a preflight failure. Any add/delete/modify relative to the
-    # checkpoint remains fail-closed.
     $Protected = @(
         "sentinel/protection_service_core.py",
         "sentinel/realtime.py",
@@ -86,21 +81,35 @@ try {
         Write-Host ("Protected baseline: " + $GitPath + " = " + $(if ($State -eq "<ABSENT>") { "ABSENT (frozen)" } else { $State })) -ForegroundColor DarkGray
     }
 
-    # B6-5.5 fixture execution deliberately accepts targets only under the
-    # Python runtime's system temp root. Keep pytest's basetemp underneath that
-    # exact root; using USERPROFILE would make the security test correctly fail.
-    $SystemTemp = (& $Py -c "import tempfile; print(tempfile.gettempdir())" | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$SystemTemp)) {
-        Fail "pytest-temp" "Unable to resolve Python system temp root."
+    # B6-5.5 accepts fixture targets only below Python's real tempfile root.
+    # Do not pipe native Python stdout through Select-Object here: on some
+    # Windows/PowerShell combinations that can leave a misleading native exit
+    # code. Ask Python to write the resolved root to a temporary probe file,
+    # then read it back after the process has exited.
+    $TempProbe = Join-Path $RepoRoot (".b67-python-temp-" + [guid]::NewGuid().ToString("N") + ".txt")
+    try {
+        & $Py -c "import pathlib,tempfile,sys; pathlib.Path(sys.argv[1]).write_text(tempfile.gettempdir(), encoding='utf-8')" $TempProbe
+        $TempProbeExit = $LASTEXITCODE
+        if ($TempProbeExit -ne 0 -or -not (Test-Path -LiteralPath $TempProbe -PathType Leaf)) {
+            Fail "pytest-temp" ("Python temp probe failed with exit code " + $TempProbeExit + ".")
+        }
+        $SystemTemp = (Get-Content -Raw -LiteralPath $TempProbe -Encoding UTF8).Trim()
     }
-    $SystemTemp = ([string]$SystemTemp).Trim()
+    finally {
+        Remove-Item -LiteralPath $TempProbe -Force -ErrorAction SilentlyContinue
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$SystemTemp)) {
+        Fail "pytest-temp" "Python system temp root was empty."
+    }
     if (-not (Test-Path -LiteralPath $SystemTemp -PathType Container)) {
         Fail "pytest-temp" ("Python system temp root does not exist: " + $SystemTemp)
     }
+
     $Base = Join-Path $SystemTemp "BCSentinel-TestTemp"
     New-Item -ItemType Directory -Path $Base -Force | Out-Null
     $PytestBase = Join-Path $Base ("b67-pytest-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $PytestBase -Force | Out-Null
+    Write-Host ("Python system temp: " + $SystemTemp) -ForegroundColor DarkGray
     Write-Host ("pytest basetemp: " + $PytestBase) -ForegroundColor DarkGray
 
     Write-Host "[1/6] Compile B6-7 packaging/acceptance code..."
@@ -188,9 +197,6 @@ try {
         Write-Host "[6/6] Apertura dell'artefatto GUI reale..." -ForegroundColor Cyan
         Write-Host "Chiudi normalmente BC Sentinel dopo la verifica visiva per completare il gate." -ForegroundColor Cyan
 
-        # The artifact itself does not require a historical runtime to start.
-        # For local visual acceptance only, reuse the pinned historical runtime
-        # if the same previously accepted scanner can be found on this PC.
         $ExpectedScannerSha = "7874df734f6146f8848d8a55f5eb6be37bb5cbaee1638e051357f978f5275433"
         $Downloads = Join-Path $env:USERPROFILE "Downloads"
         $ScannerPath = $null
