@@ -1,11 +1,17 @@
 # BC Sentinel v0.11.0-beta.7 — B7-1 Implementation Status
 
-Status: **IMPLEMENTED — WINDOWS CI + LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **CLOSED / ACCEPTED — WINDOWS CI PASS + LOCAL DEVICE PASS**
 
-Active branch:
+Accepted implementation commit:
 
 ```text
-feature/v011-beta7-b71-security-graph
+c75697b25c63e59bdfc2ad32374c4232c607fea0
+```
+
+Accepted checkpoint:
+
+```text
+checkpoint/v011-beta7-b71-pass
 ```
 
 Accepted predecessor:
@@ -16,6 +22,23 @@ checkpoint/v011-beta7-b70-pass
 cd06f284525b3e0f70c121b6b97833cbf388c9ce
 Windows CI: PASS
 Local Windows acceptance: PASS
+```
+
+## Acceptance summary
+
+B7-1 is accepted on Windows with:
+
+- compile gate PASS;
+- Beta5 + Beta6 + B7-0 predecessor regression + B7-1 deterministic suite: **361 passed, 36 warnings**;
+- B7-0 coverage ledger self-check PASS;
+- Security Graph semantic/determinism self-check PASS;
+- Windows CI run `34974953956`: SUCCESS;
+- local Windows acceptance: PASS.
+
+Local evidence is recorded in:
+
+```text
+BC_SENTINEL_V011_BETA7_B71_LOCAL_DEVICE_ACCEPTANCE_2026-09-15.md
 ```
 
 ## Scope
@@ -82,6 +105,12 @@ B7-1 provides:
 - deterministic incident subgraph queries;
 - exact in-memory round-trip serialization.
 
+Accepted graph self-check digest:
+
+```text
+10380636f532f5aaf477fd9d179214c212955e9088c87e0c219d655b09eac775
+```
+
 ## Safety boundary
 
 ```text
@@ -102,33 +131,23 @@ The Security Graph does not execute processes, contact networks, change trust st
 
 ## Predecessor freeze
 
-The B7-1 local acceptance explicitly checks that:
+The accepted gate verified that:
 
 - protected B2 paths are unchanged from the accepted Beta6 checkpoint;
 - the B7-0 coverage ledger JSON, validator and deterministic tests are unchanged from `checkpoint/v011-beta7-b70-pass`.
 
-## Automated gate
+## Next milestone
 
-Windows CI runs:
-
-1. compile for B7-0/B7-1 modules and tests;
-2. Beta5 + Beta6 + B7-0 predecessor regression plus B7-1 deterministic tests;
-3. B7-0 coverage ledger self-check;
-4. B7-1 Security Graph self-check;
-5. deterministic graph-digest and no-authority-expansion assertions.
-
-## Local Windows acceptance
-
-After CI is green, run from normal PowerShell in the repository root:
-
-```powershell
-git fetch origin; git checkout feature/v011-beta7-b71-security-graph; git pull --ff-only origin feature/v011-beta7-b71-security-graph; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA7-B71.ps1" -ConfirmSecurityGraphAcceptance
-```
-
-Expected final line:
+Proceed from:
 
 ```text
-BC SENTINEL v0.11.0-beta.7 B7-1 SENTINEL SECURITY GRAPH FOUNDATION - PASS
+checkpoint/v011-beta7-b71-pass
 ```
 
-Do not create `checkpoint/v011-beta7-b71-pass` until both Windows CI and the local-device gate pass.
+Next roadmap milestone:
+
+```text
+B7-2 — Incident Correlation Engine
+```
+
+B7-1 remains frozen. No later work may rewrite the accepted checkpoint.
