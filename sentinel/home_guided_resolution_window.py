@@ -47,6 +47,8 @@ class B65SecurityOverviewWindow(b64.B64SecurityOverviewWindow):
 
         # Verified rows keep the explicit restore action. Degraded rows are also
         # rendered, but contain no restore_key and therefore receive no button.
+        self.quarantine_page.refresh_button.clicked.disconnect()
+        self.quarantine_page.refresh_button.clicked.connect(self._refresh_quarantine_rows)
         self.quarantine_page.rows_provider = self.home_quarantine_controller.quarantine_rows
         self._refresh_quarantine_rows()
         ui_live_polish.apply_window_live_polish(self)

@@ -18,6 +18,7 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractButton,
     QBoxLayout,
     QFrame,
     QLabel,
@@ -254,6 +255,11 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
             scroll.sync_width()
 
     def _apply_responsive_layout(self, force: bool = False) -> None:
+        for button in self.findChildren(QAbstractButton):
+            if not button.accessibleName() and button.text():
+                button.setAccessibleName(button.text())
+            if not button.toolTip():
+                button.setToolTip(button.accessibleName())
         width = max(0, self.width())
         compact = width < BREAKPOINTS["wide"]
         mobile = width < BREAKPOINTS["compact"]
@@ -268,7 +274,7 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
         for label in getattr(self, "_brand_labels", []):
             label.setVisible(not mobile)
         if hasattr(self, "sidebar_scan_button"):
-            self.sidebar_scan_button.setText("" if mobile else "Quick Scan · B6-3")
+            self.sidebar_scan_button.setText("" if mobile else "Scansione rapida")
         for name, button in self.nav_buttons.items():
             button.setText("" if mobile else name)
         for button, text in zip(

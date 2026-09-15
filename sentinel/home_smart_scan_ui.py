@@ -7,6 +7,7 @@ primary task, live status and advanced evidence with clearer hierarchy.
 """
 
 import json
+from sentinel.ui_product_copy import product_text
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -204,7 +205,7 @@ class SmartScanPage(QWidget):
             self.task_subtitle.setText(
                 "Il motore di scansione verificato non è disponibile in questa build. Nessun risultato viene simulato."
             )
-            self.quick_scan.setToolTip(self._unavailable_reason or "Provider Smart Scan non disponibile")
+            self.quick_scan.setToolTip("Motore di scansione non disponibile. Consulta i Dettagli avanzati.")
         elif self._last_result is None:
             self.mark.set_state("idle")
             self.task_title.setText("Smart Scan pronta")
@@ -244,7 +245,7 @@ class SmartScanPage(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(int(progress.percent))
         self.progress_label.setVisible(True)
-        suffix = f" · {progress.message}" if progress.message else ""
+        suffix = f" · {product_text(progress.message)}" if progress.message else ""
         self.progress_label.setText(
             f"{progress.completed_checks}/{progress.total_checks} controlli completati{suffix}"
         )
@@ -259,7 +260,7 @@ class SmartScanPage(QWidget):
         self.progress_label.setVisible(False)
         self.mark.set_state(self._orb_state_for_result(result.state))
         self.task_title.setText(self._title_for_state(result.state))
-        self.task_subtitle.setText(f"{result.summary} {result.recommendation}")
+        self.task_subtitle.setText(product_text(f"{result.summary} {result.recommendation}"))
         self.coverage_label.setText(
             f"Copertura: {result.coverage} · Controlli {result.completed_checks}/{result.total_checks} · "
             f"Rilevamenti {len(result.findings)} · Severità massima {result.highest_severity}"

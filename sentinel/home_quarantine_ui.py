@@ -57,7 +57,7 @@ class B657SmartScanPage(PolishedB65SmartScanPage):
         button = QPushButton()
         button.setObjectName("SecondaryAction")
         button.setMinimumHeight(40)
-        button.setAccessibleName(f"Quarantena reversibile: {card.model.title}")
+        button.setAccessibleName(f"Quarantena reversibile: {card.title_label.text()}")
         panel_layout.addWidget(button, 0, Qt.AlignmentFlag.AlignLeft)
 
         if self.quarantine_controller.has_active_quarantine(card.model.finding_id):
@@ -69,6 +69,7 @@ class B657SmartScanPage(PolishedB65SmartScanPage):
                     "Disponibile solo su conferma esplicita. BC Sentinel ricontrollerà SHA-256 e percorso prima dell'azione."
                 )
                 button.setText("Metti in quarantena")
+                button.setToolTip("Richiede conferma e una nuova verifica del file.")
                 button.setProperty("quarantineMode", "quarantine")
                 button.setEnabled(True)
             else:
@@ -130,9 +131,10 @@ class B657SmartScanPage(PolishedB65SmartScanPage):
 
     def _set_restore_state(self, card: QWidget, button: QPushButton, status: QLabel) -> None:
         button.setText("Ripristina file")
+        button.setToolTip("Richiede conferma e verifica del file prima del ripristino.")
         button.setProperty("quarantineMode", "restore")
         button.setEnabled(True)
-        button.setAccessibleName(f"Ripristina dalla quarantena: {card.model.title}")
+        button.setAccessibleName(f"Ripristina dalla quarantena: {card.title_label.text()}")
         if not status.text().strip():
             status.setText("File in quarantena. Il ripristino richiede un'altra conferma esplicita.")
 

@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QBoxLayout,
     QDialog,
+    QPlainTextEdit,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from sentinel import home_security_model as model
+from sentinel.ui_product_copy import product_text
 from sentinel.ui_design_system import COLORS, ReadOnlyToggle, apply_icon
 
 
@@ -185,20 +187,20 @@ class ScanPage(QWidget):
         self.quick_scan = QPushButton("Scansione rapida")
         self.quick_scan.setObjectName("PrimaryDisabled")
         self.quick_scan.setEnabled(False)
-        self.quick_scan.setAccessibleName("Scansione rapida non disponibile in B6-2")
+        self.quick_scan.setAccessibleName("Scansione rapida non disponibile")
         apply_icon(self.quick_scan, "bolt", COLORS["disabled_text"], 18)
 
         self.full_scan = QPushButton("Scansione completa")
         self.full_scan.setObjectName("SecondaryDisabled")
         self.full_scan.setEnabled(False)
-        self.full_scan.setAccessibleName("Scansione completa non disponibile in B6-2")
+        self.full_scan.setAccessibleName("Scansione completa non disponibile")
         apply_icon(self.full_scan, "search", COLORS["disabled_text"], 18)
 
         self.actions.addWidget(self.quick_scan)
         self.actions.addWidget(self.full_scan)
         self.actions.addStretch(1)
 
-        note = QLabel("Azioni operative previste in B6-3")
+        note = QLabel("Scansione non disponibile")
         note.setObjectName("Microcopy")
         note.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -287,6 +289,8 @@ class QuarantinePage(QWidget):
         active.setObjectName("FilterActive")
         active.setCheckable(True)
         active.setChecked(True)
+        active.setEnabled(False)
+        active.setToolTip("Vista corrente: file in quarantena.")
 
         restored = QPushButton("Ripristinati")
         restored.setObjectName("FilterButton")
@@ -297,7 +301,7 @@ class QuarantinePage(QWidget):
         self.filter_button.setObjectName("FilterButton")
         apply_icon(self.filter_button, "filter", COLORS["text_secondary"], 16)
         self.filter_button.setEnabled(False)
-        self.filter_button.setToolTip("I filtri diventano disponibili con dati reali.")
+        self.filter_button.setToolTip("Filtri aggiuntivi non disponibili.")
 
         tabs.addWidget(active)
         tabs.addWidget(restored)
@@ -309,8 +313,8 @@ class QuarantinePage(QWidget):
         lay.addWidget(self.table)
 
         self.empty = EmptyState(
-            "Nessun dato di quarantena disponibile",
-            "I file appariranno qui solo quando un provider di quarantena reale verrà collegato.",
+            "Nessun file in quarantena",
+            "I file messi in quarantena appariranno qui. Al momento non ci sono elementi isolati.",
             "quarantine",
         )
         lay.addWidget(self.empty)
@@ -325,13 +329,13 @@ class QuarantinePage(QWidget):
         for payload in rows:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            values = [payload.get(k, "") for k in ("file", "path", "date", "risk", "reason", "status", "action")]
+            values = [product_text(payload.get(k, "")) if k == "reason" else payload.get(k, "") for k in ("file", "path", "date", "risk", "reason", "status", "action")]
             for column, value in enumerate(values):
                 self.table.setItem(row, column, QTableWidgetItem(str(value)))
         has_rows = bool(rows)
         self.table.setVisible(has_rows)
         self.empty.setVisible(not has_rows)
-        self.filter_button.setEnabled(has_rows)
+        self.filter_button.setEnabled(False)
 
     def set_compact(self, compact: bool, mobile: bool = False) -> None:
         self.header_row.setDirection(
@@ -375,7 +379,8 @@ class HistoryPage(QWidget):
             button.setObjectName("FilterActive" if index == 0 else "FilterButton")
             button.setCheckable(index == 0)
             button.setChecked(index == 0)
-            button.setEnabled(index == 0)
+            button.setToolTip("Filtro corrente: tutti gli eventi." if index == 0 else "Filtro non disponibile.")
+            button.setEnabled(False)
             self.filters.addWidget(button)
             self.filter_buttons.append(button)
         self.header_row.addLayout(self.filters)
@@ -416,7 +421,7 @@ class HistoryPage(QWidget):
         self.table.setVisible(has_rows)
         self.empty.setVisible(not has_rows)
         for button in self.filter_buttons[1:]:
-            button.setEnabled(has_rows)
+            button.setEnabled(False)
 
     def set_compact(self, compact: bool, mobile: bool = False) -> None:
         self.header_row.setDirection(
@@ -640,7 +645,7 @@ class SettingsPage(QWidget):
         )
         for card in snapshot.cards[:3]:
             toggle = ReadOnlyToggle(card.status == model.STATUS_ACTIVE and card.runtime_verified)
-            toggle.setToolTip("Indicatore in sola lettura in B6-2.")
+            toggle.setToolTip("Indicatore in sola lettura.")
             self.protection_panel.body.addWidget(
                 SettingsRow(
                     card.label,
@@ -660,11 +665,11 @@ class SettingsPage(QWidget):
             "Preferenze dell’applicazione disponibili solo quando collegate a un provider reale.",
         )
         startup_toggle = ReadOnlyToggle(False)
-        startup_toggle.setToolTip("Impostazione non collegata in B6-2.")
+        startup_toggle.setToolTip("Impostazione non disponibile.")
         self.general_panel.body.addWidget(
             SettingsRow(
                 "Avvia BC Sentinel con Windows",
-                "L’impostazione non è collegata alla Home B6-2.",
+                "L’impostazione non è disponibile.",
                 icon_kind="settings",
                 control=startup_toggle,
                 meta="Non collegato",
@@ -800,6 +805,15 @@ class ThreatAlertDialog(QDialog):
 
         details_button = QPushButton("Dettagli")
         details_button.setObjectName("InlineButton")
+        details_button.setCheckable(True)
+        details_button.setAccessibleName("Dettagli avanzati del rilevamento")
+        raw_details = QPlainTextEdit()
+        raw_details.setReadOnly(True)
+        import json
+        raw_details.setPlainText(json.dumps(dict(threat), ensure_ascii=False, indent=2))
+        raw_details.setVisible(False)
+        lay.addWidget(raw_details)
+        details_button.toggled.connect(raw_details.setVisible)
         actions.addWidget(details_button)
         actions.addStretch(1)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 """B6-4 threat-card UI layered onto the accepted B6-3 Smart Scan page."""
 
 import json
+from sentinel.ui_product_copy import product_text, source_label
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -40,7 +41,7 @@ class ThreatCardWidget(QFrame):
 
         header = QHBoxLayout()
         header.setSpacing(12)
-        self.title_label = QLabel(model.title)
+        self.title_label = QLabel(product_text(model.title, "Elemento da verificare"))
         self.title_label.setObjectName("CardTitle")
         self.title_label.setWordWrap(True)
         self.title_label.setMinimumWidth(0)
@@ -58,7 +59,7 @@ class ThreatCardWidget(QFrame):
         self.reason_heading.setObjectName("ThreatFieldLabel")
         root.addWidget(self.reason_heading)
 
-        self.reason_label = QLabel(model.reason)
+        self.reason_label = QLabel(product_text(model.reason))
         self.reason_label.setObjectName("ThreatBodyText")
         self.reason_label.setWordWrap(True)
         self.reason_label.setMinimumWidth(0)
@@ -68,9 +69,9 @@ class ThreatCardWidget(QFrame):
         self.meta_layout.setSpacing(10)
         self.meta_blocks: list[QFrame] = []
         for label, value in (
-            ("Categoria", model.category),
+            ("Categoria", product_text(model.category, "Analisi di sicurezza")),
             ("Confidenza", model.confidence_label),
-            ("Fonte", model.source_check_id),
+            ("Fonte", source_label(model.source_check_id)),
         ):
             block = self._build_meta_block(label, value)
             self.meta_layout.addWidget(block, 1)
@@ -107,7 +108,7 @@ class ThreatCardWidget(QFrame):
         self.recommendation_heading.setObjectName("ThreatRecommendationTitle")
         recommendation_layout.addWidget(self.recommendation_heading)
 
-        self.recommendation_label = QLabel(model.recommendation)
+        self.recommendation_label = QLabel(product_text(model.recommendation))
         self.recommendation_label.setObjectName("ThreatRecommendationText")
         self.recommendation_label.setWordWrap(True)
         self.recommendation_label.setMinimumWidth(0)
@@ -117,7 +118,7 @@ class ThreatCardWidget(QFrame):
         self.advanced_button = QPushButton("Dettagli avanzati")
         self.advanced_button.setObjectName("AdvancedToggle")
         self.advanced_button.setCheckable(True)
-        self.advanced_button.setAccessibleName(f"Dettagli avanzati: {model.title}")
+        self.advanced_button.setAccessibleName(f"Dettagli avanzati: {self.title_label.text()}")
         self.advanced_button.toggled.connect(self._toggle_advanced)
         root.addWidget(self.advanced_button, 0, Qt.AlignmentFlag.AlignLeft)
 
@@ -128,7 +129,7 @@ class ThreatCardWidget(QFrame):
         self.advanced_text.setMinimumHeight(160)
         self.advanced_text.setMaximumHeight(280)
         self.advanced_text.setPlainText(
-            json.dumps(model.advanced_details, indent=2, ensure_ascii=False, sort_keys=True)
+            json.dumps({**model.advanced_details, "presentation_raw": {"title": model.title, "reason": model.reason, "category": model.category, "source_check_id": model.source_check_id}}, indent=2, ensure_ascii=False, sort_keys=True)
         )
         self.advanced_text.setVisible(False)
         root.addWidget(self.advanced_text)

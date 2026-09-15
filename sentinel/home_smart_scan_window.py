@@ -122,7 +122,7 @@ class B63SecurityOverviewWindow(base_ui.SecurityOverviewWindow):
             "Avvia Smart Scan" if available else "Smart Scan non disponibile"
         )
         self.smart_scan_button.setToolTip(
-            "Avvia Smart Scan" if available else reason or "Provider Smart Scan non disponibile"
+            "Avvia Smart Scan" if available else "Motore di scansione non disponibile"
         )
         apply_icon(
             self.smart_scan_button,
@@ -137,7 +137,7 @@ class B63SecurityOverviewWindow(base_ui.SecurityOverviewWindow):
         self.sidebar_scan_button.clicked.connect(self._start_smart_scan)
         self.sidebar_scan_button.setEnabled(available)
         self.sidebar_scan_button.setToolTip(
-            "Avvia Smart Scan" if available else reason or "Provider Smart Scan non disponibile"
+            "Avvia Smart Scan" if available else "Motore di scansione non disponibile"
         )
 
         self.full_scan_button.setEnabled(False)

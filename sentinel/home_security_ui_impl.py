@@ -303,7 +303,7 @@ class ModuleSwitch(QWidget):
         self.on = bool(on)
         self.setFixedSize(44, 24)
         self.setAccessibleName("Protection runtime switch")
-        self.setToolTip("Sola lettura in B6-2. I controlli runtime arriveranno in un milestone successivo.")
+        self.setToolTip("Indicatore in sola lettura. Il controllo del servizio non è disponibile.")
 
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
@@ -632,12 +632,12 @@ class SecurityOverviewWindow(QMainWindow):
 
         layout.addStretch(1)
 
-        self.sidebar_scan_button = QPushButton("Quick Scan · B6-3")
+        self.sidebar_scan_button = QPushButton("Scansione rapida")
         self.sidebar_scan_button.setObjectName("SidebarScan")
         self.sidebar_scan_button.setIcon(_make_icon("bolt", COLOR_TOKENS["accent"], 18))
         self.sidebar_scan_button.setIconSize(QSize(18, 18))
         self.sidebar_scan_button.setEnabled(False)
-        self.sidebar_scan_button.setToolTip("Quick Scan sarà attivata in B6-3")
+        self.sidebar_scan_button.setToolTip("Scansione rapida non disponibile")
         layout.addWidget(self.sidebar_scan_button)
 
         divider = QFrame()
@@ -648,6 +648,8 @@ class SecurityOverviewWindow(QMainWindow):
         for icon_kind, label in (("info", "Supporto"), ("protection", "Account")):
             button = QPushButton(label)
             button.setObjectName("SidebarFooterItem")
+            button.setAccessibleName(label)
+            button.setToolTip(f"{label} non disponibile in questa versione.")
             button.setIcon(_make_icon(icon_kind, COLOR_TOKENS["text_muted"], 18))
             button.setIconSize(QSize(18, 18))
             button.setEnabled(False)
@@ -720,7 +722,7 @@ class SecurityOverviewWindow(QMainWindow):
         self.smart_scan_button.setIconSize(QSize(18, 18))
         self.smart_scan_button.setEnabled(False)
         self.smart_scan_button.setMinimumWidth(190)
-        self.smart_scan_button.setAccessibleName("Smart Scan non disponibile fino a B6-3")
+        self.smart_scan_button.setAccessibleName("Scansione rapida non disponibile")
 
         self.full_scan_button = QPushButton("Scansione completa")
         self.full_scan_button.setObjectName("SecondaryDisabled")

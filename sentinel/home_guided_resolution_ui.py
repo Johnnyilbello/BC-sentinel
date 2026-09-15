@@ -3,6 +3,7 @@ from __future__ import annotations
 """B6-5.0 passive Guided Resolution UI layered on B6-4 Threat Cards."""
 
 import json
+from sentinel.ui_product_copy import product_text
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -54,7 +55,7 @@ class GuidedResolutionPanel(QFrame):
         self.eyebrow.setObjectName("GuidanceEyebrow")
         root.addWidget(self.eyebrow)
 
-        self.headline_label = QLabel(model.headline)
+        self.headline_label = QLabel(product_text(model.headline))
         self.headline_label.setObjectName("GuidanceHeadline")
         self.headline_label.setWordWrap(True)
         self.headline_label.setMinimumWidth(0)
@@ -64,10 +65,10 @@ class GuidedResolutionPanel(QFrame):
         self.status_layout.setSpacing(8)
         self.review_badge = QLabel(_review_label(model))
         self.review_badge.setObjectName("GuidanceStatus")
-        self.review_badge.setToolTip(f"Stato tecnico: {model.review_state}")
+        self.review_badge.setToolTip("Esamina le prove nei Dettagli avanzati.")
         self.authority_badge = QLabel("Solo verifica")
         self.authority_badge.setObjectName("GuidanceStatus")
-        self.authority_badge.setToolTip(f"Autorità tecnica: {model.authority_state}")
+        self.authority_badge.setToolTip("Nessuna azione automatica autorizzata.")
         self.status_layout.addWidget(self.review_badge)
         self.status_layout.addWidget(self.authority_badge)
         self.status_layout.addStretch(1)
@@ -86,7 +87,7 @@ class GuidedResolutionPanel(QFrame):
         self.next_step_heading.setObjectName("GuidanceStepLabel")
         root.addWidget(self.next_step_heading)
 
-        self.next_step_label = QLabel(_plain_next_step(model))
+        self.next_step_label = QLabel(product_text(_plain_next_step(model)))
         self.next_step_label.setObjectName("GuidanceStepText")
         self.next_step_label.setWordWrap(True)
         self.next_step_label.setMinimumWidth(0)
@@ -102,7 +103,7 @@ class GuidedResolutionPanel(QFrame):
         self.details_button = QPushButton("Dettagli risoluzione")
         self.details_button.setObjectName("AdvancedToggle")
         self.details_button.setCheckable(True)
-        self.details_button.setAccessibleName(f"Dettagli risoluzione: {model.title}")
+        self.details_button.setAccessibleName(f"Dettagli risoluzione: {product_text(model.title, "Elemento da verificare")}")
         self.details_button.toggled.connect(self._toggle_details)
         root.addWidget(self.details_button, 0, Qt.AlignmentFlag.AlignLeft)
 

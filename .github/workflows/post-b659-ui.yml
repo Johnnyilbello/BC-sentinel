@@ -1,0 +1,31 @@
+name: Post B6-5.9 UI interaction gate
+on:
+  push:
+    branches: [feature/v011-beta6-post-b659-ui-polish]
+  pull_request:
+    paths:
+      - 'sentinel/**'
+      - 'tests/**'
+      - 'TEST-POST-B659-UI.ps1'
+      - '.github/workflows/post-b659-ui.yml'
+  workflow_dispatch:
+jobs:
+  interaction:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Deterministic regression and actual offscreen clicks
+        shell: pwsh
+        run: ./TEST-POST-B659-UI.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: post-b659-ui-acceptance
+          path: acceptance-post-b659-ui.xml
