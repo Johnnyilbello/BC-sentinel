@@ -90,9 +90,7 @@ To inspect the exact accepted Beta7 source, use:
 checkpoint/v011-beta7-b77-pass
 ```
 
-To review the completed Beta7 roadmap, open:
-
-`BC_Sentinel_Roadmap_v0_11_0_Beta7.md` on the final Beta7 checkpoint/accepted branch.
+The completed milestone record is available in [BC_Sentinel_Roadmap_v0_11_0_Beta7.md](BC_Sentinel_Roadmap_v0_11_0_Beta7.md).
 
 ## Start the current stable launcher on Windows
 
