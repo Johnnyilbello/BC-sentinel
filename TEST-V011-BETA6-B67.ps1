@@ -6,13 +6,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $PSScriptRoot
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $env:PYTHONUTF8 = "1"
 
 function Fail([string]$Stage, [string]$Message) {
     Write-Host ("B67 FAIL STAGE=" + $Stage + " | " + $Message) -ForegroundColor Red
     Write-Host "BC SENTINEL v0.11.0-beta.6 B6-7 PORTABLE TECHNICIAN GUI RELEASE - FAIL" -ForegroundColor Red
     exit 1
+}
+
+function Get-ProtectedWorkingTreeState([string]$GitPath) {
+    $LocalPath = Join-Path $PSScriptRoot ($GitPath -replace '/', '\')
+    if (Test-Path -LiteralPath $LocalPath -PathType Leaf) {
+        return (Get-FileHash -LiteralPath $LocalPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    return "<ABSENT>"
 }
 
 if (-not $ConfirmPortableGuiAcceptance) {
@@ -28,7 +36,9 @@ try {
 
     $RepoRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
     $VenvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-    if (Test-Path -LiteralPath $VenvPython -PathType Leaf) { $Py = $VenvPython }
+    if (Test-Path -LiteralPath $VenvPython -PathType Leaf) {
+        $Py = $VenvPython
+    }
     else {
         $PythonCommand = Get-Command python -ErrorAction SilentlyContinue
         if (-not $PythonCommand) { Fail "preflight" "Python non disponibile." }
@@ -40,22 +50,40 @@ try {
 
     $Branch = (& git branch --show-current | Select-Object -First 1)
     $Commit = (& git rev-parse HEAD | Select-Object -First 1)
+    $SourceCheckpointCommit = "72c18bbdf1c50c633343750ead0f2467d8705e12"
+
+    & git cat-file -e ($SourceCheckpointCommit + "^{commit}") 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Fail "protected-preflight" ("Frozen B6-5.9 source checkpoint commit not available locally: " + $SourceCheckpointCommit)
+    }
+
     Write-Host ""
     Write-Host "## BC Sentinel B6-7 - Portable Technician GUI Release Acceptance"
     Write-Host ("Branch: " + $Branch)
     Write-Host ("Commit: " + $Commit)
+    Write-Host ("Frozen source checkpoint: " + $SourceCheckpointCommit)
     Write-Host ""
 
+    # B6-7 must preserve the protected B2 paths exactly as represented by the
+    # frozen B6-5.9 predecessor. Two historical B2 files are intentionally not
+    # synchronized in this repository snapshot; absence is therefore a frozen
+    # state, not a preflight failure. Any add/delete/modify relative to the
+    # checkpoint remains fail-closed.
     $Protected = @(
-        ".\sentinel\protection_service_core.py",
-        ".\sentinel\realtime.py",
-        ".\sentinel\edr.py",
-        ".\sentinel\edr_service_bridge.py"
+        "sentinel/protection_service_core.py",
+        "sentinel/realtime.py",
+        "sentinel/edr.py",
+        "sentinel/edr_service_bridge.py"
     )
     $BeforeProtected = @{}
-    foreach ($Path in $Protected) {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { Fail "protected-preflight" ("protected B2 source missing: " + $Path) }
-        $BeforeProtected[$Path] = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    foreach ($GitPath in $Protected) {
+        & git diff --quiet $SourceCheckpointCommit HEAD -- $GitPath
+        if ($LASTEXITCODE -ne 0) {
+            Fail "protected-preflight" ("protected B2 path differs from frozen B6-5.9 checkpoint: " + $GitPath)
+        }
+        $State = Get-ProtectedWorkingTreeState $GitPath
+        $BeforeProtected[$GitPath] = $State
+        Write-Host ("Protected baseline: " + $GitPath + " = " + $(if ($State -eq "<ABSENT>") { "ABSENT (frozen)" } else { $State })) -ForegroundColor DarkGray
     }
 
     $Base = Join-Path $env:USERPROFILE "BCSentinel-TestTemp"
@@ -125,17 +153,23 @@ try {
     Write-Host "Portable copied-artifact GUI acceptance: PASS" -ForegroundColor Green
     Write-Host ""
 
-    Write-Host "[5/6] Verify no service registration and protected B2 sources unchanged..."
+    Write-Host "[5/6] Verify no service registration and protected B2 state unchanged..."
     $Services = @(Get-CimInstance Win32_Service | Where-Object {
         ([string]$_.PathName).ToLowerInvariant().Contains("bc-sentinel-beta6-portable") -or
         ([string]$_.PathName).ToLowerInvariant().Contains("beta6_portable_gui_entry")
     })
     if ($Services.Count -ne 0) { Fail "service-check" "B6-7 unexpectedly registered a Windows service." }
-    foreach ($Path in $Protected) {
-        $After = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($After -ne $BeforeProtected[$Path]) { Fail "protected-source" ("B6-7 modified protected B2 source: " + $Path) }
+    foreach ($GitPath in $Protected) {
+        $After = Get-ProtectedWorkingTreeState $GitPath
+        if ($After -ne $BeforeProtected[$GitPath]) {
+            Fail "protected-source" ("B6-7 changed protected B2 working-tree state: " + $GitPath)
+        }
+        & git diff --quiet $SourceCheckpointCommit HEAD -- $GitPath
+        if ($LASTEXITCODE -ne 0) {
+            Fail "protected-source" ("protected B2 path no longer matches frozen B6-5.9 checkpoint: " + $GitPath)
+        }
     }
-    Write-Host "No service + protected B2 sources byte-identical: PASS" -ForegroundColor Green
+    Write-Host "No service + protected B2 presence/content unchanged: PASS" -ForegroundColor Green
     Write-Host ""
 
     if ($OpenArtifactUI) {
@@ -167,14 +201,15 @@ try {
         $UiProcess = Start-Process -FilePath $Exe -PassThru -Wait
         if ($UiProcess.ExitCode -ne 0) { Fail "artifact-ui" ("Built GUI exited with code " + $UiProcess.ExitCode) }
         Write-Host "Built GUI opened and closed normally: PASS" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "[6/6] Real UI opening not requested; automated built-artifact smoke already PASS." -ForegroundColor Green
     }
 
     Write-Host ""
     Write-Host ("B67 ARTIFACT=" + $ArtifactFolder) -ForegroundColor Green
     Write-Host ("B67 EXE SHA256=" + $ExeHash) -ForegroundColor Green
-    Write-Host "B67: Beta5 predecessor tests PASS | Beta6 tests PASS | PyInstaller onedir/windowed PASS | copied artifact integrity PASS | GUI smoke PASS | exact runtime safety contract PASS | target byte-identical | no service/installer/driver/network/cloud requirement | B2 sources unchanged" -ForegroundColor Green
+    Write-Host "B67: Beta5 predecessor tests PASS | Beta6 tests PASS | PyInstaller onedir/windowed PASS | copied artifact integrity PASS | GUI smoke PASS | exact runtime safety contract PASS | target byte-identical | no service/installer/driver/network/cloud requirement | B2 protected state unchanged" -ForegroundColor Green
     Write-Host "BC SENTINEL v0.11.0-beta.6 B6-7 PORTABLE TECHNICIAN GUI RELEASE - PASS" -ForegroundColor Green
     exit 0
 }
