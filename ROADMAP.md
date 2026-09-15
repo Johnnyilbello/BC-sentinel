@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-3 — Credential-Access Indicator Detection
+B8-4 — Coverage Verification Campaign
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b82-pass
-a4f4b53bf2ea2dcd00744438c716a18ef5287262
+checkpoint/v011-beta8-b83-pass
+ccb182f4869ec9ee050e86269a8a9b7269f9dbbf
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -39,7 +39,7 @@ GAP       3
 VERIFIED  0
 ```
 
-Accepted B8-1 and B8-2 detector evidence supports `B7-RANSOMWARE-001` and `B7-DEFENSE-EVASION-001` as `PARTIAL`. Aggregate coverage is intentionally recomputed only in B8-4.
+Accepted B8-1, B8-2 and B8-3 detector evidence supports `B7-RANSOMWARE-001`, `B7-DEFENSE-EVASION-001` and `B7-CREDENTIAL-001` as `PARTIAL`. Aggregate coverage is intentionally recomputed only in B8-4.
 
 ## Engineering contract
 
@@ -224,7 +224,14 @@ Acceptance summary:
 - `VERIFIED` remains prohibited because fixtures are normalized synthetic in-memory evidence only;
 - no security-control mutation, service control, registry access/mutation, process execution, file I/O, network I/O, credential access, remediation, quarantine, repair, restore, delete, termination, allowlist mutation, or privileged mutation authority was added.
 
-### B8-3 — Credential-Access Indicator Detection 🟡 IMPLEMENTED / LOCAL ACCEPTANCE PENDING
+### B8-3 — Credential-Access Indicator Detection ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b83-pass
+ccb182f4869ec9ee050e86269a8a9b7269f9dbbf
+```
 
 Objective: validate safe, non-secret-stealing indicators associated with credential-access behavior, targeting `B7-CREDENTIAL-001`.
 
@@ -243,9 +250,11 @@ Implemented scope:
 - `B7-CREDENTIAL-001` may move only to `PARTIAL` at this milestone; `VERIFIED` remains prohibited because evidence is synthetic metadata only;
 - no credential-access, process-memory, protected-store, browser-store, token-cache, file, registry, network, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
 
-Current acceptance evidence:
+Acceptance summary:
 
-- exact-head Windows CI PASS on `314ae64824d22f0dc9b190f3b671eec15c53537e`;
+- local Windows acceptance PASS on `ccb182f4869ec9ee050e86269a8a9b7269f9dbbf`, evidenced by the user-supplied `Testo incollato.txt` transcript;
+- Windows CI PASS on that same commit: [run 34996407273](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/34996407273), `windows-latest`, including `Run B8-3 exact acceptance gate`;
+- compile, protected B2, frozen B8-0/B8-1/B8-2 sources and repository-hygiene gates PASS;
 - 486 Beta5/Beta6/Beta7/B8-0/B8-1/B8-2/B8-3 tests PASS with 36 non-blocking pre-existing UI warnings;
 - positive fixture => `DETECTED`, score 10;
 - approved security/admin fixture => `REVIEW_REQUIRED`, never `DETECTED`;
@@ -255,10 +264,6 @@ Current acceptance evidence:
 - Security Graph / Incident Correlation evidence binding PASS;
 - resource budget PASS;
 - all credential-access, data-read, execution, remediation, and privileged authority flags remain false.
-
-Remaining freeze requirement:
-
-- local Windows acceptance must PASS on the final exact source state before `checkpoint/v011-beta8-b83-pass` may be created and B8-3 may be marked `ACCEPTED / FROZEN`.
 
 ### B8-4 — Coverage Verification Campaign
 
