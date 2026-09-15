@@ -1,11 +1,18 @@
 # BC Sentinel v0.11.0-beta.7 — B7-2 Implementation Status
 
-Status: **IMPLEMENTED — WINDOWS CI + LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **CLOSED / ACCEPTED**
 
-Active branch:
+Accepted implementation commit:
 
 ```text
-feature/v011-beta7-b72-incident-correlation
+32bf6563eccc7f03c26e08afe6fcb58cf207cd8d
+```
+
+Frozen checkpoint:
+
+```text
+checkpoint/v011-beta7-b72-pass
+32bf6563eccc7f03c26e08afe6fcb58cf207cd8d
 ```
 
 Accepted predecessor:
@@ -30,44 +37,48 @@ It groups Security Graph observations into incidents only when there is explicit
 
 Temporal proximity by itself never correlates two observations.
 
-## Correlation output
+## Accepted output contract
 
-Each incident records:
+Each incident records deterministic membership, source edge bindings, incident timing and explanatory correlation links. Every accepted link records its rule, reason, endpoints, time delta and supporting evidence or explicit correlation keys.
 
-- deterministic incident ID;
-- exact member node IDs;
-- exact source graph edge IDs;
-- start/end timestamps derived from member observations;
-- explanatory correlation links.
-
-Each correlation link records:
-
-- deterministic link ID;
-- source and target node IDs;
-- correlation rule;
-- human-inspectable reason;
-- observed time and time delta;
-- supporting evidence IDs;
-- supporting explicit correlation keys when applicable;
-- source graph edge binding when the link comes from an existing graph relation.
-
-## Integrity and determinism
-
-B7-2 enforces:
+Accepted invariants include:
 
 - validated B7-1 Security Graph input only;
-- source graph digest preserved before/after correlation;
+- exact source graph digest preserved before/after correlation;
 - no source graph mutation;
 - every source node assigned exactly once;
 - every source graph edge represented exactly once;
 - deterministic incident/link IDs;
-- stable ordering and stable JSON serialization;
-- SHA-256 digest of correlation output;
+- stable ordering and JSON serialization;
+- SHA-256 correlation-result digest;
 - exact round-trip serialization;
 - malformed explicit correlation keys fail closed;
 - invalid duplicate/cross-incident bindings fail closed;
-- temporal correlation rules cannot exceed the configured time window;
+- temporal correlation rules respect the configured time window;
+- temporal proximity alone is never sufficient;
 - every accepted correlation link has an explanation.
+
+## Acceptance evidence
+
+Local Windows gate:
+
+```text
+372 passed, 36 warnings
+Compile gate: PASS
+Predecessor + B7-2 deterministic gate: PASS
+B7-0 coverage ledger self-check: PASS
+B7-1 Security Graph self-check: PASS
+Incident Correlation determinism + safety contract: PASS
+BC SENTINEL v0.11.0-beta.7 B7-2 INCIDENT CORRELATION ENGINE - PASS
+```
+
+Correlation digest:
+
+```text
+780f2bb2dc91932d63dabb729d635fbf0f1dbe58896ed9df686aca73d0ac52cb
+```
+
+Windows CI on the exact accepted implementation commit also completed successfully.
 
 ## Safety boundary
 
@@ -85,39 +96,14 @@ TRUST/ALLOWLIST mutation = false
 privileged/system mutation = false
 ```
 
-B7-2 does not execute detectors, mutate files, contact networks, quarantine, repair, restore, terminate processes or change trust state.
+Protected B2 state, B7-0 Coverage Ledger and B7-1 Security Graph accepted foundations remained unchanged.
 
-## Predecessor freeze
+## Next milestone
 
-The local acceptance explicitly verifies:
-
-- protected B2 paths remain unchanged from accepted Beta6;
-- B7-0 coverage ledger core files remain unchanged;
-- B7-1 Security Graph module/tests remain unchanged from `checkpoint/v011-beta7-b71-pass`.
-
-## Automated gate
-
-Windows CI runs:
-
-1. compile B7-0/B7-1/B7-2 modules and tests;
-2. Beta5 + Beta6 + B7-0 + B7-1 regression plus B7-2 deterministic tests;
-3. B7-0 coverage ledger self-check;
-4. B7-1 Security Graph self-check;
-5. B7-2 Incident Correlation self-check;
-6. explicit determinism/no-authority-expansion assertions.
-
-## Local Windows acceptance
-
-After CI is green, run from normal PowerShell in the repository root:
-
-```powershell
-git fetch origin; git checkout feature/v011-beta7-b72-incident-correlation; git pull --ff-only origin feature/v011-beta7-b72-incident-correlation; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA7-B72.ps1" -ConfirmIncidentCorrelationAcceptance
-```
-
-Expected final line:
+Proceed only from:
 
 ```text
-BC SENTINEL v0.11.0-beta.7 B7-2 INCIDENT CORRELATION ENGINE - PASS
+checkpoint/v011-beta7-b72-pass
 ```
 
-Do not create `checkpoint/v011-beta7-b72-pass` until both Windows CI and the local-device acceptance pass.
+Next milestone: **B7-3 — Confidence Gate**.
