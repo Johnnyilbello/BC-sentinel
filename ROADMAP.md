@@ -1,49 +1,8 @@
 # BC Sentinel — Canonical Roadmap
 
-**Single source of truth for project status, accepted checkpoints, active milestones, coverage state and forward development.**
+This is the **only roadmap source of truth** for BC Sentinel. Every accepted engineering change, checkpoint transition, roadmap change, and repository-structure change must update this file.
 
-Last updated: 2026-09-15
-
-## Repository roadmap rule
-
-`ROADMAP.md` is the **only roadmap file** in the repository.
-
-From this point forward:
-
-- do not create version-specific roadmap files;
-- update this file whenever a milestone is opened, materially changed, accepted, frozen or superseded;
-- accepted checkpoints remain immutable even when this roadmap advances;
-- milestone implementation/status/acceptance history is preserved in Git history and immutable checkpoint refs instead of accumulating standalone root reports;
-- historical roadmap and milestone-report files are removed from the active working tree; Git history preserves them.
-
-## Repository hygiene rule
-
-The root of active branches should stay readable for users landing on the GitHub page. Root Markdown documentation is limited to:
-
-```text
-README.md
-ROADMAP.md
-SECURITY.md
-STABLE-RELEASE.md
-```
-
-Superseded milestone reports, implementation-status documents, local acceptance reports, test-status documents, old test READMEs, source-sync notices, historical security-audit snapshots and obsolete release-note files must not be reintroduced into the root. If historical evidence is needed, retrieve it from Git history or the corresponding immutable checkpoint.
-
-This cleanup rule is part of the Beta8 foundation and must be checked whenever repository structure is materially changed.
-
----
-
-# Current accepted state
-
-Latest immutable accepted checkpoint:
-
-```text
-v0.11.0-beta.7 — Detection Coverage & Incident Intelligence
-checkpoint/v011-beta7-b77-pass
-4d57f749276c588782147d47078ef4c52d1adc51
-```
-
-Acceptance state:
+## Current state
 
 ```text
 Beta5  COMPLETE / FROZEN
@@ -52,25 +11,36 @@ Beta7  COMPLETE / FROZEN
 Beta8  IN PROGRESS
 ```
 
-Final Beta7 Windows gate:
+Latest accepted engineering checkpoint:
 
 ```text
-422 passed, 36 warnings
-Windows CI: PASS
-Local Windows acceptance: PASS
+checkpoint/v011-beta8-b80-pass
+969781bd7633d0b2bc92840e8f12220f00de4279
 ```
 
-Final Beta7 deterministic core digest:
+Current coverage baseline:
 
 ```text
-dcd6a7ff975c2fbdce9549d4af630ab6c252acf26ca7b0c31e0c70e72db8ea4e
+PARTIAL   3
+GAP       3
+VERIFIED  0
 ```
 
----
+## Engineering contract
 
-# Non-negotiable safety contract
+- Exact acceptance first, immutable checkpoint second.
+- An accepted checkpoint is never moved.
+- Windows CI and local Windows acceptance must pass on the accepted source state before a milestone is frozen.
+- Documentation may advance after a frozen checkpoint, but subsequent engineering work must start from the accepted predecessor required by the roadmap.
+- Protected B2 sources stay unchanged unless a later explicit security milestone intentionally supersedes them and passes its own acceptance.
+- Security testing uses harmless fixtures, simulations, disposable VMs, and controlled offline targets.
+- No protection scenario is promoted to `VERIFIED` without current detector-path acceptance evidence.
+- Missing evidence fails closed; synthetic evidence alone is not real-world detector verification.
+- Scope is not widened while repairing an acceptance failure.
 
-Unless a future milestone explicitly expands authority and passes a dedicated Windows acceptance gate, the following remain false:
+### Authority boundary
+
+Unless a dedicated future milestone explicitly expands authority and passes acceptance:
 
 ```text
 automatic quarantine          = false
@@ -84,25 +54,17 @@ TRUST/ALLOWLIST mutation      = false
 privileged/system mutation    = false
 ```
 
-`RECOMMEND` is advisory. Missing evidence must never be interpreted as proof of safety. High-impact authority must be earned through explicit evidence, reversibility and acceptance.
+## Accepted foundations
 
----
+### Beta5 — Technician / recovery hardening
 
-# Accepted foundation
+**Status: COMPLETE / FROZEN**
 
-## Beta3 — Rescue & Recovery foundation ✅
+Established the hardened technician/recovery foundation, hostile-target assessment, stress/recovery validation, evidence packaging, controlled real-PC acceptance, and portable technician release foundations.
 
-Accepted offline recovery architecture, portable rescue workflows, safe data rescue, reversible repair foundations and integrity certification.
+### Beta6 — Technician UX and safe guided resolution
 
-## Beta4 — Guided Rescue Console ✅
-
-Accepted guided evidence inventory, repair handoff, safe data rescue, integrated certification and portable Rescue Console.
-
-## Beta5 — Real-world Rescue hardening ✅
-
-Accepted real-world target discovery, hostile/damaged-system handling, stress hardening, crash-safe resume, recovery decision engine, technician evidence package, controlled real-PC acceptance and Portable Technician Release.
-
-## Beta6 — Unified Home / Technician UX ✅ COMPLETE / FROZEN
+**Status: COMPLETE / FROZEN**
 
 Final accepted checkpoint:
 
@@ -111,9 +73,11 @@ checkpoint/v011-beta6-b67-pass
 eb08758a304eb838d08af890ef9c4786264afbc0
 ```
 
-Accepted outcomes include the unified Home security experience, smart scan flow, guided resolution, persistent quarantine/restore behavior, safety-preserving technician UX and portable GUI packaging. Beta6 remains immutable.
+Delivered the technician-facing Windows UI line, Home security overview, Smart Scan UX, threat cards, guided-resolution foundations, quarantine/recovery safety work, and portable GUI acceptance while preserving the no-automatic-remediation boundary.
 
-## Beta7 — Detection Coverage & Incident Intelligence ✅ COMPLETE / FROZEN
+### Beta7 — Detection Coverage & Incident Intelligence
+
+**Status: COMPLETE / FROZEN**
 
 Final accepted checkpoint:
 
@@ -124,24 +88,16 @@ checkpoint/v011-beta7-b77-pass
 
 Accepted milestones:
 
-```text
-B7-0  Coverage Ledger Foundation            PASS
-B7-1  Sentinel Security Graph Foundation    PASS
-B7-2  Incident Correlation Engine           PASS
-B7-3  Confidence Gate                       PASS
-B7-4  Attack-Chain Acceptance Harness       PASS
-B7-5  Explainable Security                  PASS
-B7-6  Coverage Expansion Campaign           PASS
-B7-7  Windows Acceptance & Freeze           PASS
-```
+- **B7-0 — Coverage Ledger Foundation** — machine-readable attack coverage ledger.
+- **B7-1 — Sentinel Security Graph Foundation** — typed/provenance-preserving security graph.
+- **B7-2 — Incident Correlation Engine** — deterministic, explained incident grouping.
+- **B7-3 — Confidence Gate** — advisory `RECOMMEND`, `REVIEW_REQUIRED`, `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes.
+- **B7-4 — Attack-Chain Acceptance Harness** — harmless in-memory multi-stage acceptance chain.
+- **B7-5 — Explainable Security** — user and technical explanations grounded in evidence IDs.
+- **B7-6 — Coverage Expansion Campaign** — explicit PARTIAL/GAP accounting.
+- **B7-7 — Beta7 Windows Acceptance & Freeze** — full regression/resource/safety freeze.
 
-Beta7 established deterministic, evidence-bound incident intelligence without expanding remediation authority.
-
----
-
-# Current measurable coverage baseline
-
-The accepted Beta7 coverage campaign ends with:
+Beta7 closed with:
 
 ```text
 PARTIAL   3
@@ -149,206 +105,102 @@ GAP       3
 VERIFIED  0
 ```
 
-Current PARTIAL scenario families:
+## Beta8 — Verified Detection & Predictive Defense
 
-- `B7-POWERSHELL-001` — suspicious script / PowerShell abuse;
-- `B7-PERSISTENCE-001` — persistence;
-- `B7-C2-DNS-001` — suspicious DNS/network activity.
+**Status: IN PROGRESS**
 
-Current explicit GAP scenario families:
+Goal: convert explicit coverage gaps into reproducible detector-path evidence first, then build predictive multi-stage reasoning on top of accepted graph/correlation/confidence foundations.
 
-- `B7-RANSOMWARE-001` — ransomware-like behavior;
-- `B7-DEFENSE-EVASION-001` — defense evasion / security-control tampering;
-- `B7-CREDENTIAL-001` — credential-access indicators.
+### B8-0 — Beta8 Foundation + New Coverage Baseline ✅ ACCEPTED / FROZEN
 
-Synthetic evidence alone is not VERIFIED coverage. A scenario may be promoted only after a dedicated harmless detector-path acceptance proves the behavior on the target platform.
-
----
-
-# Innovation program status
-
-```text
-I1  Sentinel Security Graph        ✅ accepted in B7-1
-I2  Confidence Gate                ✅ accepted in B7-3
-I3  Attack Prediction Engine       🟡 planned in Beta8
-I4  Reversible Self-Healing        ⏳ future gated authority work
-I5  Rescue Continuity              ⏳ future
-I6  Deception Mesh                 ⏳ future
-I7  Adaptive Local Intelligence    ⏳ future
-I8  Explainable Security           ✅ accepted in B7-5
-```
-
----
-
-# Beta8 — Verified Detection & Predictive Defense
-
-## Objective
-
-Beta8 converts the conservative Beta7 coverage baseline into reproducible detector-path evidence and then begins predictive multi-stage defense using the accepted Security Graph and Confidence Gate.
-
-No scenario becomes `VERIFIED` simply because supporting code exists. No predictive output grants remediation authority by itself.
-
-## B8-0 — Beta8 Foundation + New Coverage Baseline 🟡 CURRENT
-
-Purpose: freeze the exact Beta7 final state as Beta8's predecessor and create a deterministic, machine-readable Beta8 starting baseline.
-
-Required outcomes:
-
-- branch only from `checkpoint/v011-beta7-b77-pass` / `4d57f749276c588782147d47078ef4c52d1adc51`;
-- preserve Beta6/Beta7 accepted source and safety boundaries unchanged;
-- create a machine-readable Beta8 coverage baseline for exactly the six accepted scenario IDs;
-- baseline must preserve `PARTIAL=3`, `GAP=3`, `VERIFIED=0` at start;
-- bind the baseline to the accepted Beta7 final core digest and B7-6 campaign digest;
-- identify the next required acceptance milestone for each scenario;
-- mark ransomware, defense-evasion and credential-access as explicit Beta8 verification targets;
-- keep active-branch root documentation within the repository hygiene rule defined above;
-- no unsupported positive claims;
-- deterministic ordering, stable serialization and SHA-256 baseline digest;
-- baseline validation must fail closed on scenario/status/digest/authority tampering;
-- no process execution, file mutation, network I/O, credential access, registry mutation or remediation authority added by the baseline engine;
-- complete accepted predecessor regression remains green;
-- dedicated Windows CI and local Windows acceptance before checkpoint freeze.
-
-Planned checkpoint after acceptance:
+Accepted source:
 
 ```text
 checkpoint/v011-beta8-b80-pass
+969781bd7633d0b2bc92840e8f12220f00de4279
 ```
 
-## B8-1 — Ransomware-like Detector Acceptance
+Acceptance summary:
 
-Build harmless detector-path acceptance using controlled temporary-directory mutation patterns and synthetic canary files. Prove detection behavior without destructive encryption or uncontrolled malware.
+- compile PASS;
+- 450 local Windows tests PASS;
+- exact-head Windows CI PASS;
+- protected B2 unchanged;
+- accepted Beta7 intelligence/final-gate sources unchanged;
+- single-roadmap invariant PASS;
+- deterministic baseline and round-trip PASS;
+- coverage remains `PARTIAL=3 / GAP=3 / VERIFIED=0`;
+- no remediation/execution authority added.
 
-Target outcome: promote `B7-RANSOMWARE-001` only if detector-path evidence satisfies the verification contract.
+Verification targets inherited by Beta8:
 
-## B8-2 — Defense-Evasion / Tamper Detection
+1. `B7-RANSOMWARE-001`
+2. `B7-DEFENSE-EVASION-001`
+3. `B7-CREDENTIAL-001`
 
-Validate non-privileged, harmless control-tamper indicators against the real detector path without disabling actual security controls.
+### Repository hygiene pass ✅ ACTIVE WORKING-TREE POLICY
 
-Target outcome: promote `B7-DEFENSE-EVASION-001` only after reproducible detector acceptance.
+After B8-0 acceptance, the public repository root is kept intentionally compact. Historical milestone launchers, old test/retest/update scripts, diagnostic/recovery helpers, obsolete integration patches, superseded checksums, and historical reports belong in Git history/checkpoints rather than the public root.
 
-## B8-3 — Credential-Access Indicator Detection
+Root-facing project files are limited to current project metadata/documentation and the stable launcher. Engineering implementation remains organized under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, and later structured script folders when needed).
 
-Use metadata-only fake credential-access indicators and synthetic fixtures. No real credentials, secrets or credential extraction are allowed.
+This hygiene work does **not** rewrite or move immutable checkpoints.
 
-Target outcome: promote `B7-CREDENTIAL-001` only after safe detector-path acceptance.
+### B8-1 — Ransomware-like Detector Acceptance ⏭ NEXT
 
-## B8-4 — Coverage Verification Campaign
+Objective: establish a reproducible, harmless detector path for ransomware-like behavior and determine whether `B7-RANSOMWARE-001` can legitimately move beyond GAP.
 
-Re-run the six-scenario campaign using accepted B8 detector evidence.
+Required acceptance properties:
 
-Required outputs:
+- controlled non-destructive fixtures only;
+- explicit detector inputs and emitted evidence;
+- deterministic result for identical evidence;
+- false-positive controls/negative fixtures;
+- graph/correlation/evidence provenance preserved;
+- measurable detection latency and resource cost;
+- no automatic quarantine/repair/restore or destructive authority;
+- scenario remains GAP/PARTIAL unless the acceptance evidence truly supports promotion.
 
-- explicit per-scenario status;
-- exact evidence references;
-- false-positive status where measurable;
-- time-to-detection where applicable;
-- evidence quality;
-- platform/build provenance;
-- no unsupported `VERIFIED` status.
+### B8-2 — Defense-Evasion / Tamper Detection
 
-## B8-5 — Attack Prediction Engine Foundation
+Validate detector coverage for control tampering/defense-evasion indicators with explicit provenance and false-positive controls. No protection claim without accepted evidence.
 
-Use the accepted Security Graph, incident correlation and temporal evidence to estimate whether an incident is converging toward objectives such as ransomware, persistence, credential access, C2 or defense evasion.
+### B8-3 — Credential-Access Indicator Detection
 
-Prediction requirements:
+Validate safe, non-secret-stealing indicators associated with credential-access behavior. Fixtures must not extract or expose real credentials.
 
-- evidence-driven;
-- confidence-scored;
-- deterministic baseline path before optional adaptive intelligence;
-- explicit uncertainty;
-- no automatic execution authority;
-- inspectable reasoning and evidence IDs.
+### B8-4 — Coverage Verification Campaign
 
-## B8-6 — Predictive Multi-Stage Attack Chains
+Recompute the coverage ledger from accepted B8 detector evidence. Promote only scenarios that meet the verification contract; unresolved scenarios remain explicit GAP/PARTIAL.
 
-Validate prediction over harmless multi-stage scenarios. Measure how early BC Sentinel recognizes likely harmful objectives relative to the final synthetic stage.
+### B8-5 — Attack Prediction Engine Foundation
 
-## B8-7 — Beta8 Windows Acceptance & Freeze
+Use accepted graph/correlation sequences to estimate likely next attack stages without inventing evidence or granting execution authority.
 
-Final Beta8 gate:
+### B8-6 — Predictive Multi-Stage Attack Chains
 
-- Beta5/Beta6/Beta7 regression green;
-- all accepted Beta8 detector scenarios reproducible;
-- coverage ledger/baseline contains no unsupported claims;
-- prediction outputs deterministic and evidence-bound;
-- false positive and resource-cost checks included;
-- safety contract preserved;
-- exact-head Windows CI + local Windows acceptance;
-- immutable Beta8 final checkpoint.
+Validate prediction across controlled multi-stage chains such as script -> persistence -> discovery/network -> impact indicators, with confidence/calibration and explainability.
 
----
+### B8-7 — Beta8 Windows Acceptance & Freeze
 
-# Continuous Program A — Detection & Attack Coverage
+Full Windows regression and exact-head CI/local freeze for Beta8, including detector evidence, coverage state, predictive reasoning, safety boundaries, determinism, resource cost, and immutable final checkpoint.
 
-Every future protection milestone must measure what is actually covered rather than infer protection from feature existence.
+## Longer-term innovation programs
 
-Where applicable measure:
+The following remain roadmap programs rather than current accepted protection claims:
 
-```text
-Coverage
-Precision
-Detection speed
-Correlation rate
-Blocking / interruption rate
-False-positive rate
-Recovery success
-Verification success
-Explainability completeness
-Evidence completeness
-Resource cost
-```
+- **I3 — Attack Prediction Engine** — begins in Beta8 after detector evidence exists.
+- **I4 — Reversible Self-Healing** — any automatic repair authority requires a dedicated safety milestone.
+- **I5 — Rescue Continuity** — preserve incident/evidence identity across live Windows and Rescue workflows.
+- **I6 — Deception Mesh** — local canary/decoy signals integrated into evidence/graph reasoning.
+- **I7 — Adaptive Local Intelligence** — fuse static, behavior, signer, graph, reputation, and local context.
+- Dynamic analysis/sandboxing, IDS/IPS expansion, identity protection, privacy/safe-banking controls, untrusted-network protection, and production packaging remain future work.
 
-Use MITRE ATT&CK mapping when useful, but ATT&CK mapping alone is not proof of coverage.
+## Repository/documentation policy
 
-Full-chain testing should increasingly cover relationships such as:
-
-```text
-browser/download
--> script interpreter
--> child process
--> persistence
--> DNS/network
--> harmful objective
-```
-
-Testing remains harmless and controlled: safe fixtures, simulations, disposable VMs and controlled offline targets only.
-
----
-
-# Continuous Program B — Product & Innovation
-
-After Beta8, priorities remain:
-
-- Reversible Self-Healing with explicit authority gates;
-- Rescue Continuity between live incidents and offline Rescue;
-- local deception/canary signals feeding the Security Graph;
-- Adaptive Local Intelligence combining static, behavioral, graph, signer, reputation and historical context;
-- Dynamic Analysis / Sandbox with strict host isolation;
-- IDS/IPS and remote-service attack indicators;
-- Privacy / Safe Banking research;
-- Identity Protection;
-- VPN / untrusted-network protection;
-- production packaging, signed binaries, installer/updater provenance and rollback.
-
----
-
-# Release and roadmap discipline
-
-For every milestone:
-
-1. start from the exact accepted predecessor checkpoint;
-2. define scope and non-negotiable safety boundaries in this `ROADMAP.md`;
-3. implement only that scope;
-4. update this roadmap in the same milestone change set whenever status or requirements change;
-5. run deterministic tests and dedicated Windows CI;
-6. run local Windows acceptance;
-7. freeze the exact tested code SHA in an immutable checkpoint;
-8. only after freeze, advance this roadmap to the next milestone;
-9. never move an accepted checkpoint;
-10. never claim protection beyond current accepted evidence.
-
-Reasoning policy:
-
-- **Extra High:** authority boundaries, attack-chain acceptance, detector verification, prediction safety and final release gates.
-- **High:** coverage baselines, graph/correlation work, tests, explainability, metrics and roadmap maintenance.
+- `ROADMAP.md` is the single roadmap file.
+- `README.md` is the public landing page, not a second roadmap.
+- `SECURITY.md` contains security/disclosure guidance.
+- `STABLE-RELEASE.md` documents the separately promoted stable channel.
+- Historical development evidence remains recoverable from Git history and immutable checkpoint refs.
+- Every future milestone/status change updates this `ROADMAP.md` in the same development cycle.

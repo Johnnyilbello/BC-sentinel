@@ -2,41 +2,25 @@
 
 BC Sentinel is a Windows endpoint-security, recovery, and incident-intelligence project focused on deterministic validation, conservative security claims, and explicit safety boundaries.
 
-> **Development status:** `v0.11.0-beta.7` is complete and frozen. Beta8 is now the active development line. BC Sentinel is still a development build and should not replace Microsoft Defender, Windows Firewall, or a production EDR on an everyday workstation.
+> **Development status:** Beta7 is complete and frozen. Beta8 is active, and **B8-0 — Beta8 Foundation + New Coverage Baseline** is accepted and frozen. BC Sentinel remains a development project and should not replace Microsoft Defender, Windows Firewall, or a production EDR on an everyday workstation.
 
 ## Latest accepted engineering checkpoint
 
-The current accepted source checkpoint is:
-
 ```text
-v0.11.0-beta.7 — Detection Coverage & Incident Intelligence
-checkpoint/v011-beta7-b77-pass
-4d57f749276c588782147d47078ef4c52d1adc51
+v0.11.0-beta.8 — B8-0 Foundation + New Coverage Baseline
+checkpoint/v011-beta8-b80-pass
+969781bd7633d0b2bc92840e8f12220f00de4279
 ```
 
-Final Beta7 acceptance completed successfully on Windows with:
+B8-0 acceptance on Windows:
 
-- complete Beta5 + Beta6 + Beta7 regression green;
-- **422 tests passed** in the local Windows gate;
-- exact-head Windows CI: **PASS**;
-- protected Beta6/B2 safety boundaries unchanged;
-- deterministic final core snapshot;
-- measured resource cost for the final synthetic acceptance pipeline.
-
-The immutable Beta7 checkpoint must not be moved.
-
-## What Beta7 added
-
-Beta7 moved BC Sentinel beyond isolated security features toward connected, evidence-backed incident intelligence:
-
-- **Attack Coverage Ledger** — machine-readable coverage status with no unsupported positive claims;
-- **Sentinel Security Graph** — typed, provenance-preserving relationships between processes, files, scripts, persistence, DNS/network, detections, evidence, and actions;
-- **Incident Correlation Engine** — deterministic grouping of related evidence into incidents;
-- **Confidence Gate** — advisory `RECOMMEND`, `REVIEW_REQUIRED`, and `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes without automatic execution authority;
-- **Attack-Chain Acceptance Harness** — harmless in-memory validation of `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION`;
-- **Explainable Security** — user-level and technical explanations bound to accepted evidence;
-- **Coverage Expansion Campaign** — explicit PARTIAL/GAP accounting instead of overstating detector coverage;
-- **Final Windows Acceptance & Freeze** — full regression, resource measurement, and final immutable checkpoint.
+- compile gate: PASS;
+- complete Beta5 + Beta6 + Beta7 predecessor regression: PASS;
+- **450 tests passed** locally;
+- exact-head Windows CI: PASS;
+- protected B2 and accepted Beta7 intelligence sources unchanged;
+- canonical single-roadmap rule: PASS;
+- no remediation authority added.
 
 ## Current measurable coverage
 
@@ -46,13 +30,13 @@ GAP       3
 VERIFIED  0
 ```
 
-PARTIAL scenario families:
+Current PARTIAL families:
 
 - suspicious script / PowerShell abuse;
 - persistence;
 - suspicious DNS / network activity.
 
-Explicit GAP scenario families:
+Current explicit GAP families and Beta8 verification targets:
 
 - ransomware-like behavior;
 - defense evasion / control tampering;
@@ -60,28 +44,39 @@ Explicit GAP scenario families:
 
 Synthetic evidence alone is never treated as VERIFIED detector coverage.
 
-## Active development: Beta8
+## Active development
 
-Beta8 is **Verified Detection & Predictive Defense**. The first milestone is `B8-0 — Beta8 Foundation + New Coverage Baseline`, which starts from the immutable Beta7 checkpoint and establishes the machine-readable baseline that all new detector verification work must inherit.
+The next security milestone is **B8-1 — Ransomware-like Detector Acceptance**. It must use harmless controlled fixtures and may promote ransomware coverage only after a reproducible detector-path acceptance.
 
 The project has exactly one roadmap source of truth:
 
 [**ROADMAP.md**](ROADMAP.md)
 
-## Repository documentation
+## Repository layout
 
-The repository root is intentionally kept compact for people landing on the project page. Root Markdown documentation is limited to:
+The public root is intentionally compact. Historical milestone launchers, old acceptance scripts, diagnostic helpers, obsolete patches, historical checksums and superseded reports are kept in Git history/checkpoints rather than displayed in the repository root.
+
+Primary root files:
 
 - `README.md` — public project entry point;
-- `ROADMAP.md` — the single canonical roadmap and development-status source;
+- `ROADMAP.md` — single canonical roadmap and development-status source;
 - `SECURITY.md` — security and responsible-disclosure guidance;
-- `STABLE-RELEASE.md` — current stable release notes/instructions.
+- `STABLE-RELEASE.md` — current stable-channel instructions;
+- `STABLE_VERSION.json` — machine-readable stable-channel descriptor;
+- `START-BC-SENTINEL-STABLE.bat` / `.ps1` — stable Windows launcher;
+- `pyproject.toml` / `requirements.txt` — project/dependency metadata.
 
-Historical milestone reports, implementation-status files, acceptance reports, old test readmes, source-sync notes and superseded release notes are removed from the active working tree. Their history remains recoverable through Git commits and immutable checkpoint refs.
+Core implementation and engineering assets live under folders such as `.github/`, `sentinel/`, `tests/`, `tools/`, and `packaging/`.
+
+## Stable channel versus engineering checkpoints
+
+The latest accepted **engineering** checkpoint is B8-0. The currently published stable launcher remains the separately documented B6-0 stable channel until a later release milestone explicitly promotes a newer build.
+
+See [STABLE-RELEASE.md](STABLE-RELEASE.md) for stable-launch instructions.
 
 ## Safety boundary
 
-Beta7 and the opening Beta8 foundation add intelligence and verification structure, not new automatic remediation authority.
+Unless a future dedicated milestone explicitly expands authority and passes Windows acceptance, the following remain false:
 
 ```text
 automatic quarantine          = false
@@ -97,25 +92,15 @@ privileged/system mutation    = false
 
 `RECOMMEND` remains advisory. Missing evidence is never interpreted as proof of safety.
 
-## What is on `main`
-
-`main` is the public landing/source line and contains the stable Windows launcher plus the current public project documentation. Accepted engineering checkpoints remain separate immutable refs for auditability.
-
-To inspect the exact accepted Beta7 source, use:
-
-```text
-checkpoint/v011-beta7-b77-pass
-```
-
 ## Start the current stable launcher on Windows
 
-After cloning/downloading `main`, the simplest method is to double-click:
+Double-click:
 
 ```text
 START-BC-SENTINEL-STABLE.bat
 ```
 
-or run from PowerShell:
+or run:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1
@@ -126,29 +111,6 @@ Self-check only:
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1 -SelfCheckOnly
 ```
-
-If dependencies are already installed and setup must stay offline:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1 -NoInstall
-```
-
-## Existing protection and recovery stack
-
-The wider BC Sentinel codebase contains components for realtime/on-demand scanning, SHA-256/YARA/PE inspection, ransomware and behavior shields, encrypted quarantine workflows, ETW process/file/network attribution, firewall controls, signed threat intelligence, Web Protection, antispyware/persistence analysis, Rescue Technician workflows, reversible recovery foundations, and deterministic security acceptance tooling.
-
-Not every component is represented as VERIFIED protection coverage. Current claims are intentionally limited to what accepted gates actually prove.
-
-## Current roadmap state
-
-```text
-Beta5  COMPLETE / FROZEN
-Beta6  COMPLETE / FROZEN
-Beta7  COMPLETE / FROZEN
-Beta8  IN PROGRESS
-```
-
-See [ROADMAP.md](ROADMAP.md) for the canonical milestone state and next acceptance gate.
 
 ## Responsible testing
 
