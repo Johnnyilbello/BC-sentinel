@@ -86,10 +86,22 @@ try {
         Write-Host ("Protected baseline: " + $GitPath + " = " + $(if ($State -eq "<ABSENT>") { "ABSENT (frozen)" } else { $State })) -ForegroundColor DarkGray
     }
 
-    $Base = Join-Path $env:USERPROFILE "BCSentinel-TestTemp"
+    # B6-5.5 fixture execution deliberately accepts targets only under the
+    # Python runtime's system temp root. Keep pytest's basetemp underneath that
+    # exact root; using USERPROFILE would make the security test correctly fail.
+    $SystemTemp = (& $Py -c "import tempfile; print(tempfile.gettempdir())" | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$SystemTemp)) {
+        Fail "pytest-temp" "Unable to resolve Python system temp root."
+    }
+    $SystemTemp = ([string]$SystemTemp).Trim()
+    if (-not (Test-Path -LiteralPath $SystemTemp -PathType Container)) {
+        Fail "pytest-temp" ("Python system temp root does not exist: " + $SystemTemp)
+    }
+    $Base = Join-Path $SystemTemp "BCSentinel-TestTemp"
     New-Item -ItemType Directory -Path $Base -Force | Out-Null
     $PytestBase = Join-Path $Base ("b67-pytest-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $PytestBase -Force | Out-Null
+    Write-Host ("pytest basetemp: " + $PytestBase) -ForegroundColor DarkGray
 
     Write-Host "[1/6] Compile B6-7 packaging/acceptance code..."
     & $Py -m compileall -q `
