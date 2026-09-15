@@ -1,5 +1,38 @@
 # BC Sentinel — Roadmap v0.11.0-beta.6 Rescue Technician UX / Field Operations
 
+## Current release state
+
+```text
+B6-0  Technician UX Foundation                         ACCEPTED
+B6-1  Target Discovery & Selection UX                  ACCEPTED
+B6-2  Guided Session Workflow                          ACCEPTED
+B6-3  Evidence / Report Workspace                      ACCEPTED
+B6-4  Portable / USB Field Mode                        ACCEPTED
+B6-5  Safety Guardrails & Operator Confirmations       ACCEPTED
+B6-6  Accessibility / Low-Spec / Responsive Hardening  ACCEPTED PREDECESSOR
+B6-7  Portable Technician GUI Release                  CLOSED / LOCAL WINDOWS ACCEPTED
+```
+
+Final B6-7 accepted source checkpoint:
+
+```text
+checkpoint/v011-beta6-b67-pass
+eb08758a304eb838d08af890ef9c4786264afbc0
+```
+
+Accepted portable GUI executable:
+
+```text
+BC-Sentinel-Beta6-Portable.exe
+SHA-256: 7a4e678c18e980adc77b1380923a041c9a8d71b242fd2837a74c85670f51686b
+```
+
+Local acceptance evidence:
+
+```text
+BC_SENTINEL_V011_BETA6_B67_LOCAL_DEVICE_ACCEPTANCE_2026-09-15.md
+```
+
 ## Frozen predecessor
 Beta6 starts only from the accepted Beta5 final checkpoint:
 
@@ -118,19 +151,21 @@ Acceptance:
 - keyboard-only workflow;
 - long paths/messages do not overflow or truncate critical information.
 
-### B6-7 — Portable Technician GUI Release
+### B6-7 — Portable Technician GUI Release — CLOSED
 Final built-artifact acceptance.
 
-Acceptance:
+Acceptance result:
 - complete Beta5 predecessor regression remains green;
 - all Beta6 deterministic/UI-model tests green;
-- PyInstaller GUI artifact builds on Windows;
-- built GUI starts and shows exact safety/capability contract;
-- real accepted engine commands dispatch only after explicit operator action;
-- target byte-identical in read-only workflow acceptance;
+- `344 passed` on local Windows acceptance;
+- PyInstaller GUI artifact builds on Windows in `onedir/windowed` mode;
+- built GUI starts and shows the exact safety/capability contract;
+- real accepted engine commands remain gated behind explicit operator action;
+- copied artifact works outside the build directory;
+- target remains byte-identical in read-only workflow acceptance;
 - no service/driver/install/network/cloud requirement;
-- protected B2 sources unchanged;
-- final checkpoint freeze.
+- protected B2 presence/content remains identical to the frozen B6-5.9 predecessor;
+- final checkpoint frozen at `checkpoint/v011-beta6-b67-pass`.
 
 ## Logging / observability
 Critical UI/worker failures must show enough information to diagnose immediately:
