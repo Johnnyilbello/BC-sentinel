@@ -13,6 +13,16 @@ eb08758a304eb838d08af890ef9c4786264afbc0
 
 Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore boundaries, fail-closed behavior, protected B2 state, portable artifact contract or explicit-operator-action requirements.
 
+Latest accepted Beta7 checkpoint:
+
+```text
+B7-0 — Coverage Ledger Foundation
+checkpoint/v011-beta7-b70-pass
+cd06f284525b3e0f70c121b6b97833cbf388c9ce
+Windows CI: PASS
+Local Windows acceptance: PASS
+```
+
 ## Goal
 
 Move BC Sentinel from a collection of accepted protection/recovery capabilities toward **measurable attack coverage and connected incident intelligence**.
@@ -45,28 +55,42 @@ Any future authority expansion requires a dedicated milestone, explicit acceptan
 
 ## Milestones
 
-### B7-0 — Coverage Ledger Foundation — CURRENT
+### B7-0 — Coverage Ledger Foundation ✅ ACCEPTED
 
-Introduce the machine-readable attack coverage ledger required by the global roadmap.
+Accepted machine-readable attack coverage ledger required by the global roadmap.
 
-Acceptance:
+Accepted outcomes:
 - versioned JSON ledger in the repository;
 - deterministic schema/semantic validator;
-- every scenario has a stable `scenario_id`;
-- ATT&CK technique/sub-technique fields supported;
-- `PLANNED`, `PARTIAL`, `VERIFIED` and `GAP` states distinguished;
+- stable `scenario_id` contract;
+- ATT&CK technique/sub-technique fields;
+- `PLANNED`, `PARTIAL`, `VERIFIED` and `GAP` states;
 - positive coverage claims require current build provenance and evidence references;
 - untested scenarios cannot silently appear as successful;
 - duplicate scenario IDs rejected;
 - deterministic summary metrics;
 - no detector, remediation or execution behavior changed;
-- Beta5/Beta6 regression remains green.
+- Beta5/Beta6 regression green.
 
-### B7-1 — Sentinel Security Graph Foundation
+### B7-1 — Sentinel Security Graph Foundation — CURRENT
 
 Create a provenance-preserving graph schema linking processes, files, scripts, persistence, network/DNS, detections, evidence and actions.
 
-No autonomous response authority is introduced.
+Required outcomes:
+- typed node schema for `PROCESS`, `FILE`, `SCRIPT`, `PERSISTENCE`, `NETWORK`, `DNS`, `DETECTION`, `EVIDENCE`, `ACTION`;
+- typed causal/observational edges;
+- every node/edge preserves source provenance, source ID, collector and trust classification;
+- timestamps, confidence and evidence IDs represented without inventing missing evidence;
+- deterministic IDs for ingested observations and relations;
+- stable serialization and SHA-256 graph digest;
+- duplicate/conflicting IDs fail closed;
+- edges to missing nodes and self-loops fail closed;
+- every accepted edge has a human-inspectable reason;
+- deterministic incident subgraph queries;
+- read-only foundation only: no detector/remediation execution authority;
+- accepted B7-0 ledger remains unchanged;
+- Beta5/Beta6/B7-0 regression remains green;
+- Windows CI + local Windows acceptance before checkpoint freeze.
 
 ### B7-2 — Incident Correlation Engine
 
