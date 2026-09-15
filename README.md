@@ -68,7 +68,16 @@ The project has exactly one roadmap source of truth:
 
 [**ROADMAP.md**](ROADMAP.md)
 
-Historical roadmap files have been removed from the working tree. Their history remains available in Git.
+## Repository documentation
+
+The repository root is intentionally kept compact for people landing on the project page. Root Markdown documentation is limited to:
+
+- `README.md` — public project entry point;
+- `ROADMAP.md` — the single canonical roadmap and development-status source;
+- `SECURITY.md` — security and responsible-disclosure guidance;
+- `STABLE-RELEASE.md` — current stable release notes/instructions.
+
+Historical milestone reports, implementation-status files, acceptance reports, old test readmes, source-sync notes and superseded release notes are removed from the active working tree. Their history remains recoverable through Git commits and immutable checkpoint refs.
 
 ## Safety boundary
 
