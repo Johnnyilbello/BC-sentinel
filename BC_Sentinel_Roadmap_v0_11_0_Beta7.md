@@ -16,12 +16,14 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-6 — Coverage Expansion Campaign
-checkpoint/v011-beta7-b76-pass
-1bd66f4f9e55313388e871e26c6a35d55a3dbb20
+B7-7 — Beta7 Windows Acceptance & Freeze
+checkpoint/v011-beta7-b77-pass
+4d57f749276c588782147d47078ef4c52d1adc51
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
+
+**Beta7 status: COMPLETE / FROZEN.**
 
 ## Goal
 
@@ -151,27 +153,30 @@ Accepted outcomes:
 - 413 tests passed in local Windows acceptance;
 - Windows CI and local Windows acceptance passed.
 
-### B7-7 — Beta7 Windows Acceptance & Freeze — CURRENT
+### B7-7 — Beta7 Windows Acceptance & Freeze ✅ ACCEPTED
 
-Final Beta7 release gate. This milestone does not add detector or remediation authority; it proves that the complete accepted Beta7 intelligence stack remains reproducible, conservative and compatible with the frozen Beta6 portable boundary.
+Accepted final Beta7 release gate. No detector or remediation authority was added.
 
-Required outcomes:
-- start only from `checkpoint/v011-beta7-b76-pass` / `1bd66f4f9e55313388e871e26c6a35d55a3dbb20`;
-- Beta5 + Beta6 + complete Beta7 deterministic regression green on Windows;
+Accepted outcomes:
+- exact accepted code SHA: `4d57f749276c588782147d47078ef4c52d1adc51`;
+- final immutable checkpoint: `checkpoint/v011-beta7-b77-pass`;
+- exact-head Windows CI run `34984650411`: PASS;
+- local Windows acceptance: PASS;
+- complete Beta5 + Beta6 + Beta7 deterministic regression: **422 passed, 36 warnings**;
 - B7-0 ledger remains valid with no unsupported positive claims;
 - B7-1 Security Graph remains deterministic and round-trip stable;
 - B7-2 Incident Correlation remains deterministic, explained and conservative;
-- B7-3 Confidence Gate keeps `RECOMMEND`, `REVIEW_REQUIRED`, `BLOCKED_INSUFFICIENT_EVIDENCE` and never grants authority;
-- B7-4 harmless attack-chain remains synthetic/non-executing and preserves exact stage order;
-- B7-5 Explainable Security remains evidence-bound, uncertainty-aware and does not amplify confidence;
-- B7-6 campaign remains exactly `PARTIAL=3`, `GAP=3`, `VERIFIED=0` with no unsupported VERIFIED claims;
-- accepted Beta6 B6-7 portable contract remains unchanged (`onedir`, windowed, portable, explicit operator action, no installer/service/driver/network/cloud requirement);
-- protected B2 state remains unchanged from the accepted Beta6 checkpoint;
-- final synthetic pipeline resource cost is measured (wall time + peak traced memory) without contaminating the deterministic core digest;
-- final core snapshot is reproducible across repeated evaluation;
-- automatic quarantine/repair/restore, DELETE, REPAIR, process termination, trust mutation and privileged system mutation remain false;
-- exact-head Windows CI and local Windows acceptance must both pass before final checkpoint freeze;
-- after both gates pass, create `checkpoint/v011-beta7-b77-pass` on the exact tested code SHA and never move it.
+- B7-3 Confidence Gate remains advisory and grants no authority;
+- B7-4 harmless attack-chain remains synthetic/non-executing;
+- B7-5 Explainable Security remains evidence-bound and does not amplify confidence;
+- B7-6 campaign remains exactly `PARTIAL=3`, `GAP=3`, `VERIFIED=0`;
+- accepted Beta6 B6-7 portable contract remains unchanged;
+- protected B2 state remains unchanged from accepted Beta6;
+- final deterministic core digest: `dcd6a7ff975c2fbdce9549d4af630ab6c252acf26ca7b0c31e0c70e72db8ea4e`;
+- local synthetic pipeline resource measurement: `0.17224099999293685 s`, peak traced memory `82653 bytes`, below acceptance ceilings;
+- automatic quarantine/repair/restore, general Home execution, DELETE, REPAIR, process termination, trust mutation and privileged system mutation remain false.
+
+The final checkpoint must never be moved. Documentation-only commits after the freeze are not part of the accepted executable checkpoint.
 
 ## Reasoning policy
 
