@@ -13,8 +13,23 @@ From this point forward:
 - do not create version-specific roadmap files;
 - update this file whenever a milestone is opened, materially changed, accepted, frozen or superseded;
 - accepted checkpoints remain immutable even when this roadmap advances;
-- implementation/status evidence may exist separately, but roadmap state must always be reflected here;
-- historical roadmap files are removed from the working tree; Git history preserves them.
+- milestone implementation/status/acceptance history is preserved in Git history and immutable checkpoint refs instead of accumulating standalone root reports;
+- historical roadmap and milestone-report files are removed from the active working tree; Git history preserves them.
+
+## Repository hygiene rule
+
+The root of active branches should stay readable for users landing on the GitHub page. Root Markdown documentation is limited to:
+
+```text
+README.md
+ROADMAP.md
+SECURITY.md
+STABLE-RELEASE.md
+```
+
+Superseded milestone reports, implementation-status documents, local acceptance reports, test-status documents, old test READMEs, source-sync notices, historical security-audit snapshots and obsolete release-note files must not be reintroduced into the root. If historical evidence is needed, retrieve it from Git history or the corresponding immutable checkpoint.
+
+This cleanup rule is part of the Beta8 foundation and must be checked whenever repository structure is materially changed.
 
 ---
 
@@ -186,6 +201,7 @@ Required outcomes:
 - bind the baseline to the accepted Beta7 final core digest and B7-6 campaign digest;
 - identify the next required acceptance milestone for each scenario;
 - mark ransomware, defense-evasion and credential-access as explicit Beta8 verification targets;
+- keep active-branch root documentation within the repository hygiene rule defined above;
 - no unsupported positive claims;
 - deterministic ordering, stable serialization and SHA-256 baseline digest;
 - baseline validation must fail closed on scenario/status/digest/authority tampering;
