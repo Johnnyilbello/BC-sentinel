@@ -54,6 +54,7 @@ foreach ($path in $preserved) {
 Write-Host 'Accepted B8-0 engineering paths unchanged: PASS'
 
 $allowedRoot = @(
+    'BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1',
     'README.md',
     'ROADMAP.md',
     'SECURITY.md',
