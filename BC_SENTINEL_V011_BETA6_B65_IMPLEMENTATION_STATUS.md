@@ -1,191 +1,148 @@
 # BC Sentinel v0.11.0-beta.6 — B6-5 Implementation Status
 
-Status: **B6-5.0→B6-5.7 ACCEPTED INCREMENTALLY / B6-5.7 WINDOWS + LOCAL DEVICE PASS / B6-5.8 IMPLEMENTED — WINDOWS CI PASS / LOCAL DEVICE ACCEPTANCE PENDING**
+Status: **B6-5.0→B6-5.8 ACCEPTED / B6-5.9 IMPLEMENTED — WINDOWS CI + LOCAL DEVICE ACCEPTANCE PENDING**
 
 Active development branch:
 
 ```text
-feature/v011-beta6-b65-guided-resolution
+feature/v011-beta6-b659-quarantine-integrity
 ```
 
-Accepted stable predecessor:
+Accepted predecessor:
 
 ```text
-B6-4 Threat Cards + Advanced Details
-c3fbac9e89edff6b08490da3dd593300e816fa30
-checkpoint/v011-beta6-b64-pass
-stable/v011-beta6-b64
+B6-5.8 Persistent restore after application restart
+checkpoint/v011-beta6-b658-pass
+Accepted commit: 643cbd46a6d196c1d4379ba5d6992dee328c14f1
+Windows CI run 34883835093: SUCCESS
+Local Windows device acceptance: PASS on 2026-09-15
+```
+
+B6-5.8 local evidence is preserved in:
+
+```text
+BC_SENTINEL_V011_BETA6_B658_LOCAL_DEVICE_ACCEPTANCE_2026-09-15.md
 ```
 
 ## Accepted B6-5 checkpoints
 
 ```text
-B6-5.0 Passive Guided Resolution
-checkpoint/v011-beta6-b650-pass
-
-B6-5.1 Passive provider boundary
-checkpoint/v011-beta6-b651-pass
-Windows CI run 34845635971: SUCCESS
-
-B6-5.2 Reversible action-plan + journal blueprint
-checkpoint/v011-beta6-b652-pass
-
-B6-5.2 UI refinement
-checkpoint/v011-beta6-b652-ui-refinement-pass
-
-B6-5.3 Explicit confirmation gate
-checkpoint/v011-beta6-b653-pass
-
-B6-5.4 Execution-readiness boundary
-checkpoint/v011-beta6-b654-pass
-
-B6-5.5 Harmless fixture execution + rollback
-checkpoint/v011-beta6-b655-pass
-Windows CI run 34855442176: SUCCESS
-Local Windows device acceptance: PASS
-
-B6-5.6 Real-file quarantine boundary
-checkpoint/v011-beta6-b656-pass
-Windows CI: PASS
-Local Windows device acceptance: PASS on 2026-09-14
-
-B6-5.7 Home quarantine UX/execution integration
-checkpoint/v011-beta6-b657-pass
-Accepted commit: c7ae2ee14d7a2551b632d003c4d174a6d6ae63c1
-Windows CI: PASS
-Local Windows device acceptance: PASS on 2026-09-14
+B6-5.0  Passive Guided Resolution                       PASS / CHECKPOINTED
+B6-5.1  Passive provider boundary                       PASS / CHECKPOINTED
+B6-5.2  Reversible action-plan + journal blueprint      PASS / CHECKPOINTED
+B6-5.3  Explicit user confirmation gate                 PASS / CHECKPOINTED
+B6-5.4  Execution-readiness boundary                    PASS / CHECKPOINTED
+B6-5.5  Harmless fixture execution + rollback           PASS / WINDOWS + LOCAL DEVICE
+B6-5.6  Real-file quarantine boundary                   PASS / WINDOWS + LOCAL DEVICE
+B6-5.7  Home quarantine UX/execution integration        PASS / WINDOWS + LOCAL DEVICE
+B6-5.8  Persistent restore after application restart    PASS / WINDOWS + LOCAL DEVICE
+B6-5.9  Quarantine integrity / degraded-state visibility IMPLEMENTED / CI + LOCAL PENDING
 ```
 
-## Local B6-5.7 evidence
+## B6-5.8 accepted boundary
+
+The accepted Home execution authority remains deliberately narrow:
+
+- only explicit `QUARANTINE` for eligible `HIGH/CRITICAL` file findings;
+- target identity bound to an explicit SHA-256;
+- only non-privileged regular files under Desktop, Documents or Downloads;
+- AppData, Windows/system, Program Files, ProgramData, BC Sentinel source/runtime and symlink/reparse escapes remain blocked;
+- explicit user click and second confirmation are required;
+- provider creation remains lazy;
+- persistent restore after a new process starts is supported only after record, permit, journal, quarantine artifact, rollback snapshot and SHA-256 checks succeed;
+- restore refuses an occupied original target path and never overwrites it.
+
+B6-5.8 local acceptance verified `9 passed`, fresh-process reconstruction, read-only restart discovery, explicit restore and an SHA-256 identical to the original.
+
+## B6-5.9 — quarantine integrity visibility
+
+B6-5.8 correctly failed closed when persistent recovery evidence was damaged or inconsistent, but those states could disappear from the ordinary **Quarantena** list because invalid records were intentionally excluded from the set of restorable items.
+
+B6-5.9 fixes the visibility gap without opening any new mutation authority.
+
+A new read-only integrity layer inspects the existing B6-5.8 recovery records and classifies degraded persistent states such as:
+
+- recovery record unreadable or hash integrity mismatch;
+- finding/permit/result binding mismatch;
+- journal chain or journal anchor mismatch;
+- original target collision;
+- recovery artifact outside the dedicated protected roots;
+- missing quarantine or rollback snapshot;
+- quarantine/snapshot SHA-256 mismatch.
+
+Verified active quarantines continue to appear with:
 
 ```text
-4 deterministic tests passed
-quarantine_verified = true
-quarantine_page_rows_verified = true
-rollback_verified = true
-second_confirmation_required = true
-lazy_execution_provider = true
-general_home_execution_authorized = false
-automatic_quarantine = false
-delete_authorized = false
-repair_authorized = false
+Stato: In quarantena
+Azione: Ripristina file
+integrity_state = VERIFIED
 ```
 
-B6-5.7 is closed. The accepted checkpoint remains fixed at the commit above while B6-5.8 continues on the development branch.
-
-## Progress
+A degraded persistent state instead appears with:
 
 ```text
-B6-5.0  Passive decision + Guided Resolution UI        PASS / CHECKPOINTED
-B6-5.1  Passive provider boundary                      PASS / CHECKPOINTED
-B6-5.2  Reversible action-plan + journal blueprint     PASS / CHECKPOINTED
-B6-5.3  Explicit user confirmation gate                PASS / CHECKPOINTED
-B6-5.4  Execution-readiness boundary                   PASS / CHECKPOINTED
-B6-5.5  Harmless fixture execution + rollback          PASS / WINDOWS + LOCAL DEVICE
-B6-5.6  Real-file quarantine boundary                  PASS / WINDOWS + LOCAL DEVICE
-B6-5.7  Home quarantine UX/execution integration       PASS / WINDOWS + LOCAL DEVICE
-B6-5.8  Persistent restore after application restart   IMPLEMENTED / WINDOWS CI PASS / LOCAL PENDING
+Stato: Verifica richiesta
+Azione: Ripristino bloccato
+integrity_state = BLOCKED
+restore_key = ""
 ```
 
-## B6-5.7 accepted Home quarantine integration
+Because the blocked row has no `restore_key`, the UI does not attach a `Ripristina file` button to it. The underlying B6-5.8 rollback path also remains fail-closed.
 
-B6-5.7 exposed only the accepted reversible B6-5.6 `QUARANTINE` action inside the everyday Home flow. It did not create general remediation authority.
+## Read-only guarantee
 
-The per-finding Home quarantine action remains available only when all of the following are true:
+The B6-5.9 audit:
 
-- severity is `HIGH` or `CRITICAL`;
-- the Threat Card contains one explicit SHA-256 for a file target;
-- the target is a regular file under Desktop, Documents or Downloads;
-- the target is not AppData, Windows/system, Program Files, ProgramData, BC Sentinel source/runtime, a protected/self-managed path or a symlink/reparse escape;
-- the current SHA-256 still matches the scan evidence;
-- the user clicks `Metti in quarantena` explicitly;
-- a second confirmation dialog is accepted;
-- SHA-256 is revalidated at confirmation and again after confirmation;
-- the one-shot B6-5.6 execution permit is valid.
+- does not instantiate a new mutating provider;
+- does not create storage when no quarantine storage exists;
+- does not rewrite recovery records;
+- does not append journal events;
+- does not clean up damaged metadata automatically;
+- does not restore, delete or repair any file automatically.
 
-The execution provider remains lazy: opening Home, navigating, refreshing or rendering findings does not instantiate the mutating provider and does not create quarantine storage.
+The deterministic gate includes explicit byte-for-byte storage comparison around degraded-state discovery.
 
-## B6-5.8 persistent restore after restart
+## B6-5.9 test/acceptance scope
 
-B6-5.8 removes the B6-5.7 session-bound restore limitation without broadening remediation authority.
+Deterministic tests verify:
 
-After explicit confirmation and before the target file is moved, Home writes an atomic recovery record under the dedicated B6-5.6 LocalAppData storage:
+1. B6-5.8 remains the accepted predecessor;
+2. a verified persistent quarantine keeps the existing explicit restore path;
+3. a tampered recovery record is visible as blocked and receives no restore key;
+4. a missing rollback snapshot is visible and non-actionable;
+5. an occupied original path is visible and never overwritten;
+6. integrity discovery is read-only and does not create storage.
 
-```text
-%LOCALAPPDATA%\BCSentinel\B656\home-restore\
-```
-
-The recovery record binds the exact finding and B6-5.6 execution permit. After verified quarantine it is finalized with the verified execution result. If finalization is interrupted, the durable `PREPARED` record plus the hash-chained B6-5.6 journal can reconstruct the same verified result after restart.
-
-Restart discovery is read-only. Merely opening BC Sentinel:
-
-- does not instantiate the mutating quarantine provider;
-- does not rewrite the recovery record;
-- does not append to the journal;
-- does not restore or quarantine anything automatically.
-
-A persisted restore candidate is exposed only if all required evidence still agrees:
-
-- recovery-record integrity is valid;
-- finding ID and permit are bound;
-- B6-5.6 permit integrity validates;
-- B6-5.6 result integrity validates or can be reconstructed from the journal;
-- the journal hash chain validates;
-- the `ACTION_RESULT` journal anchor matches the permit, target, SHA-256 and quarantine artifact;
-- the original target location is still absent;
-- quarantine artifact is still inside the dedicated quarantine root;
-- rollback snapshot is still inside the dedicated rollback root;
-- quarantine artifact SHA-256 equals the original target SHA-256;
-- rollback snapshot SHA-256 equals the original target SHA-256.
-
-The **Quarantena** page now reconstructs verified active rows after a new application process starts and exposes `Ripristina file`. The restore command is explicit and asks for confirmation in the UI. The B6-5.6 provider is created only at that point, then performs the existing verified rollback. The restored file must have the original SHA-256.
-
-If the persistent record, journal, target state or artifacts do not validate, restore fails closed and no file is overwritten.
-
-## B6-5.8 automated evidence
-
-Windows GitHub Actions:
-
-```text
-Run: 34883835093
-Conclusion: SUCCESS
-
-Compile B6-5.8 + predecessors: PASS
-B6-0 → B6-5.8 deterministic regression suite: PASS
-B6-5.5 predecessor acceptance: PASS
-B6-5.6 predecessor acceptance: PASS
-B6-5.7 predecessor acceptance: PASS
-B6-5.8 fresh-process persistent restore acceptance: PASS
-B6-5.8 Qt offscreen smoke: PASS
-```
-
-The B6-5.8 acceptance uses two separate Python processes:
+The B6-5.9 fresh-process acceptance creates two controlled quarantines:
 
 ```text
 Process A
-  explicit confirmation
-  -> quarantine
-  -> durable recovery record + journal
+  verified quarantine A
+  verified quarantine B
+  -> controlled integrity corruption of B recovery metadata
+  -> exit
 
 Process B
   fresh process
-  -> read-only recovery discovery
-  -> Quarantine row reconstructed
-  -> explicit restore
-  -> SHA-256 identical to original
+  -> A visible as VERIFIED + Ripristina file
+  -> B visible as Verifica richiesta + Ripristino bloccato
+  -> discovery bytes unchanged
+  -> restore B refused
+  -> restore A succeeds
+  -> A SHA-256 identical to original
+  -> B remains quarantined / not auto-restored
 ```
 
-The deterministic B6-5.8 tests also verify fail-closed behavior for a tampered recovery record and an occupied original target path.
-
-## Home authority after B6-5.8
+## Home authority after B6-5.9
 
 ```text
 Passive capability provider = accepted
 General Home execution = false
 General live_home_execution_authorized = false
-Home explicit quarantine action = true, gated
+Home explicit quarantine = true, gated
 Persistent explicit restore = true, gated
-Eligible severity = HIGH / CRITICAL only
+Read-only integrity visibility = true
+Automatic cleanup = false
 Automatic quarantine = false
 Automatic restore = false
 Automatic repair = false
@@ -196,52 +153,16 @@ TRUST/ALLOWLIST mutation = false
 Privileged/system-file mutation = false
 ```
 
-This distinction remains intentional: B6-5.8 authorizes only the narrow reversible quarantine/restore lifecycle. It does not authorize broad remediation.
+B6-5.9 is intentionally a hardening/observability milestone. It does **not** authorize a broader remediation action class.
 
-## B6-5.8 local acceptance
+## Local acceptance command
 
-Local Windows device acceptance is the remaining release gate. Run from the repository root:
+After Windows CI is green, run from the repository root:
 
 ```powershell
-git fetch origin; git checkout feature/v011-beta6-b65-guided-resolution; git pull --ff-only origin feature/v011-beta6-b65-guided-resolution; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA6-B658.ps1" -ConfirmPersistentRestoreAcceptance -OpenUI
+git fetch origin; git checkout feature/v011-beta6-b659-quarantine-integrity; git pull --ff-only origin feature/v011-beta6-b659-quarantine-integrity; powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\TEST-V011-BETA6-B659.ps1" -ConfirmQuarantineIntegrityAcceptance -OpenUI
 ```
 
-The launcher verifies:
+Do not create `checkpoint/v011-beta6-b659-pass` until that local-device gate passes.
 
-1. B6-5.7 regression plus B6-5.8 deterministic tests;
-2. controlled quarantine in Process A;
-3. restart-safe discovery in a completely fresh Process B;
-4. Quarantine row reconstruction after restart;
-5. read-only discovery before the explicit restore;
-6. verified rollback;
-7. restored SHA-256 identical to the original;
-8. B6-5.8 self-check;
-9. optional opening of the real UI for final visual acceptance.
-
-Do not create `checkpoint/v011-beta6-b658-pass` until this local-device gate passes.
-
-## UI quality state
-
-The accepted screenshot-driven polish remains in force:
-
-- Smart Scan wrapped copy uses content-driven height;
-- Quarantine empty state has no hard vertical cap;
-- Cronologia empty state and command container have no hard vertical caps;
-- `Aggiorna stato` and `Aggiorna lista` use distinct semantic icons;
-- historical runtime recommendation copy is localized without mutating raw evidence;
-- quarantine controls remain subordinate to verified evidence;
-- active persistent rows expose a real `Ripristina file` control rather than a text-only placeholder.
-
-## Safety sequence
-
-1. passive capability proof — B6-5.1 ✅;
-2. immutable action-plan + target/evidence binding — B6-5.2 ✅;
-3. explicit confirmation bound to the exact plan — B6-5.3 ✅;
-4. separate execution-readiness gate — B6-5.4 ✅;
-5. harmless fixture-only execution + journal + rollback — B6-5.5 ✅;
-6. explicit non-privileged real-file quarantine boundary — B6-5.6 ✅ Windows + local device;
-7. explicit Home quarantine UX/integration — B6-5.7 ✅ Windows + local device;
-8. restart-safe persistent restore — B6-5.8 ✅ Windows CI / local device pending;
-9. any broader action class requires a separate future gate.
-
-Recommended reasoning for B6-5.8+ execution-authority work: **Extra High**.
+Recommended reasoning for any future execution-authority expansion: **Extra High**.
