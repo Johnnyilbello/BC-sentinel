@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-3 — Confidence Gate
-checkpoint/v011-beta7-b73-pass
-eef5c40edc853ff3f13cb521ce980dcaaea75fd0
+B7-4 — Attack-Chain Acceptance Harness
+checkpoint/v011-beta7-b74-pass
+d836aef24480d21e6631c1fe0dac640c7862e7ec
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -97,30 +97,42 @@ Accepted outcomes:
 - accepted B7-0/B7-1/B7-2 foundations and protected B2 state unchanged;
 - Windows CI and local Windows acceptance passed.
 
-### B7-4 — Attack-Chain Acceptance Harness — CURRENT
+### B7-4 — Attack-Chain Acceptance Harness ✅ ACCEPTED
 
-Add harmless, controlled end-to-end attack-chain simulations and measure observation, detection, correlation, interruption eligibility, evidence quality and timing.
+Accepted harmless end-to-end synthetic acceptance chain over B7-1/B7-2/B7-3.
+
+Accepted outcomes:
+- synthetic in-memory fixtures only; no real process execution, file write, network I/O, registry mutation or remediation execution;
+- accepted chain: `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION`;
+- deterministic stage order, graph construction, incident correlation and report serialization;
+- detection latency derived exactly from fixture timestamps;
+- end-to-end `RECOMMEND`, `REVIEW_REQUIRED` and `BLOCKED_INSUFFICIENT_EVIDENCE` gate cases;
+- advisory interruption eligibility never grants execution authority;
+- stable SHA-256 report digest;
+- source graph/correlation unchanged;
+- protected B2 and B7-0/B7-1/B7-2/B7-3 foundations unchanged;
+- 394 tests passed in local Windows acceptance;
+- Windows CI and local Windows acceptance passed.
+
+### B7-5 — Explainable Security — CURRENT
+
+Generate two evidence-grounded explanations for significant incidents: a user-level explanation and an advanced technical explanation. No invented certainty.
 
 Required outcomes:
-- synthetic in-memory fixtures only; no real process execution, file write, network I/O, registry mutation or remediation execution;
-- primary controlled chain: `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION`;
-- deterministic Security Graph construction and exact stage ordering;
-- complete controlled chain correlates into exactly one incident;
-- source graph and correlation outputs remain unchanged after evaluation;
-- explicit evidence binding is preserved end-to-end;
-- detection timing is derived from fixture timestamps and reported deterministically;
-- B7-3 gate is exercised end-to-end with `RECOMMEND`, `REVIEW_REQUIRED` and `BLOCKED_INSUFFICIENT_EVIDENCE` cases;
-- advisory interruption eligibility may be true only for `RECOMMEND` and never grants execution authority;
-- stable report IDs/ordering/serialization and SHA-256 report digest;
-- tampered stage order, side-effect flags, eligibility or authority flags fail validation;
-- accepted B7-0/B7-1/B7-2/B7-3 foundations remain unchanged;
+- consume only validated B7-1 Security Graph, B7-2 correlation and B7-3 Confidence Gate outputs;
+- bind explanation output to exact graph, correlation and decision digests;
+- generate one concise user explanation and one advanced technical explanation from the same accepted evidence;
+- every positive claim must bind to incident evidence IDs and valid source node/edge IDs;
+- include explicit limitation/uncertainty notes; missing evidence must never be interpreted as proof of safety;
+- explanation generation must never increase or infer confidence beyond source observations/decision values;
+- deterministic claim IDs, explanation ID, ordering, serialization and SHA-256 digest;
+- `RECOMMEND` remains advisory and explanation text must preserve the no-authority boundary;
+- reject tampered source digests, unbound evidence claims, confidence amplification and authority expansion;
+- source graph, correlation and decision objects remain unchanged;
+- accepted B7-0/B7-1/B7-2/B7-3/B7-4 foundations remain unchanged;
 - protected B2 state remains unchanged from accepted Beta6;
 - Beta5/Beta6/all accepted Beta7 predecessor regression remains green;
 - Windows CI + local Windows acceptance required before checkpoint freeze.
-
-### B7-5 — Explainable Security
-
-Generate two evidence-grounded explanations for significant incidents: a user-level explanation and an advanced technical explanation. No invented certainty.
 
 ### B7-6 — Coverage Expansion Campaign
 
