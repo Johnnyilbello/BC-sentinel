@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-2 — Incident Correlation Engine
-checkpoint/v011-beta7-b72-pass
-32bf6563eccc7f03c26e08afe6fcb58cf207cd8d
+B7-3 — Confidence Gate
+checkpoint/v011-beta7-b73-pass
+eef5c40edc853ff3f13cb521ce980dcaaea75fd0
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -80,30 +80,43 @@ Accepted outcomes:
 - protected B2, B7-0 and B7-1 foundations unchanged;
 - Windows CI and local Windows acceptance passed.
 
-### B7-3 — Confidence Gate — CURRENT
+### B7-3 — Confidence Gate ✅ ACCEPTED
 
-Evaluate advisory actions against severity, evidence strength, confidence, reversibility and potential damage. The gate is deterministic, inspectable and fail closed.
+Accepted deterministic advisory gate over B7-2 correlation results.
 
-Required outcomes:
-- consume accepted B7-2 correlation output and source Security Graph read-only;
-- bind every decision to exact source graph and correlation digests;
-- explicit dimensions for severity, evidence strength, confidence, reversibility and potential damage;
-- distinct `RECOMMEND`, `REVIEW_REQUIRED` and `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes;
-- missing evidence, unsupported evidence, absent confidence and insufficient confidence fail closed;
-- high/unknown damage or insufficient reversibility require explicit review;
-- confidence is never inferred from absent evidence;
-- deterministic decision IDs, stable serialization and SHA-256 decision digest;
-- every decision includes machine-readable reasons and human-inspectable rationale;
-- `RECOMMEND` remains advisory and never grants execution authority;
-- tampered authority-grant outputs fail validation;
-- accepted B7-0/B7-1/B7-2 foundations remain unchanged;
-- protected B2 state remains unchanged;
-- Beta5/Beta6/B7-0/B7-1/B7-2 regression remains green;
-- Windows CI + local Windows acceptance required before checkpoint freeze.
+Accepted outcomes:
+- exact source graph/correlation digest binding;
+- explicit severity, evidence strength, confidence, reversibility and damage dimensions;
+- deterministic `RECOMMEND`, `REVIEW_REQUIRED`, `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes;
+- missing/unsupported evidence and absent/insufficient confidence fail closed;
+- high/unknown damage and insufficient reversibility require human review;
+- confidence is never inferred from missing evidence;
+- stable decision IDs/serialization/SHA-256 digest;
+- `RECOMMEND` is advisory only and never grants execution authority;
+- tampered authority outputs fail validation;
+- accepted B7-0/B7-1/B7-2 foundations and protected B2 state unchanged;
+- Windows CI and local Windows acceptance passed.
 
-### B7-4 — Attack-Chain Acceptance Harness
+### B7-4 — Attack-Chain Acceptance Harness — CURRENT
 
 Add harmless, controlled end-to-end attack-chain simulations and measure observation, detection, correlation, interruption eligibility, evidence quality and timing.
+
+Required outcomes:
+- synthetic in-memory fixtures only; no real process execution, file write, network I/O, registry mutation or remediation execution;
+- primary controlled chain: `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION`;
+- deterministic Security Graph construction and exact stage ordering;
+- complete controlled chain correlates into exactly one incident;
+- source graph and correlation outputs remain unchanged after evaluation;
+- explicit evidence binding is preserved end-to-end;
+- detection timing is derived from fixture timestamps and reported deterministically;
+- B7-3 gate is exercised end-to-end with `RECOMMEND`, `REVIEW_REQUIRED` and `BLOCKED_INSUFFICIENT_EVIDENCE` cases;
+- advisory interruption eligibility may be true only for `RECOMMEND` and never grants execution authority;
+- stable report IDs/ordering/serialization and SHA-256 report digest;
+- tampered stage order, side-effect flags, eligibility or authority flags fail validation;
+- accepted B7-0/B7-1/B7-2/B7-3 foundations remain unchanged;
+- protected B2 state remains unchanged from accepted Beta6;
+- Beta5/Beta6/all accepted Beta7 predecessor regression remains green;
+- Windows CI + local Windows acceptance required before checkpoint freeze.
 
 ### B7-5 — Explainable Security
 
