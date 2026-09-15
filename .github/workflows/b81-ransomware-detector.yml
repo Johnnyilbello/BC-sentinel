@@ -1,0 +1,43 @@
+name: B8-1 Ransomware-like Detector Gate
+
+on:
+  push:
+    branches:
+      - feature/v011-beta8-b81-ransomware-detector
+  pull_request:
+    paths:
+      - 'sentinel/ransomware_detector.py'
+      - 'tests/test_v011_beta8_b81_ransomware_detector.py'
+      - 'tools/acceptance/TEST-V011-BETA8-B81.ps1'
+      - 'ROADMAP.md'
+      - '.github/workflows/b81-ransomware-detector.yml'
+  workflow_dispatch:
+
+jobs:
+  b81-ransomware-detector:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run B8-1 exact acceptance gate
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\tools\acceptance\TEST-V011-BETA8-B81.ps1" -ConfirmRansomwareDetectorAcceptance
