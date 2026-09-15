@@ -16,9 +16,9 @@ Beta6 remains immutable. Beta7 must not weaken the accepted quarantine/restore b
 Latest accepted Beta7 checkpoint:
 
 ```text
-B7-0 — Coverage Ledger Foundation
-checkpoint/v011-beta7-b70-pass
-cd06f284525b3e0f70c121b6b97833cbf388c9ce
+B7-1 — Sentinel Security Graph Foundation
+checkpoint/v011-beta7-b71-pass
+c75697b25c63e59bdfc2ad32374c4232c607fea0
 Windows CI: PASS
 Local Windows acceptance: PASS
 ```
@@ -72,29 +72,47 @@ Accepted outcomes:
 - no detector, remediation or execution behavior changed;
 - Beta5/Beta6 regression green.
 
-### B7-1 — Sentinel Security Graph Foundation — CURRENT
+### B7-1 — Sentinel Security Graph Foundation ✅ ACCEPTED
 
-Create a provenance-preserving graph schema linking processes, files, scripts, persistence, network/DNS, detections, evidence and actions.
+Accepted provenance-preserving graph schema linking processes, files, scripts, persistence, network/DNS, detections, evidence and actions.
+
+Accepted outcomes:
+- typed node and relation classes;
+- source provenance, source ID, collector and trust classification preserved;
+- timestamps, confidence and evidence IDs preserved;
+- deterministic node/relation IDs;
+- stable JSON serialization and SHA-256 graph digest;
+- conflicting duplicates, missing endpoints and self-loops fail closed;
+- every graph relation requires a human-inspectable reason;
+- deterministic subgraph queries and exact round-trip serialization;
+- no detector/remediation execution authority;
+- B7-0 foundation unchanged;
+- Beta5/Beta6/B7-0 regression green;
+- Windows CI + local Windows acceptance passed.
+
+### B7-2 — Incident Correlation Engine — CURRENT
+
+Correlate related Security Graph observations into deterministic incidents while preserving raw evidence and explaining every grouping decision.
 
 Required outcomes:
-- typed node schema for `PROCESS`, `FILE`, `SCRIPT`, `PERSISTENCE`, `NETWORK`, `DNS`, `DETECTION`, `EVIDENCE`, `ACTION`;
-- typed causal/observational edges;
-- every node/edge preserves source provenance, source ID, collector and trust classification;
-- timestamps, confidence and evidence IDs represented without inventing missing evidence;
-- deterministic IDs for ingested observations and relations;
-- stable serialization and SHA-256 graph digest;
-- duplicate/conflicting IDs fail closed;
-- edges to missing nodes and self-loops fail closed;
-- every accepted edge has a human-inspectable reason;
-- deterministic incident subgraph queries;
-- read-only foundation only: no detector/remediation execution authority;
-- accepted B7-0 ledger remains unchanged;
-- Beta5/Beta6/B7-0 regression remains green;
-- Windows CI + local Windows acceptance before checkpoint freeze.
-
-### B7-2 — Incident Correlation Engine
-
-Correlate related observations into one incident using deterministic temporal/causal rules first. Preserve raw evidence and explain every graph edge.
+- consume only a validated B7-1 `SecurityGraph`;
+- preserve the exact source graph digest and never mutate the source graph;
+- explicit Security Graph relations always keep their endpoints in the same incident;
+- shared evidence IDs may correlate observations only inside a configured temporal window;
+- collector-provided explicit correlation keys may correlate observations only inside the configured temporal window;
+- **temporal proximity alone must never correlate observations**;
+- every correlation link records rule, reason, endpoints, timestamps and supporting evidence/keys;
+- deterministic incident IDs, ordering, serialization and SHA-256 result digest;
+- every source node assigned to exactly one incident;
+- every source graph edge represented exactly once inside one incident;
+- malformed explicit correlation keys fail closed;
+- invalid/cross-incident/duplicate bindings fail closed;
+- correlation output round-trips deterministically;
+- B7-0 and B7-1 accepted foundations remain unchanged;
+- protected B2 state remains unchanged from accepted Beta6;
+- no detector, quarantine, repair, restore, process termination or trust mutation authority;
+- Beta5/Beta6/B7-0/B7-1 regression remains green;
+- Windows CI + local Windows acceptance required before checkpoint freeze.
 
 ### B7-3 — Confidence Gate
 
