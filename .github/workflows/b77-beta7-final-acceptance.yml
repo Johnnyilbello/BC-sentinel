@@ -1,0 +1,117 @@
+name: B7-7 Beta7 Windows Acceptance & Freeze
+
+on:
+  push:
+    branches:
+      - feature/v011-beta7-b77-final-acceptance
+  pull_request:
+    paths:
+      - 'sentinel/beta7_final_acceptance.py'
+      - 'tests/test_v011_beta7_b77_final_acceptance.py'
+      - 'TEST-V011-BETA7-B77.ps1'
+      - 'BC_Sentinel_Roadmap_v0_11_0_Beta7.md'
+      - 'BC_SENTINEL_V011_BETA7_B77_IMPLEMENTATION_STATUS.md'
+      - '.github/workflows/b77-beta7-final-acceptance.yml'
+  workflow_dispatch:
+
+jobs:
+  beta7-final-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Verify protected Beta6 and accepted Beta7 sources unchanged
+        shell: pwsh
+        run: |
+          $beta6 = 'eb08758a304eb838d08af890ef9c4786264afbc0'
+          $b76 = '1bd66f4f9e55313388e871e26c6a35d55a3dbb20'
+          git fetch origin checkpoint/v011-beta6-b67-pass checkpoint/v011-beta7-b76-pass --depth=1
+          $protected = @(
+            'sentinel/protection_service_core.py',
+            'sentinel/realtime.py',
+            'sentinel/edr.py',
+            'sentinel/edr_service_bridge.py',
+            'sentinel/portable_gui_release.py',
+            'packaging/beta6_portable_gui_entry.py',
+            'BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1',
+            'tools/v011_beta6_b67_artifact_acceptance.py',
+            'tests/test_v011_beta6_b67_portable_gui.py'
+          )
+          foreach ($path in $protected) {
+            git diff --quiet $beta6 HEAD -- $path
+            if ($LASTEXITCODE -ne 0) { throw "Protected Beta6 path changed: $path" }
+          }
+          $accepted = @(
+            'coverage/attack_coverage_ledger.json',
+            'sentinel/coverage_ledger.py',
+            'tests/test_v011_beta7_b70_coverage_ledger.py',
+            'sentinel/security_graph.py',
+            'tests/test_v011_beta7_b71_security_graph.py',
+            'sentinel/incident_correlation.py',
+            'tests/test_v011_beta7_b72_incident_correlation.py',
+            'sentinel/confidence_gate.py',
+            'tests/test_v011_beta7_b73_confidence_gate.py',
+            'sentinel/attack_chain_harness.py',
+            'tests/test_v011_beta7_b74_attack_chain_harness.py',
+            'sentinel/explainable_security.py',
+            'tests/test_v011_beta7_b75_explainable_security.py',
+            'sentinel/coverage_campaign.py',
+            'tests/test_v011_beta7_b76_coverage_campaign.py'
+          )
+          foreach ($path in $accepted) {
+            git diff --quiet $b76 HEAD -- $path
+            if ($LASTEXITCODE -ne 0) { throw "Accepted Beta7 path changed: $path" }
+          }
+      - name: Compile B7-7
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/coverage_ledger.py sentinel/security_graph.py sentinel/incident_correlation.py sentinel/confidence_gate.py sentinel/attack_chain_harness.py sentinel/explainable_security.py sentinel/coverage_campaign.py sentinel/beta7_final_acceptance.py tests/test_v011_beta7_b77_final_acceptance.py
+      - name: Complete Beta5 Beta6 Beta7 deterministic regression
+        shell: pwsh
+        run: |
+          $tests = @(
+            Get-ChildItem -Path "tests/test_v011_beta5_*.py","tests/test_v011_beta6_*.py","tests/test_v011_beta7_*.py" |
+              Sort-Object FullName |
+              ForEach-Object { $_.FullName }
+          )
+          python -m pytest -q @tests
+      - name: B7-0 Coverage Ledger self-check
+        shell: pwsh
+        run: python -m sentinel.coverage_ledger --self-check
+      - name: B7-1 Security Graph self-check
+        shell: pwsh
+        run: python -m sentinel.security_graph --self-check
+      - name: B7-2 Incident Correlation self-check
+        shell: pwsh
+        run: python -m sentinel.incident_correlation --self-check
+      - name: B7-3 Confidence Gate self-check
+        shell: pwsh
+        run: python -m sentinel.confidence_gate --self-check
+      - name: B7-4 Attack-Chain Harness self-check
+        shell: pwsh
+        run: python -m sentinel.attack_chain_harness --self-check
+      - name: B7-5 Explainable Security self-check
+        shell: pwsh
+        run: python -m sentinel.explainable_security --self-check
+      - name: B7-6 Coverage Expansion Campaign self-check
+        shell: pwsh
+        run: python -m sentinel.coverage_campaign --self-check
+      - name: B7-7 Final acceptance and resource measurement
+        shell: pwsh
+        run: python -m sentinel.beta7_final_acceptance --self-check
+      - name: Final safety and coverage assertions
+        shell: pwsh
+        run: |
+          python -c "from sentinel.beta7_final_acceptance import self_check; r=self_check(); assert r['passed']; assert r['deterministic_core']; assert r['campaign_summary']=={'GAP':3,'PARTIAL':3,'VERIFIED':0}; assert r['base_ledger_summary']=={'GAP':0,'PARTIAL':0,'PLANNED':6,'VERIFIED':0}; assert r['beta6_portable_contract_passed']; assert r['attack_chain_safe']; assert r['explainable_security_grounded']; assert r['authority_granted'] is False; assert r['automatic_quarantine'] is False; assert r['automatic_repair'] is False; assert r['automatic_restore'] is False; assert r['general_home_execution_authorized'] is False; assert r['delete_authorized'] is False; assert r['repair_authorized'] is False; assert r['terminate_process_authorized'] is False; assert r['trust_allowlist_mutation_authorized'] is False"

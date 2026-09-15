@@ -1,0 +1,63 @@
+name: B7-3 Confidence Gate
+
+on:
+  push:
+    branches:
+      - feature/v011-beta7-b73-confidence-gate
+  pull_request:
+    paths:
+      - 'sentinel/confidence_gate.py'
+      - 'tests/test_v011_beta7_b73_confidence_gate.py'
+      - 'TEST-V011-BETA7-B73.ps1'
+      - 'BC_Sentinel_Roadmap_v0_11_0_Beta7.md'
+      - 'BC_SENTINEL_V011_BETA7_B73_IMPLEMENTATION_STATUS.md'
+      - '.github/workflows/b73-confidence-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  confidence-gate:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile B7-3
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/coverage_ledger.py sentinel/security_graph.py sentinel/incident_correlation.py sentinel/confidence_gate.py tests/test_v011_beta7_b70_coverage_ledger.py tests/test_v011_beta7_b71_security_graph.py tests/test_v011_beta7_b72_incident_correlation.py tests/test_v011_beta7_b73_confidence_gate.py
+      - name: Beta5 + Beta6 + B7-0/B7-1/B7-2 predecessor regression and B7-3 tests
+        shell: pwsh
+        run: |
+          $tests = @(
+            Get-ChildItem -Path "tests/test_v011_beta5_*.py","tests/test_v011_beta6_*.py","tests/test_v011_beta7_b70_coverage_ledger.py","tests/test_v011_beta7_b71_security_graph.py","tests/test_v011_beta7_b72_incident_correlation.py","tests/test_v011_beta7_b73_confidence_gate.py" |
+              Sort-Object FullName |
+              ForEach-Object { $_.FullName }
+          )
+          python -m pytest -q @tests
+      - name: B7-0 coverage ledger predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.coverage_ledger --self-check
+      - name: B7-1 Security Graph predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.security_graph --self-check
+      - name: B7-2 Incident Correlation predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.incident_correlation --self-check
+      - name: B7-3 Confidence Gate self-check
+        shell: pwsh
+        run: python -m sentinel.confidence_gate --self-check
+      - name: B7-3 safety assertions
+        shell: pwsh
+        run: |
+          python -c "from sentinel.confidence_gate import self_check,OUTCOME_RECOMMEND,OUTCOME_REVIEW,OUTCOME_BLOCKED; r=self_check(); assert r['passed']; assert r['recommend_outcome']==OUTCOME_RECOMMEND; assert r['review_outcome']==OUTCOME_REVIEW; assert r['blocked_outcome']==OUTCOME_BLOCKED; assert r['authority_granted'] is False; assert r['source_graph_unchanged']; assert r['source_correlation_unchanged']; assert r['stable_round_trip']; assert r['missing_confidence_inferred'] is False; assert r['automatic_quarantine'] is False; assert r['automatic_repair'] is False; assert r['automatic_restore'] is False; assert r['terminate_process_authorized'] is False; assert r['trust_allowlist_mutation_authorized'] is False"

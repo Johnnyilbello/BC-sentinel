@@ -1,0 +1,106 @@
+name: B8-0 Beta8 Foundation and Coverage Baseline
+
+on:
+  push:
+    branches:
+      - feature/v011-beta8-b80-foundation
+  pull_request:
+    paths:
+      - 'coverage/beta8_coverage_baseline.json'
+      - 'sentinel/beta8_coverage_baseline.py'
+      - 'tests/test_v011_beta8_b80_coverage_baseline.py'
+      - 'TEST-V011-BETA8-B80.ps1'
+      - 'ROADMAP.md'
+      - 'README.md'
+      - '.github/workflows/b80-beta8-foundation.yml'
+  workflow_dispatch:
+
+jobs:
+  beta8-foundation:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Verify immutable predecessors and single roadmap
+        shell: pwsh
+        run: |
+          $beta6 = 'eb08758a304eb838d08af890ef9c4786264afbc0'
+          $beta7 = '4d57f749276c588782147d47078ef4c52d1adc51'
+          $protected = @(
+            'sentinel/protection_service_core.py',
+            'sentinel/realtime.py',
+            'sentinel/edr.py',
+            'sentinel/edr_service_bridge.py'
+          )
+          foreach ($path in $protected) {
+            git diff --quiet $beta6 HEAD -- $path
+            if ($LASTEXITCODE -ne 0) { throw "Protected B2 path changed: $path" }
+          }
+          $accepted = @(
+            'coverage/attack_coverage_ledger.json',
+            'sentinel/coverage_ledger.py',
+            'sentinel/security_graph.py',
+            'sentinel/incident_correlation.py',
+            'sentinel/confidence_gate.py',
+            'sentinel/attack_chain_harness.py',
+            'sentinel/explainable_security.py',
+            'sentinel/coverage_campaign.py',
+            'sentinel/beta7_final_acceptance.py',
+            'tests/test_v011_beta7_b70_coverage_ledger.py',
+            'tests/test_v011_beta7_b71_security_graph.py',
+            'tests/test_v011_beta7_b72_incident_correlation.py',
+            'tests/test_v011_beta7_b73_confidence_gate.py',
+            'tests/test_v011_beta7_b74_attack_chain_harness.py',
+            'tests/test_v011_beta7_b75_explainable_security.py',
+            'tests/test_v011_beta7_b76_coverage_campaign.py',
+            'tests/test_v011_beta7_b77_final_acceptance.py'
+          )
+          foreach ($path in $accepted) {
+            git diff --quiet $beta7 HEAD -- $path
+            if ($LASTEXITCODE -ne 0) { throw "Accepted Beta7 path changed: $path" }
+          }
+          $roadmaps = @(git ls-files | Where-Object { $_ -match '(?i)roadmap' })
+          if ($roadmaps.Count -ne 1 -or $roadmaps[0] -ne 'ROADMAP.md') {
+            throw "ROADMAP.md must be the only roadmap file. Found: $($roadmaps -join ', ')"
+          }
+      - name: Compile B8-0
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/beta8_coverage_baseline.py tests/test_v011_beta8_b80_coverage_baseline.py
+      - name: Beta5 Beta6 Beta7 regression and B8-0 tests
+        shell: pwsh
+        run: |
+          $tests = @(
+            Get-ChildItem -Path 'tests/test_v011_beta5_*.py','tests/test_v011_beta6_*.py','tests/test_v011_beta7_*.py','tests/test_v011_beta8_b80_coverage_baseline.py' |
+              Sort-Object FullName |
+              ForEach-Object { $_.FullName }
+          )
+          python -m pytest -q @tests
+      - name: Frozen B7-7 final acceptance self-check
+        shell: pwsh
+        run: |
+          python -m sentinel.beta7_final_acceptance --self-check
+          python -c "from sentinel.beta7_final_acceptance import self_check; r=self_check(); assert r['passed']; assert r['deterministic_core']; assert r['core_digest']=='dcd6a7ff975c2fbdce9549d4af630ab6c252acf26ca7b0c31e0c70e72db8ea4e'; assert r['campaign_summary']=={'GAP':3,'PARTIAL':3,'VERIFIED':0}; assert r['authority_granted'] is False"
+      - name: B8-0 coverage baseline self-check
+        shell: pwsh
+        run: |
+          python -m sentinel.beta8_coverage_baseline --self-check
+      - name: B8-0 safety and source-binding assertions
+        shell: pwsh
+        run: |
+          python -c "from sentinel.beta8_coverage_baseline import self_check; r=self_check(); assert r['passed']; assert r['summary']=={'PARTIAL':3,'GAP':3,'VERIFIED':0}; assert r['scenario_count']==6; assert r['verification_target_count']==3; assert r['verification_targets']==['B7-RANSOMWARE-001','B7-DEFENSE-EVASION-001','B7-CREDENTIAL-001']; assert r['source_final_core_digest']==r['live_final_core_digest']=='dcd6a7ff975c2fbdce9549d4af630ab6c252acf26ca7b0c31e0c70e72db8ea4e'; assert r['source_campaign_digest']==r['live_campaign_digest']=='e85f96cdfd21f85390c18e1e75387508ce2453c10dfc1af782ede16faad9fc17'; assert r['stable_round_trip']; assert r['deterministic_serialization']; assert r['unsupported_positive_claims_allowed'] is False; assert r['verified_without_detector_acceptance_allowed'] is False; assert r['process_execution'] is False; assert r['file_write'] is False; assert r['network_io'] is False; assert r['registry_mutation'] is False; assert r['credential_access'] is False; assert r['remediation_execution'] is False; assert r['automatic_quarantine'] is False; assert r['automatic_repair'] is False; assert r['automatic_restore'] is False; assert r['general_home_execution_authorized'] is False; assert r['delete_authorized'] is False; assert r['repair_authorized'] is False; assert r['terminate_process_authorized'] is False; assert r['trust_allowlist_mutation_authorized'] is False; assert r['privileged_system_mutation_authorized'] is False; assert r['authority_granted'] is False; assert r['execution_authority_added'] is False"

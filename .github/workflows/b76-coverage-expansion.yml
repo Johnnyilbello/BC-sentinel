@@ -1,0 +1,71 @@
+name: B7-6 Coverage Expansion Campaign
+
+on:
+  push:
+    branches:
+      - feature/v011-beta7-b76-coverage-expansion
+  pull_request:
+    paths:
+      - 'sentinel/coverage_campaign.py'
+      - 'tests/test_v011_beta7_b76_coverage_campaign.py'
+      - 'TEST-V011-BETA7-B76.ps1'
+      - 'BC_Sentinel_Roadmap_v0_11_0_Beta7.md'
+      - 'BC_SENTINEL_V011_BETA7_B76_IMPLEMENTATION_STATUS.md'
+      - '.github/workflows/b76-coverage-expansion.yml'
+  workflow_dispatch:
+
+jobs:
+  coverage-expansion:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile B7-6
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/coverage_ledger.py sentinel/security_graph.py sentinel/incident_correlation.py sentinel/confidence_gate.py sentinel/attack_chain_harness.py sentinel/explainable_security.py sentinel/coverage_campaign.py tests/test_v011_beta7_b76_coverage_campaign.py
+      - name: Beta5 + Beta6 + accepted Beta7 predecessor regression and B7-6 tests
+        shell: pwsh
+        run: |
+          $tests = @(
+            Get-ChildItem -Path "tests/test_v011_beta5_*.py","tests/test_v011_beta6_*.py","tests/test_v011_beta7_b70_coverage_ledger.py","tests/test_v011_beta7_b71_security_graph.py","tests/test_v011_beta7_b72_incident_correlation.py","tests/test_v011_beta7_b73_confidence_gate.py","tests/test_v011_beta7_b74_attack_chain_harness.py","tests/test_v011_beta7_b75_explainable_security.py","tests/test_v011_beta7_b76_coverage_campaign.py" |
+              Sort-Object FullName | ForEach-Object { $_.FullName }
+          )
+          python -m pytest -q @tests
+      - name: B7-0 coverage ledger predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.coverage_ledger --self-check
+      - name: B7-1 Security Graph predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.security_graph --self-check
+      - name: B7-2 Incident Correlation predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.incident_correlation --self-check
+      - name: B7-3 Confidence Gate predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.confidence_gate --self-check
+      - name: B7-4 Attack-Chain Harness predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.attack_chain_harness --self-check
+      - name: B7-5 Explainable Security predecessor self-check
+        shell: pwsh
+        run: python -m sentinel.explainable_security --self-check
+      - name: B7-6 Coverage Expansion Campaign self-check
+        shell: pwsh
+        run: python -m sentinel.coverage_campaign --self-check
+      - name: B7-6 safety and claim assertions
+        shell: pwsh
+        run: |
+          python -c "from sentinel.coverage_campaign import self_check; r=self_check(); assert r['passed']; assert r['summary']=={'PARTIAL':3,'GAP':3,'VERIFIED':0}; assert r['verified_count']==0; assert r['explicit_gap_count']==3; assert r['partial_count']==3; assert r['stable_round_trip']; assert r['deterministic_serialization']; assert r['unsupported_verified_claims_allowed'] is False; assert r['base_ledger_mutated'] is False; assert r['synthetic_fixture_only']; assert r['process_execution'] is False; assert r['file_write'] is False; assert r['network_io'] is False; assert r['registry_mutation'] is False; assert r['credential_access'] is False; assert r['remediation_execution'] is False; assert r['authority_granted'] is False"

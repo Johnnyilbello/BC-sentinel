@@ -1,0 +1,52 @@
+name: B6-4 Threat Cards Gate
+
+on:
+  push:
+    branches:
+      - feature/v011-beta6-b64-threat-cards
+  pull_request:
+    paths:
+      - 'sentinel/home_threat_cards.py'
+      - 'sentinel/home_threat_cards_ui.py'
+      - 'sentinel/home_threat_cards_window.py'
+      - 'tests/test_v011_beta6_b64_*.py'
+      - 'tools/v011_beta6_b64_live_ui_probe.py'
+      - 'RUN-V011-BETA6-B64-LIVE-UI.ps1'
+      - '.github/workflows/b64-threat-cards.yml'
+  workflow_dispatch:
+
+jobs:
+  threat-cards:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile B6-4 and predecessors
+        shell: pwsh
+        run: |
+          python -m compileall -q sentinel/home_security_model.py sentinel/home_security_ui.py sentinel/home_smart_scan.py sentinel/home_smart_scan_ui.py sentinel/home_smart_scan_window.py sentinel/home_threat_cards.py sentinel/home_threat_cards_ui.py sentinel/home_threat_cards_window.py tools/v011_beta6_b64_live_ui_probe.py tests/test_v011_beta6_b64_threat_cards.py tests/test_v011_beta6_b64_window.py
+      - name: B6-0 through B6-4 deterministic regression suite
+        shell: pwsh
+        run: |
+          python -m pytest -q tests/test_v011_beta6_b60_technician_ux_foundation.py tests/test_v011_beta6_b61_unified_home_target_discovery.py tests/test_v011_beta6_b61_home_real_ui_regressions.py tests/test_v011_beta6_b62_home_security_overview.py tests/test_v011_beta6_b62_visual_consistency_refinement.py tests/test_v011_beta6_b63_smart_scan.py tests/test_v011_beta6_b63_smart_scan_ui.py tests/test_v011_beta6_b63_live_provider_loader.py tests/test_v011_beta6_b63_live_runtime_adapter.py tests/test_v011_beta6_b63_runtime_compat.py tests/test_v011_beta6_b634_smart_scope.py tests/test_v011_beta6_b635_live_ui_probe.py tests/test_v011_beta6_b64_threat_cards.py tests/test_v011_beta6_b64_window.py
+      - name: B6-3 predecessor acceptance
+        shell: pwsh
+        run: python -m tools.v011_beta6_b63_acceptance --output acceptance-v011-beta6-b63-b64-ci.json
+      - name: Passive B6-4 self-check
+        shell: pwsh
+        run: python -m sentinel.home_threat_cards_window --self-check
+      - name: B6-4 Qt offscreen smoke
+        shell: pwsh
+        run: python -m sentinel.home_threat_cards_window --offscreen-smoke
