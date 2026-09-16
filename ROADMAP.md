@@ -1,6 +1,6 @@
 # BC Sentinel — Canonical Roadmap
 
-This is the **only roadmap source of truth** for BC Sentinel. Every accepted engineering change, checkpoint transition, roadmap change, and repository-structure change must update this file.
+This is the **only roadmap source of truth** for BC Sentinel. Accepted engineering checkpoints are immutable. Documentation may advance after an engineering freeze, but no accepted checkpoint is moved.
 
 ## Current state
 
@@ -9,20 +9,14 @@ Beta5  COMPLETE / FROZEN
 Beta6  COMPLETE / FROZEN
 Beta7  COMPLETE / FROZEN
 Beta8  COMPLETE / FROZEN
-Beta9  IN PROGRESS
-```
-
-Current milestone:
-
-```text
-B9-2 — Harmless Event-to-Incident Acceptance
+Beta9  COMPLETE / FROZEN
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta9-b91-pass
-c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69
+checkpoint/v011-beta9-b94-pass
+cc32c2c31ebb9b863624632a38175ec5825430e4
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -35,28 +29,32 @@ c33a06d6487115f5ae080edede75f5e63c6bf188
 Current canonical coverage state:
 
 ```text
-PARTIAL   6
+PARTIAL   5
 GAP       0
-VERIFIED  0
+VERIFIED  1
 ```
 
-B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`. B9-0 establishes channel-configuration availability only; B9-1 establishes bounded real event-metadata readability only. Neither changes coverage state or verifies detectors.
+Verified scenario:
+
+```text
+B7-RANSOMWARE-001
+```
+
+This `VERIFIED` status is limited to the accepted controlled live local detector path. It is **not** a claim of broad ransomware-family protection. PowerShell, persistence, defense-evasion, DNS/C2 and credential-access scenarios remain `PARTIAL` until their own accepted live positive controls exist.
 
 ## Engineering contract
 
 - Exact acceptance first, immutable checkpoint second.
-- An accepted checkpoint is never moved.
-- Windows CI and local Windows acceptance must pass on the accepted source state before a milestone is frozen.
-- Documentation may advance after a frozen checkpoint, but subsequent engineering work must start from the accepted predecessor required by the roadmap.
-- Protected B2 sources stay unchanged unless a later explicit security milestone intentionally supersedes them and passes its own acceptance.
-- Security testing uses harmless fixtures, simulations, disposable VMs, and controlled offline targets.
-- No protection scenario is promoted to `VERIFIED` without current detector-path acceptance evidence.
-- Missing evidence fails closed; synthetic evidence alone is not real-world detector verification.
-- Scope is not widened while repairing an acceptance failure.
+- Windows CI and local Windows acceptance must pass on the same engineering commit before freeze.
+- Missing evidence fails closed; synthetic evidence alone cannot support `VERIFIED`.
+- Predictions are advisory and are never evidence.
+- Security testing uses harmless fixtures, simulations, controlled temporary resources and disposable/offline targets.
+- Scope is not widened while repairing acceptance failures.
+- No protection claim may exceed the exact evidence demonstrated by its accepted milestone.
 
 ### Authority boundary
 
-Unless a dedicated future milestone explicitly expands authority and passes acceptance:
+Unless a dedicated later milestone explicitly expands authority and passes acceptance:
 
 ```text
 automatic quarantine          = false
@@ -76,314 +74,63 @@ privileged/system mutation    = false
 
 **Status: COMPLETE / FROZEN**
 
-Established the hardened technician/recovery foundation, hostile-target assessment, stress/recovery validation, evidence packaging, controlled real-PC acceptance, and portable technician release foundations.
+Established hardened technician/recovery workflows, hostile-target assessment, stress/recovery validation, evidence packaging, controlled real-PC acceptance and portable technician foundations.
 
 ### Beta6 — Technician UX and safe guided resolution
 
 **Status: COMPLETE / FROZEN**
 
-Final accepted checkpoint:
+Final checkpoint:
 
 ```text
 checkpoint/v011-beta6-b67-pass
 eb08758a304eb838d08af890ef9c4786264afbc0
 ```
 
-Delivered the technician-facing Windows UI line, Home security overview, Smart Scan UX, threat cards, guided-resolution foundations, quarantine/recovery safety work, and portable GUI acceptance while preserving the no-automatic-remediation boundary.
+Delivered the technician-facing Windows UI line, Home security overview, Smart Scan UX, threat cards, guided-resolution foundations, quarantine/recovery safety work and portable GUI acceptance while preserving the no-automatic-remediation boundary.
 
 ### Beta7 — Detection Coverage & Incident Intelligence
 
 **Status: COMPLETE / FROZEN**
 
-Final accepted checkpoint:
+Final checkpoint:
 
 ```text
 checkpoint/v011-beta7-b77-pass
 4d57f749276c588782147d47078ef4c52d1adc51
 ```
 
-Accepted milestones:
-
-- **B7-0 — Coverage Ledger Foundation** — machine-readable attack coverage ledger.
-- **B7-1 — Sentinel Security Graph Foundation** — typed/provenance-preserving security graph.
-- **B7-2 — Incident Correlation Engine** — deterministic, explained incident grouping.
-- **B7-3 — Confidence Gate** — advisory `RECOMMEND`, `REVIEW_REQUIRED`, `BLOCKED_INSUFFICIENT_EVIDENCE` outcomes.
-- **B7-4 — Attack-Chain Acceptance Harness** — harmless in-memory multi-stage acceptance chain.
-- **B7-5 — Explainable Security** — user and technical explanations grounded in evidence IDs.
-- **B7-6 — Coverage Expansion Campaign** — explicit PARTIAL/GAP accounting.
-- **B7-7 — Beta7 Windows Acceptance & Freeze** — full regression/resource/safety freeze.
-
-Beta7 closed with:
-
-```text
-PARTIAL   3
-GAP       3
-VERIFIED  0
-```
+Delivered the coverage ledger, Security Graph, Incident Correlation, Confidence Gate, attack-chain acceptance harness, explainable security and explicit coverage accounting. Beta7 closed at `PARTIAL=3 / GAP=3 / VERIFIED=0`.
 
 ## Beta8 — Verified Detection & Predictive Defense
 
 **Status: COMPLETE / FROZEN**
 
-Goal: convert explicit coverage gaps into reproducible detector-path evidence first, then build predictive multi-stage reasoning on top of accepted graph/correlation/confidence foundations.
-
-### B8-0 — Beta8 Foundation + New Coverage Baseline ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b80-pass
-969781bd7633d0b2bc92840e8f12220f00de4279
-```
-
-Acceptance summary:
-
-- compile PASS;
-- 450 local Windows tests PASS;
-- exact-head Windows CI PASS;
-- protected B2 unchanged;
-- accepted Beta7 intelligence/final-gate sources unchanged;
-- single-roadmap invariant PASS;
-- deterministic baseline and round-trip PASS;
-- coverage remains `PARTIAL=3 / GAP=3 / VERIFIED=0`;
-- no remediation/execution authority added.
-
-Verification targets inherited by Beta8:
-
-1. `B7-RANSOMWARE-001`
-2. `B7-DEFENSE-EVASION-001`
-3. `B7-CREDENTIAL-001`
-
-### Repository hygiene pass ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-repository-hygiene-pass
-c33a06d6487115f5ae080edede75f5e63c6bf188
-```
-
-Acceptance summary:
-
-- local Windows hygiene gate PASS;
-- exact-head Windows CI PASS;
-- 450 Beta5/Beta6/Beta7/B8-0 regression tests PASS;
-- accepted B8-0 engineering paths unchanged;
-- canonical single-roadmap rule PASS;
-- root allowlist reduced to 10 files;
-- historical test/retest/update/diagnostic/recovery launchers, obsolete patches/checksums, and superseded reports removed from the public working tree;
-- `BUILD-V011-BETA6-B67-PORTABLE-GUI.ps1` retained because accepted Beta6 regression tests still bind to that build contract;
-- no immutable checkpoint rewritten or moved.
-
-Repository policy: keep the public root compact; put engineering tooling under dedicated directories (`sentinel/`, `tests/`, `tools/`, `packaging/`, `.github/`, `coverage/`) unless a root-level file is required by an accepted compatibility contract.
-
-### B8-1 — Ransomware-like Detector Acceptance ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b81-pass
-5d25da3fcb8cd67d9faefbf2440eda19a6086eba
-```
-
-Acceptance summary:
-
-- local Windows acceptance PASS;
-- exact-head Windows CI PASS;
-- 462 Beta5/Beta6/Beta7/B8-0/B8-1 tests PASS;
-- positive ransomware-like fixture => `DETECTED`;
-- backup-like fixture => `REVIEW_REQUIRED`, never `DETECTED`;
-- benign fixture => `NO_MATCH`;
-- deterministic serialization and stable round-trip PASS;
-- evidence IDs preserved into Security Graph and Incident Correlation;
-- controlled fixture detection latency = 2.0 seconds;
-- accepted detector evidence status for `B7-RANSOMWARE-001` = `PARTIAL`;
-- `VERIFIED` remains prohibited because fixtures are synthetic in-memory evidence;
-- all execution/remediation authority flags remain false.
-
-### B8-2 — Defense-Evasion / Tamper Detection ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b82-pass
-a4f4b53bf2ea2dcd00744438c716a18ef5287262
-```
-
-Acceptance summary:
-
-- local Windows acceptance PASS;
-- exact-head Windows CI PASS;
-- 476 Beta5/Beta6/Beta7/B8-0/B8-1/B8-2 tests PASS;
-- positive defense-evasion fixture => `DETECTED` with multi-signal control-tamper evidence;
-- approved admin/maintenance fixture => `REVIEW_REQUIRED`, never `DETECTED`;
-- benign status fixture => `NO_MATCH`;
-- deterministic serialization and stable round-trip PASS;
-- graph/correlation provenance and evidence binding PASS;
-- bounded self-check resource budget PASS;
-- accepted detector evidence status for `B7-DEFENSE-EVASION-001` = `PARTIAL`;
-- `VERIFIED` remains prohibited because fixtures are normalized synthetic in-memory evidence only;
-- no security-control mutation, service control, registry access/mutation, process execution, file I/O, network I/O, credential access, remediation, quarantine, repair, restore, delete, termination, allowlist mutation, or privileged mutation authority was added.
-
-### B8-3 — Credential-Access Indicator Detection ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b83-pass
-ccb182f4869ec9ee050e86269a8a9b7269f9dbbf
-```
-
-Objective: validate safe, non-secret-stealing indicators associated with credential-access behavior, targeting `B7-CREDENTIAL-001`.
-
-Implemented scope:
-
-- deterministic metadata-only detector in `sentinel/credential_access_detector.py`;
-- normalized synthetic/in-memory indicators for protected-auth-process targeting, credential-store targeting, browser-auth-store targeting, token-cache targeting, and credential-tool markers;
-- explicit fail-closed rejection of secret-bearing provenance fields before detection;
-- no password, token, cookie, secret, credential material, LSASS memory, browser database, registry secret, protected store, process memory, or token-cache content is read or collected;
-- credential values are never serialized or emitted;
-- false-positive controls for approved security tooling, maintenance windows, and signed administrative workflows;
-- positive, approved-admin, benign, and rejected-sensitive-input fixtures;
-- evidence IDs and provenance preserved into Security Graph and Incident Correlation;
-- deterministic serialization/digest and stable round-trip validation;
-- bounded self-check resource measurement;
-- `B7-CREDENTIAL-001` may move only to `PARTIAL` at this milestone; `VERIFIED` remains prohibited because evidence is synthetic metadata only;
-- no credential-access, process-memory, protected-store, browser-store, token-cache, file, registry, network, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
-
-Acceptance summary:
-
-- local Windows acceptance PASS on `ccb182f4869ec9ee050e86269a8a9b7269f9dbbf`, evidenced by the user-supplied `Testo incollato.txt` transcript;
-- Windows CI PASS on that same commit: [run 34996407273](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/34996407273), `windows-latest`, including `Run B8-3 exact acceptance gate`;
-- compile, protected B2, frozen B8-0/B8-1/B8-2 sources and repository-hygiene gates PASS;
-- 486 Beta5/Beta6/Beta7/B8-0/B8-1/B8-2/B8-3 tests PASS with 36 non-blocking pre-existing UI warnings;
-- positive fixture => `DETECTED`, score 10;
-- approved security/admin fixture => `REVIEW_REQUIRED`, never `DETECTED`;
-- benign metadata fixture => `NO_MATCH`;
-- secret-bearing provenance fixture => rejected before detection;
-- `metadata_only=true`, deterministic serialization and stable round-trip PASS;
-- Security Graph / Incident Correlation evidence binding PASS;
-- resource budget PASS;
-- all credential-access, data-read, execution, remediation, and privileged authority flags remain false.
-
-### B8-4 — Coverage Verification Campaign ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b84-pass
-7f1c339887225e12b5d032a7b1a4a127ad861123
-```
-
-Objective: recompute the six-scenario coverage ledger from the frozen B8-0 baseline and accepted B8-1/B8-2/B8-3 detector evidence, without promoting synthetic evidence to `VERIFIED`.
-
-Implemented scope:
-
-- deterministic coverage verification in `sentinel/beta8_coverage_verification.py`;
-- machine-readable candidate report in `coverage/beta8_coverage_verification.json`;
-- exact checkpoint and detector/graph/correlation digest binding for B8-1, B8-2 and B8-3;
-- fail-closed rejection of missing, non-deterministic, unaccepted, authority-bearing, or mismatched detector evidence;
-- stable six-scenario ordering and deterministic report digest;
-- candidate recomputation `PARTIAL=6 / GAP=0 / VERIFIED=0`;
-- ransomware-like, defense-evasion, and credential-access scenarios move from baseline `GAP` to candidate `PARTIAL` only;
-- PowerShell, persistence, and suspicious DNS scenarios retain their accepted Beta7 `PARTIAL` state;
-- synthetic detector evidence remains categorically insufficient for `VERIFIED`;
-- no process, file, network, registry, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
-
-Acceptance summary:
-
-- exact-head Windows CI PASS on `7f1c339887225e12b5d032a7b1a4a127ad861123`;
-- local Windows acceptance PASS on that same commit;
-- 494 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
-- frozen B8-0/B8-1/B8-2/B8-3 sources and protected B2 state unchanged;
-- deterministic report digest and recomputation PASS;
-- canonical coverage becomes `PARTIAL=6 / GAP=0 / VERIFIED=0`;
-- no execution, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority added.
-
-### B8-5 — Attack Prediction Engine Foundation ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b85-pass
-28b105638af230c598fe2ab27542909496f225df
-```
-
-Objective: estimate a likely next attack stage from accepted, incident-bound graph/correlation sequences without inventing evidence or granting execution authority.
-
-Implemented scope:
-
-- deterministic advisory engine in `sentinel/attack_prediction.py`;
-- explicit accepted transitions for controlled `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION` prefixes;
-- `PREDICTED`, `REVIEW_REQUIRED`, and `INSUFFICIENT_EVIDENCE` outcomes with bounded confidence;
-- every prediction binds only to observed node IDs, evidence IDs, one correlated incident, and exact source graph/correlation digests;
-- unknown, incomplete, duplicate, cross-incident, or invalid-correlation input fails closed without a prediction;
-- predicted stages remain hypotheses and are never inserted into the Security Graph or treated as evidence;
-- deterministic serialization, stable digest/round-trip, and source immutability checks;
-- no process, file, network, registry, credential-access, graph/correlation mutation, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
-
-Acceptance summary:
-
-- exact-head Windows CI and local Windows acceptance PASS on `28b105638af230c598fe2ab27542909496f225df`;
-- 503 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
-- frozen B8-4 source, incident binding, provenance preservation, source immutability, deterministic prediction, insufficient-evidence, and authority-boundary gates PASS;
-- controlled `PROCESS -> SCRIPT -> PERSISTENCE` evidence predicts `DNS` at confidence `0.78`;
-- predictions remain advisory hypotheses, never evidence or execution authority.
-
-### B8-6 — Predictive Multi-Stage Attack Chains ✅ ACCEPTED / FROZEN
-
-Accepted source:
-
-```text
-checkpoint/v011-beta8-b86-pass
-ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6
-```
-
-Validate three deterministic next-stage predictions across the controlled `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION` chain, with explicit confidence, perfect fixture accuracy, bounded Brier score, monotonic confidence, observed evidence provenance, and fail-closed advisory-only authority boundaries.
-
-Acceptance summary:
-
-- exact-head Windows CI and local Windows acceptance PASS on `ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6`;
-- 509 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
-- predicted stages `PERSISTENCE`, `DNS`, and `DETECTION` match the controlled next stages;
-- confidence is monotonic (`0.65`, `0.78`, `0.88`), fixture accuracy is `1.0`, and Brier score is `0.061767`;
-- predictions remain advisory, are never evidence, and add no execution or remediation authority.
-
-### B8-7 — Beta8 Windows Acceptance & Freeze ✅ ACCEPTED / FROZEN
-
-Accepted source:
+Final checkpoint:
 
 ```text
 checkpoint/v011-beta8-b87-pass
 3c32157dd0c6bb852438319766a9345b0b9f5f1e
 ```
 
-Full Windows regression and exact-head CI/local freeze for Beta8, including detector evidence, coverage state, predictive reasoning, safety boundaries, determinism, resource cost, and immutable final checkpoint.
+Accepted line:
 
-Implemented scope:
+- B8-0 foundation / coverage baseline — `checkpoint/v011-beta8-b80-pass`
+- B8-1 ransomware-like detector — `checkpoint/v011-beta8-b81-pass`
+- B8-2 defense-evasion / tamper detector — `checkpoint/v011-beta8-b82-pass`
+- B8-3 credential-access indicators — `checkpoint/v011-beta8-b83-pass`
+- B8-4 coverage verification — `checkpoint/v011-beta8-b84-pass`
+- B8-5 attack prediction foundation — `checkpoint/v011-beta8-b85-pass`
+- B8-6 predictive multi-stage chains — `checkpoint/v011-beta8-b86-pass`
+- B8-7 Windows acceptance & freeze — `checkpoint/v011-beta8-b87-pass`
 
-- read-only final acceptance composition in `sentinel/beta8_final_acceptance.py`;
-- exact binding to the accepted B8-6 checkpoint and preservation of all earlier frozen Beta8 paths;
-- three accepted detector self-checks, canonical `PARTIAL=6 / GAP=0 / VERIFIED=0` coverage, and predictive-chain validation;
-- deterministic core digest plus bounded elapsed-time and peak-memory measurement;
-- explicit rejection of synthetic `VERIFIED` claims, predictions as evidence, and any authority expansion;
-- complete Beta5/Beta6/Beta7/Beta8 Windows regression through one exact-head gate.
-
-Acceptance summary:
-
-- local Windows acceptance PASS on `3c32157dd0c6bb852438319766a9345b0b9f5f1e` using the repository virtual environment on the user's PC;
-- exact-head Windows CI PASS on that same commit: [run 35089441774](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35089441774);
-- 516 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
-- protected B2 and accepted B8-4/B8-5/B8-6 paths unchanged, with repository-hygiene and single-roadmap gates PASS;
-- three accepted detectors reproduce `DETECTED` evidence while canonical coverage closes at `PARTIAL=6 / GAP=0 / VERIFIED=0`;
-- controlled predictions remain deterministic and advisory, with three-stage accuracy `1.0` and no prediction treated as evidence;
-- bounded final pipeline resource measurement, deterministic core digest, and all execution/remediation/privileged authority fields false.
+Beta8 established deterministic detector evidence and predictive reasoning but deliberately retained `PARTIAL=6 / GAP=0 / VERIFIED=0` because its detector evidence was synthetic/in-memory.
 
 ## Beta9 — Real Windows Telemetry & Detector Verification
 
-**Status: IN PROGRESS**
+**Status: COMPLETE / FROZEN**
 
-Goal: establish privacy-minimal read-only Windows telemetry, then validate the complete event-to-detector-to-incident path using harmless, reproducible local exercises. Existing synthetic coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0` until each scenario meets its own real-path acceptance contract.
+Goal achieved: privacy-minimal local Windows telemetry plus reproducible real-path acceptance without adding remediation or privileged authority.
 
 ### B9-0 — Windows Telemetry Foundation ✅ ACCEPTED / FROZEN
 
@@ -394,27 +141,7 @@ checkpoint/v011-beta9-b90-pass
 a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0
 ```
 
-- Inventory configuration availability of five allowlisted local channels: System, PowerShell Operational, Windows Defender Operational, Sysmon Operational, and Security.
-- Return `AVAILABLE`, `DISABLED`, `ACCESS_DENIED`, `MISSING`, or `ERROR`; unavailable sources remain explicit and never imply a clean system or detection coverage.
-- Read only channel configuration, following [Microsoft Get-WinEvent documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent). Channel availability does not demonstrate event-read permission.
-- Never collect event messages, payloads, usernames, paths, command lines, script contents, credentials, or host identity. Reject unknown fields and never echo rejected input.
-- No channel enabling, audit-policy changes, elevation, remote access, continuous collection, or remediation authority.
-- Strict inventory schema, deterministic digest for identical input, malformed-input and privacy regression tests, full Beta5–Beta9 Windows regression, and real local/CI inventory probes.
-- Acceptance requires a clean tracked source state descending from frozen Beta8, unchanged historical engineering files, preserved repository hygiene, and the System channel configuration available. Optional channels may be unavailable, with their exact state reported.
-- Public evidence contains only aggregate test results and allowlisted channel states; raw event data is never published.
-
-Acceptance summary:
-
-- local Windows acceptance PASS on `a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0` on the user's PC;
-- exact-head Windows CI PASS on that same commit: [run 35091067032](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35091067032);
-- 542 Beta5/Beta6/Beta7/Beta8/Beta9 tests PASS locally and in CI with 36 non-blocking pre-existing UI warnings;
-- local channel configuration states: System, PowerShell Operational and Windows Defender Operational `AVAILABLE`; Sysmon Operational `MISSING`; Security `ACCESS_DENIED` with current permissions;
-- CI channel configuration states: System, PowerShell Operational, Windows Defender Operational and Security `AVAILABLE`; Sysmon Operational `MISSING`;
-- repository hygiene and frozen Beta8-path preservation PASS;
-- no event records, event messages, payloads, usernames, paths, command lines, script contents, credentials, or host identity were collected;
-- event readability and detector verification remain explicitly untested at B9-0;
-- canonical coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0`;
-- no channel mutation, elevation, remediation, automatic execution, or privileged authority was added.
+Read-only inventory of allowlisted Windows channel configuration. No event payloads, user data, channel mutation, elevation or remediation. Local and CI acceptance PASS; canonical coverage remained `PARTIAL=6 / GAP=0 / VERIFIED=0`.
 
 ### B9-1 — Bounded Metadata Event Reader ✅ ACCEPTED / FROZEN
 
@@ -425,50 +152,108 @@ checkpoint/v011-beta9-b91-pass
 c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69
 ```
 
-Implemented scope:
+Added explicit opt-in, local-only bounded metadata reads with fixed channel/provider/event-ID allowlists, event-count bounds and query timeouts. Event messages, XML, payloads, usernames, paths, command lines and script contents remain excluded.
 
-- explicit opt-in, local-only bounded reader for fixed channel/provider/event-ID profiles;
-- maximum event count and query timeout enforced by the live PowerShell reader and validated by the Python contract;
-- export restricted to allowlisted metadata only; event messages, payloads, XML, usernames, machine identity, paths, command lines and script contents remain excluded;
-- per-profile states distinguish `OK`, `EMPTY`, `ACCESS_DENIED`, `UNSUPPORTED`, `TIMEOUT` and `ERROR` without treating unavailable sources as clean evidence;
-- no logging configuration changes, remote access, elevation, threat classification, detector verification or remediation authority;
-- canonical coverage remains unchanged until B9-2/B9-3 establish real detector-path evidence.
+Acceptance:
 
-Acceptance summary:
+- CI run `35093305720` PASS on exact SHA;
+- local Windows PASS on the same SHA;
+- `615 passed, 36 warnings` locally;
+- local profile states: System `EMPTY`, PowerShell `EMPTY`, Defender `EMPTY`, Sysmon `UNSUPPORTED`, Security `ACCESS_DENIED`;
+- event readability proven; detector verification still false;
+- coverage remained `PARTIAL=6 / GAP=0 / VERIFIED=0`.
 
-- local Windows acceptance PASS on `c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69` on the user's PC;
-- exact-head Windows CI PASS on that same commit: [run 35093305720](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35093305720);
-- 615 Beta5/Beta6/Beta7/Beta8/Beta9 tests PASS locally and in CI with 36 non-blocking pre-existing UI warnings;
-- repository hygiene and frozen B9-0 path preservation PASS;
-- local bounded query states: System Kernel-General `EMPTY`, PowerShell Operational `EMPTY`, Windows Defender Operational `EMPTY`, Sysmon Operational `UNSUPPORTED`, Security Auditing `ACCESS_DENIED`;
-- CI bounded query states: System Kernel-General, PowerShell Operational, Windows Defender Operational and Security Auditing `EMPTY`; Sysmon Operational `UNSUPPORTED`;
-- local readable profile count `3`; CI readable profile count `4`; zero matching events is accepted as `EMPTY` and does not imply absence of threats;
-- `event_readability_tested=true`, while `detector_verification_performed=false` and `threat_classification_performed=false`;
-- canonical coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0`;
-- no event messages/payloads, personal data, remote access, logging mutation, remediation or privileged authority were added.
+### B9-2 — Harmless Event-to-Incident Acceptance ✅ ACCEPTED / FROZEN
 
-### B9-2 — Harmless Event-to-Incident Acceptance (planned)
+Accepted source:
 
-Create an isolated benign exercise with an exact correlation marker, bounded lifetime, deterministic cleanup, and assertions binding a freshly observed event to detector output, Security Graph and Incident Correlation. Prove real provenance and distinguish replay/fixtures from live evidence. Missing required sources block the exercise instead of falling back to synthetic success.
+```text
+checkpoint/v011-beta9-b92-pass
+7359f780f206b36355dcb3f6ba3687ad75240b98
+```
 
-### B9-3 — False-Positive Controls & Coverage Decisions (planned)
+A harmless local PowerShell engine exercise proved fresh Windows event provenance and binding through a benign acceptance detector, Security Graph and Incident Correlation without reading event message/script payload content.
 
-Run positive, administrative and benign controls for each supported real detector path. Define per-scenario evidence freshness, false-positive, latency and provenance criteria before promotion. Update only scenarios that meet all criteria; others stay PARTIAL with explicit limits. No inferred broad protection claims.
+Acceptance:
 
-### B9-4 — Beta9 Windows Acceptance & Freeze (planned)
+- Windows CI PASS and local Windows PASS on the same SHA;
+- `691 passed, 36 warnings` locally;
+- `live_event_bound=true`;
+- event → acceptance detector → Security Graph → Incident Correlation binding PASS;
+- no threat classification or detector verification claimed;
+- coverage remained `PARTIAL=6 / GAP=0 / VERIFIED=0`.
 
-Full regression, privacy and authority checks, independently measured resource budgets, exact-commit local/CI acceptance and immutable checkpoint. Preserve all Beta8 checkpoints and automatic-remediation restrictions.
+### B9-3 — False-Positive Controls & Coverage Decisions ✅ ACCEPTED / FROZEN
 
-## Longer-term innovation programs
+Accepted source:
 
-The following remain roadmap programs rather than current accepted protection claims:
+```text
+checkpoint/v011-beta9-b93-pass
+50bbe099ba146201864b8969c91149497df913fa
+```
 
-- **I3 — Attack Prediction Engine** — begins in Beta8 after detector evidence exists.
-- **I4 — Reversible Self-Healing** — any automatic repair authority requires a dedicated safety milestone.
-- **I5 — Rescue Continuity** — preserve incident/evidence identity across live Windows and Rescue workflows.
-- **I6 — Deception Mesh** — local canary/decoy signals integrated into evidence/graph reasoning.
-- **I7 — Adaptive Local Intelligence** — fuse static, behavior, signer, graph, reputation, and local context.
-- Dynamic analysis/sandboxing, IDS/IPS expansion, identity protection, privacy/safe-banking controls, untrusted-network protection, and production packaging remain future work.
+Controlled live filesystem exercises ran only inside dedicated temporary directories and were observed through the accepted ransomware-like detector path.
+
+Accepted local control outcomes:
+
+```text
+positive-ransomware-like      24 writes / 18 renames  -> DETECTED
+administrative-backup-like    24 writes / 18 renames  -> REVIEW_REQUIRED
+benign-save                    2 writes /  0 renames  -> NO_MATCH
+```
+
+Acceptance:
+
+- CI run `35097343311` PASS and local Windows PASS on the exact same SHA;
+- `715 passed, 36 warnings` locally;
+- cleanup `CLEAN` for all controls;
+- no real malware, user-file access, file-content collection, remote access or remediation authority;
+- synthetic fallback not used;
+- Security Graph / Incident Correlation binding PASS;
+- `B7-RANSOMWARE-001` promoted to `VERIFIED` only for this controlled live detector path;
+- canonical coverage changed to `PARTIAL=5 / GAP=0 / VERIFIED=1`.
+
+The remaining five scenarios stay `PARTIAL` with explicit blockers: no accepted live positive control for PowerShell, persistence, defense-evasion, DNS/C2 or credential access within the current privacy/authority boundary.
+
+### B9-4 — Beta9 Windows Acceptance & Freeze ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta9-b94-pass
+cc32c2c31ebb9b863624632a38175ec5825430e4
+```
+
+Final acceptance recomposed B9-0 through B9-3 in one Windows gate, re-running the live telemetry/event/control paths instead of relying on historical PASS state.
+
+Final CI acceptance:
+
+- run `35099242292` PASS on exact SHA `cc32c2c31ebb9b863624632a38175ec5825430e4`;
+- `721 passed, 36 warnings`;
+- independently measured live pipeline: `9.330371 s`;
+- composition elapsed: ~`0.00736 s`;
+- composition peak memory: `38354 bytes`;
+- deterministic core PASS;
+- final coverage `PARTIAL=5 / GAP=0 / VERIFIED=1`;
+- verified scenario `B7-RANSOMWARE-001`;
+- all privacy, no-remediation, no-privileged-mutation and no-broad-protection boundaries PASS.
+
+Final local Windows acceptance on the same SHA:
+
+- `721 passed, 36 warnings`;
+- independently measured live pipeline: `5.586691 s`;
+- composition elapsed: ~`0.00544 s`;
+- composition peak memory: `38488 bytes`;
+- deterministic core PASS;
+- all three temporary filesystem controls cleaned successfully;
+- final coverage `PARTIAL=5 / GAP=0 / VERIFIED=1`;
+- final line: `BC SENTINEL v0.11.0-beta.9 B9-4 WINDOWS FINAL ACCEPTANCE & FREEZE - PASS`.
+
+Beta9 is therefore **COMPLETE / FROZEN**. No further Beta9 engineering change is permitted without opening a new explicit milestone/version line.
+
+## Longer-term programs
+
+Future work remains separate from accepted Beta9 claims, including reversible self-healing, rescue continuity, deception/canary expansion, adaptive local intelligence, broader real detector verification, sandboxing/dynamic analysis, network IDS/IPS, identity protection and production packaging.
 
 ## Repository/documentation policy
 
@@ -476,5 +261,5 @@ The following remain roadmap programs rather than current accepted protection cl
 - `README.md` is the public landing page, not a second roadmap.
 - `SECURITY.md` contains security/disclosure guidance.
 - `STABLE-RELEASE.md` documents the separately promoted stable channel.
-- Historical development evidence remains recoverable from Git history and immutable checkpoint refs.
-- Every future milestone/status change updates this `ROADMAP.md` in the same development cycle.
+- Historical engineering evidence remains recoverable from Git history and immutable checkpoint refs.
+- Every future milestone/status change must update this file in the same development cycle.
