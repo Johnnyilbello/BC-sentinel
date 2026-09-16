@@ -16,14 +16,14 @@ Beta10  IN PROGRESS
 Current milestone:
 
 ```text
-B10-3 — Live Coverage Expansion I
+B10-4 — Safe Response Plan Engine
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b102-pass
-9882a6f675bcf53e99fee8cd8d6b92286dd3ce66
+checkpoint/v011-beta10-b103-pass
+b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -36,18 +36,19 @@ c33a06d6487115f5ae080edede75f5e63c6bf188
 Current canonical coverage state:
 
 ```text
-PARTIAL   5
+PARTIAL   4
 GAP       0
-VERIFIED  1
+VERIFIED  2
 ```
 
-Verified scenario:
+Verified scenarios:
 
 ```text
+B7-POWERSHELL-001
 B7-RANSOMWARE-001
 ```
 
-`VERIFIED` remains limited to the accepted controlled live local ransomware-like detector path. It is not a claim of broad ransomware-family protection.
+`VERIFIED` remains scenario-specific. PowerShell verification is limited to the accepted metadata-only lifecycle-burst detector path and is not a claim of broad script-abuse coverage. Ransomware verification remains limited to the accepted controlled local ransomware-like detector path and is not a claim of broad ransomware-family protection.
 
 ## Engineering contract
 
@@ -236,11 +237,39 @@ Acceptance:
 
 B10-2 turns accepted evidence into an understandable incident story while preserving uncertainty instead of filling evidence gaps with inference.
 
-### B10-3 — Live Coverage Expansion I (current)
+### B10-3 — Live Coverage Expansion I ✅ ACCEPTED / FROZEN
 
-Target safe real-path verification for additional scenarios, prioritizing PowerShell and persistence. Promotion requires harmless positive, administrative and benign controls plus accepted provenance. Any scenario that cannot be verified without reading sensitive payloads, mutating protected system state or exceeding the accepted authority boundary remains `PARTIAL` with its blocker stated explicitly.
+Accepted source:
 
-### B10-4 — Safe Response Plan Engine
+```text
+checkpoint/v011-beta10-b103-pass
+b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8
+```
+
+Delivered a safe real-path PowerShell verification using only Windows PowerShell lifecycle metadata. The accepted detector reasons over session density, lifecycle completeness and an explicit administrative suppressor; it never reads command text, script content, event Message, event payload or event Properties.
+
+Acceptance:
+
+- Windows CI run `35115633300` PASS on exact SHA `b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8`;
+- local Windows PASS on the same SHA;
+- `760 passed, 36 warnings` locally;
+- positive live control: `8` sessions / `8` starts / `8` stops / `8` unique processes -> `DETECTED`;
+- administrative live control: `8` sessions / `8` starts / `8` stops / `8` unique processes -> `REVIEW_REQUIRED`;
+- benign live control: `1` session / `1` start / `1` stop / `1` unique process -> `NO_MATCH`;
+- `B7-POWERSHELL-001` promoted to `VERIFIED` with evidence basis `CONTROLLED_LIVE_POWERSHELL_METADATA_DETECTOR_PATH`;
+- `B7-RANSOMWARE-001` remains `VERIFIED`;
+- canonical coverage advances to `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- detector → Security Graph and Security Graph → Incident Correlation bindings PASS;
+- `synthetic_fallback_used=false`;
+- `powershell_content_read=false`;
+- `authority_expanded=false` and `broad_powershell_protection_claimed=false`;
+- no user-file access, file-content collection, personal-data collection, remote access, network I/O, registry mutation, audit-policy mutation, logging-configuration mutation, credential access, automatic quarantine or remediation authority.
+
+Remaining `PARTIAL` scenarios retain explicit blockers: persistence lacks an accepted harmless live positive detector source; defense-evasion would require protected security-control mutation under the current boundary; DNS/C2 lacks accepted network test authority; credential-access would require sensitive access prohibited by the privacy boundary.
+
+B10-3 expands verified live coverage without reading PowerShell content or widening product authority.
+
+### B10-4 — Safe Response Plan Engine (current)
 
 Generate deterministic proposed-response plans with action, reason, expected impact, authority requirement, reversibility and blocked-state explanations. No automatic execution at this milestone.
 
