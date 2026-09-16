@@ -70,6 +70,7 @@ def test_plan_is_deterministic_and_integrity_bound() -> None:
     assert first == second
     assert response.validate_response_plan(first)["passed"]
     assert first["source_story_digest"] == source["story_digest"]
+    assert first["plan_digest"] == response._digest(response._plan_core(first))
     assert first["plan_id"].startswith("safe-response:")
 
 
@@ -141,20 +142,47 @@ def test_tampered_source_story_digest_fails_closed() -> None:
 def test_source_story_with_authority_fails_closed() -> None:
     source = _partial_story()
     source["authority_boundary"]["automatic_quarantine"] = True
-    core = {key: source.get(key) for key in response._STORY_CORE_KEYS}
-    source["story_digest"] = response._digest(core)
+    source["story_digest"] = response._digest(response._story_core(source))
     validation = response.validate_source_story(source)
     assert not validation["passed"]
     assert "safe_response:story_authority_boundary_invalid" in validation["failures"]
 
 
-def test_plan_validator_rejects_any_execution_or_mutation_flag() -> None:
+def test_plan_validator_rejects_any_execution_or_mutation_flag_even_with_valid_digest() -> None:
     original = response.build_response_plan(_partial_story())
     for field in ("execution_available", "execution_authorized", "automatic", "mutates_system"):
         plan = copy.deepcopy(original)
         plan["actions"][0][field] = True
-        plan["plan_digest"] = response._digest({k: v for k, v in plan.items() if k != "plan_digest"})
-        assert not response.validate_response_plan(plan)["passed"], field
+        plan["plan_digest"] = response._digest(response._plan_core(plan))
+        validation = response.validate_response_plan(plan)
+        assert not validation["passed"], field
+        assert "safe_response:action_execution_or_mutation_forbidden" in validation["failures"]
+
+
+def test_live_wrapper_metadata_does_not_break_canonical_plan_digest() -> None:
+    plan = response.build_response_plan(_partial_story())
+    digest = plan["plan_digest"]
+    plan.update(
+        {
+            "passed": True,
+            "source_detector_outcome": "DETECTED",
+            "source_detector_score": 10,
+            "detector_to_security_graph_bound": True,
+            "security_graph_to_incident_bound": True,
+            "synthetic_fallback_used": False,
+        }
+    )
+    validation = response.validate_response_plan(plan)
+    assert validation["passed"]
+    assert plan["plan_digest"] == digest
+    assert response._digest(response._plan_core(plan)) == digest
+
+    tampered = copy.deepcopy(plan)
+    tampered["plan_state"] = "EXECUTABLE"
+    validation = response.validate_response_plan(tampered)
+    assert not validation["passed"]
+    assert "safe_response:plan_state_invalid" in validation["failures"]
+    assert "safe_response:plan_digest_invalid" in validation["failures"]
 
 
 def test_coverage_and_privacy_boundaries_match_accepted_b10_3() -> None:
