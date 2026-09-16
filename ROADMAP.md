@@ -15,14 +15,14 @@ Beta9  IN PROGRESS
 Current milestone:
 
 ```text
-B9-0 — Windows Telemetry Foundation
+B9-1 — Bounded Metadata Event Reader
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b87-pass
-3c32157dd0c6bb852438319766a9345b0b9f5f1e
+checkpoint/v011-beta9-b90-pass
+a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -40,7 +40,7 @@ GAP       0
 VERIFIED  0
 ```
 
-B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`.
+B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`. B9-0 establishes channel-configuration availability only and does not change coverage state.
 
 ## Engineering contract
 
@@ -385,7 +385,14 @@ Acceptance summary:
 
 Goal: establish privacy-minimal read-only Windows telemetry, then validate the complete event-to-detector-to-incident path using harmless, reproducible local exercises. Existing synthetic coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0` until each scenario meets its own real-path acceptance contract.
 
-### B9-0 — Windows Telemetry Foundation 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B9-0 — Windows Telemetry Foundation ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta9-b90-pass
+a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0
+```
 
 - Inventory configuration availability of five allowlisted local channels: System, PowerShell Operational, Windows Defender Operational, Sysmon Operational, and Security.
 - Return `AVAILABLE`, `DISABLED`, `ACCESS_DENIED`, `MISSING`, or `ERROR`; unavailable sources remain explicit and never imply a clean system or detection coverage.
@@ -394,7 +401,20 @@ Goal: establish privacy-minimal read-only Windows telemetry, then validate the c
 - No channel enabling, audit-policy changes, elevation, remote access, continuous collection, or remediation authority.
 - Strict inventory schema, deterministic digest for identical input, malformed-input and privacy regression tests, full Beta5–Beta9 Windows regression, and real local/CI inventory probes.
 - Acceptance requires a clean tracked source state descending from frozen Beta8, unchanged historical engineering files, preserved repository hygiene, and the System channel configuration available. Optional channels may be unavailable, with their exact state reported.
-- Freeze only after local Windows and Windows CI PASS on the same commit. Public evidence contains only aggregate test results and allowlisted channel states; raw event data is never published.
+- Public evidence contains only aggregate test results and allowlisted channel states; raw event data is never published.
+
+Acceptance summary:
+
+- local Windows acceptance PASS on `a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0` on the user's PC;
+- exact-head Windows CI PASS on that same commit: [run 35091067032](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35091067032);
+- 542 Beta5/Beta6/Beta7/Beta8/Beta9 tests PASS locally and in CI with 36 non-blocking pre-existing UI warnings;
+- local channel configuration states: System, PowerShell Operational and Windows Defender Operational `AVAILABLE`; Sysmon Operational `MISSING`; Security `ACCESS_DENIED` with current permissions;
+- CI channel configuration states: System, PowerShell Operational, Windows Defender Operational and Security `AVAILABLE`; Sysmon Operational `MISSING`;
+- repository hygiene and frozen Beta8-path preservation PASS;
+- no event records, event messages, payloads, usernames, paths, command lines, script contents, credentials, or host identity were collected;
+- event readability and detector verification remain explicitly untested at B9-0;
+- canonical coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0`;
+- no channel mutation, elevation, remediation, automatic execution, or privileged authority was added.
 
 ### B9-1 — Bounded Metadata Event Reader (planned)
 
