@@ -16,14 +16,14 @@ Beta10  IN PROGRESS
 Current milestone:
 
 ```text
-B10-1 — Sentinel Proof Mode
+B10-2 — Attack Story 2.0
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b100-pass
-8f9b315eb3137f461dce1f679af32d8a9d680990
+checkpoint/v011-beta10-b101-pass
+d1ea57abcc69407cf0e17d5ff1e008bcf48ca9af
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -180,13 +180,37 @@ Acceptance:
 
 B10-0 establishes the rule that Beta10 is judged by measurable trust, clarity, recovery continuity, noise and safety rather than by feature count.
 
-### B10-1 — Sentinel Proof Mode (current)
+### B10-1 — Sentinel Proof Mode ✅ ACCEPTED / FROZEN
 
-Build a customer-visible proof layer over accepted evidence. It must expose per-scenario status (`VERIFIED`, `PARTIAL`, `GAP`), evidence basis, last accepted verification, explicit limitation, and a safe on-demand proof path where technically supported. Proof Mode may not convert a scenario to `VERIFIED` by UI presentation alone.
+Accepted source:
 
-### B10-2 — Attack Story 2.0
+```text
+checkpoint/v011-beta10-b101-pass
+d1ea57abcc69407cf0e17d5ff1e008bcf48ca9af
+```
 
-Create a user-readable incident story from Security Graph + Incident Correlation with evidence-backed stages, confidence, timestamps and explicit unknowns.
+Delivered an evidence-backed Proof Mode that exposes all six security scenarios with exact accepted status, evidence basis, limitation and proof capability. The presentation layer cannot promote coverage, and stale/replayed live evidence fails closed.
+
+Acceptance:
+
+- Windows CI run `35102521115` PASS on exact SHA;
+- local Windows PASS on the same SHA;
+- `741 passed, 36 warnings` locally;
+- baseline report preserves `PARTIAL=5 / GAP=0 / VERIFIED=1`;
+- fresh on-demand local ransomware-like proof PASS;
+- live controls: positive `24 writes / 18 renames -> DETECTED`, administrative `24 / 18 -> REVIEW_REQUIRED`, benign `2 / 0 -> NO_MATCH`;
+- only `B7-RANSOMWARE-001` receives `fresh_proof=true`;
+- detector → Security Graph → Incident Correlation binding PASS;
+- positive score `10` with accepted signals `BULK_RENAME`, `BULK_REWRITE`, `CANARY_TOUCH`, `ENTROPY_SHIFT`, `EXTENSION_CHURN`;
+- `synthetic_fallback_used=false`;
+- `broad_protection_claimed=false`;
+- no user-file access, file-content collection, personal-data collection, remote access or remediation authority.
+
+B10-1 makes protection evidence visible without overstating coverage and provides the trusted input contract for Attack Story and the later Trust Center UI.
+
+### B10-2 — Attack Story 2.0 (current)
+
+Create a user-readable incident story from Security Graph + Incident Correlation with evidence-backed stages, confidence, timestamps and explicit unknowns. Every claim must link to accepted evidence; missing stages must remain visibly unknown rather than inferred. Plain-language and technical views must be deterministic projections of the same evidence graph.
 
 ### B10-3 — Live Coverage Expansion I
 
