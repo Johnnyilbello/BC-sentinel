@@ -348,9 +348,18 @@ Acceptance summary:
 - confidence is monotonic (`0.65`, `0.78`, `0.88`), fixture accuracy is `1.0`, and Brier score is `0.061767`;
 - predictions remain advisory, are never evidence, and add no execution or remediation authority.
 
-### B8-7 — Beta8 Windows Acceptance & Freeze
+### B8-7 — Beta8 Windows Acceptance & Freeze 🟡 IMPLEMENTED / ACCEPTANCE PENDING
 
 Full Windows regression and exact-head CI/local freeze for Beta8, including detector evidence, coverage state, predictive reasoning, safety boundaries, determinism, resource cost, and immutable final checkpoint.
+
+Implemented scope:
+
+- read-only final acceptance composition in `sentinel/beta8_final_acceptance.py`;
+- exact binding to the accepted B8-6 checkpoint and preservation of all earlier frozen Beta8 paths;
+- three accepted detector self-checks, canonical `PARTIAL=6 / GAP=0 / VERIFIED=0` coverage, and predictive-chain validation;
+- deterministic core digest plus bounded elapsed-time and peak-memory measurement;
+- explicit rejection of synthetic `VERIFIED` claims, predictions as evidence, and any authority expansion;
+- complete Beta5/Beta6/Beta7/Beta8 Windows regression through one exact-head gate.
 
 ## Longer-term innovation programs
 
