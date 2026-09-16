@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-4 — Coverage Verification Campaign
+B8-5 — Attack Prediction Engine Foundation
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b83-pass
-ccb182f4869ec9ee050e86269a8a9b7269f9dbbf
+checkpoint/v011-beta8-b84-pass
+7f1c339887225e12b5d032a7b1a4a127ad861123
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -31,15 +31,15 @@ checkpoint/v011-beta8-repository-hygiene-pass
 c33a06d6487115f5ae080edede75f5e63c6bf188
 ```
 
-Current canonical coverage baseline remains:
+Current canonical coverage state:
 
 ```text
-PARTIAL   3
-GAP       3
+PARTIAL   6
+GAP       0
 VERIFIED  0
 ```
 
-Accepted B8-1, B8-2 and B8-3 detector evidence supports `B7-RANSOMWARE-001`, `B7-DEFENSE-EVASION-001` and `B7-CREDENTIAL-001` as `PARTIAL`. B8-4 now recomputes a candidate `PARTIAL=6 / GAP=0 / VERIFIED=0`; the canonical accepted total remains unchanged until exact-head CI and local Windows acceptance pass.
+B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`.
 
 ## Engineering contract
 
@@ -265,7 +265,14 @@ Acceptance summary:
 - resource budget PASS;
 - all credential-access, data-read, execution, remediation, and privileged authority flags remain false.
 
-### B8-4 — Coverage Verification Campaign 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B8-4 — Coverage Verification Campaign ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b84-pass
+7f1c339887225e12b5d032a7b1a4a127ad861123
+```
 
 Objective: recompute the six-scenario coverage ledger from the frozen B8-0 baseline and accepted B8-1/B8-2/B8-3 detector evidence, without promoting synthetic evidence to `VERIFIED`.
 
@@ -282,12 +289,15 @@ Implemented scope:
 - synthetic detector evidence remains categorically insufficient for `VERIFIED`;
 - no process, file, network, registry, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
 
-Acceptance required before freeze:
+Acceptance summary:
 
-- exact-head Windows CI PASS on the final B8-4 source state;
+- exact-head Windows CI PASS on `7f1c339887225e12b5d032a7b1a4a127ad861123`;
 - local Windows acceptance PASS on that same commit;
-- full Beta5/Beta6/Beta7/Beta8 regression, frozen predecessor, determinism, provenance, coverage-summary, repository-hygiene, and authority-boundary gates PASS;
-- only then may `checkpoint/v011-beta8-b84-pass` be created and the recomputed total become canonical.
+- 494 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
+- frozen B8-0/B8-1/B8-2/B8-3 sources and protected B2 state unchanged;
+- deterministic report digest and recomputation PASS;
+- canonical coverage becomes `PARTIAL=6 / GAP=0 / VERIFIED=0`;
+- no execution, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority added.
 
 ### B8-5 — Attack Prediction Engine Foundation
 
