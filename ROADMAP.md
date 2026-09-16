@@ -329,9 +329,9 @@ Acceptance summary:
 - controlled `PROCESS -> SCRIPT -> PERSISTENCE` evidence predicts `DNS` at confidence `0.78`;
 - predictions remain advisory hypotheses, never evidence or execution authority.
 
-### B8-6 — Predictive Multi-Stage Attack Chains
+### B8-6 — Predictive Multi-Stage Attack Chains 🟡 IMPLEMENTED / ACCEPTANCE PENDING
 
-Validate prediction across controlled multi-stage chains such as script -> persistence -> discovery/network -> impact indicators, with confidence/calibration and explainability.
+Validate three deterministic next-stage predictions across the controlled `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION` chain, with explicit confidence, perfect fixture accuracy, bounded Brier score, monotonic confidence, observed evidence provenance, and fail-closed advisory-only authority boundaries.
 
 ### B8-7 — Beta8 Windows Acceptance & Freeze
 
