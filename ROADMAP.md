@@ -16,14 +16,14 @@ Beta10  IN PROGRESS
 Current milestone:
 
 ```text
-B10-2 — Attack Story 2.0
+B10-3 — Live Coverage Expansion I
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b101-pass
-d1ea57abcc69407cf0e17d5ff1e008bcf48ca9af
+checkpoint/v011-beta10-b102-pass
+9882a6f675bcf53e99fee8cd8d6b92286dd3ce66
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -208,13 +208,37 @@ Acceptance:
 
 B10-1 makes protection evidence visible without overstating coverage and provides the trusted input contract for Attack Story and the later Trust Center UI.
 
-### B10-2 — Attack Story 2.0 (current)
+### B10-2 — Attack Story 2.0 ✅ ACCEPTED / FROZEN
 
-Create a user-readable incident story from Security Graph + Incident Correlation with evidence-backed stages, confidence, timestamps and explicit unknowns. Every claim must link to accepted evidence; missing stages must remain visibly unknown rather than inferred. Plain-language and technical views must be deterministic projections of the same evidence graph.
+Accepted source:
 
-### B10-3 — Live Coverage Expansion I
+```text
+checkpoint/v011-beta10-b102-pass
+9882a6f675bcf53e99fee8cd8d6b92286dd3ce66
+```
 
-Target safe real-path verification for additional scenarios, prioritizing PowerShell and persistence. Promotion requires harmless positive, administrative and benign controls plus accepted provenance.
+Delivered a deterministic evidence-backed incident narrative built from Security Graph + Incident Correlation. Plain-language and technical views are projections of the same accepted evidence. Missing stages fail closed as `UNKNOWN`; the story never invents an entry point, execution, persistence, network activity or response when those stages are not demonstrated.
+
+Acceptance:
+
+- Windows CI run `35106886446` PASS on exact SHA;
+- local Windows PASS on the same SHA;
+- `753 passed, 36 warnings` locally;
+- live file-control evidence PASS with positive `24 writes / 18 renames`, administrative `24 / 18`, benign `2 / 0`, all cleanup `CLEAN`;
+- live Attack Story PASS with exactly two observed stages: `FILE_ACTIVITY` and `DETECTION`;
+- `ENTRY_POINT`, `EXECUTION`, `PERSISTENCE`, `NETWORK_ACTIVITY` and `RESPONSE` remain explicitly `UNKNOWN`;
+- exactly two evidence-backed claims are emitted;
+- detector → Security Graph and Security Graph → Incident Correlation bindings PASS;
+- `source_live_control=true` and `synthetic_fallback_used=false`;
+- coverage remains `PARTIAL=5 / GAP=0 / VERIFIED=1`;
+- `authority_expanded=false` and `broad_protection_claimed=false`;
+- local-first privacy boundaries preserve no absolute-path export, no file-content collection, no personal-data collection and no remote access.
+
+B10-2 turns accepted evidence into an understandable incident story while preserving uncertainty instead of filling evidence gaps with inference.
+
+### B10-3 — Live Coverage Expansion I (current)
+
+Target safe real-path verification for additional scenarios, prioritizing PowerShell and persistence. Promotion requires harmless positive, administrative and benign controls plus accepted provenance. Any scenario that cannot be verified without reading sensitive payloads, mutating protected system state or exceeding the accepted authority boundary remains `PARTIAL` with its blocker stated explicitly.
 
 ### B10-4 — Safe Response Plan Engine
 
