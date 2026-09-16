@@ -16,14 +16,14 @@ Beta10  IN PROGRESS
 Current milestone:
 
 ```text
-B10-4 — Safe Response Plan Engine
+B10-5 — Rescue Continuity
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b103-pass
-b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8
+checkpoint/v011-beta10-b104-pass
+a23550a0cf31aecdce54d5eca333b3930ca2edc7
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -269,13 +269,37 @@ Remaining `PARTIAL` scenarios retain explicit blockers: persistence lacks an acc
 
 B10-3 expands verified live coverage without reading PowerShell content or widening product authority.
 
-### B10-4 — Safe Response Plan Engine (current)
+### B10-4 — Safe Response Plan Engine ✅ ACCEPTED / FROZEN
 
-Generate deterministic proposed-response plans with action, reason, expected impact, authority requirement, reversibility and blocked-state explanations. No automatic execution at this milestone.
+Accepted source:
 
-### B10-5 — Rescue Continuity
+```text
+checkpoint/v011-beta10-b104-pass
+a23550a0cf31aecdce54d5eca333b3930ca2edc7
+```
 
-Carry incident IDs, evidence provenance and recommended recovery context from the installed product into accepted portable/rescue workflows.
+Delivered a deterministic planning-only response layer over the accepted Attack Story. For an evidence-backed incident it emits ordered proposed actions with reason, expected impact, required authorities, reversibility, rollback requirement, confirmation requirement and explicit blocker state. Planning never counts as execution and never turns the `RESPONSE` Attack Story stage into observed evidence.
+
+Acceptance:
+
+- Windows CI run `35119030890` PASS on exact SHA `a23550a0cf31aecdce54d5eca333b3930ca2edc7`;
+- local Windows PASS on the same SHA;
+- `771 passed, 36 warnings` locally;
+- local live controls remain clean: ransomware-like `24 writes / 18 renames`, administrative `24 / 18`, benign `2 / 0`;
+- exact action order: `PRESERVE_INCIDENT_EVIDENCE`, `PREPARE_CONTAINMENT`, `VERIFY_UNKNOWN_STAGES`, `PREPARE_RESCUE_HANDOFF`;
+- containment remains `BLOCKED_AUTHORITY` and explicitly requires user confirmation, target identity binding, quarantine authority, journal binding and rollback binding before any future execution;
+- `execution_available=false`, `execution_authorized=false`, `remediation_performed=false`, `system_mutation_performed=false`;
+- `authority_expanded=false` and the legacy Guided Resolution execution boundary remains preserved;
+- `RESPONSE` remains `UNKNOWN` and `response_stage_claimed_observed=false`;
+- plan integrity is bound to a canonical signed core while allowed live wrapper metadata does not invalidate that core; core tampering fails closed;
+- coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- `synthetic_fallback_used=false`, `personal_data_collected=false`, `absolute_paths_exported=false`, `file_content_collected=false`, `remote_access=false`.
+
+B10-4 makes BC Sentinel explain what it would do next without silently gaining permission to do it.
+
+### B10-5 — Rescue Continuity (current)
+
+Carry incident IDs, evidence provenance and recommended recovery context from the installed product into accepted portable/rescue workflows. Continuity must remain integrity-bound, local-first and non-executing unless a later milestone separately grants and verifies action authority.
 
 ### B10-6 — Reversible Response Pilot
 
