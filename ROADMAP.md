@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-5 — Attack Prediction Engine Foundation
+B8-6 — Predictive Multi-Stage Attack Chains
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b84-pass
-7f1c339887225e12b5d032a7b1a4a127ad861123
+checkpoint/v011-beta8-b85-pass
+28b105638af230c598fe2ab27542909496f225df
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -299,7 +299,14 @@ Acceptance summary:
 - canonical coverage becomes `PARTIAL=6 / GAP=0 / VERIFIED=0`;
 - no execution, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority added.
 
-### B8-5 — Attack Prediction Engine Foundation 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B8-5 — Attack Prediction Engine Foundation ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b85-pass
+28b105638af230c598fe2ab27542909496f225df
+```
 
 Objective: estimate a likely next attack stage from accepted, incident-bound graph/correlation sequences without inventing evidence or granting execution authority.
 
@@ -314,11 +321,13 @@ Implemented scope:
 - deterministic serialization, stable digest/round-trip, and source immutability checks;
 - no process, file, network, registry, credential-access, graph/correlation mutation, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
 
-Acceptance required before freeze:
+Acceptance summary:
 
-- exact-head Windows CI and local Windows acceptance PASS on the same final source state;
-- full Beta5/Beta6/Beta7/Beta8 regression and frozen B8-4 source gates PASS;
-- deterministic prediction, insufficient-evidence, incident binding, provenance preservation, source immutability, and authority-boundary gates PASS.
+- exact-head Windows CI and local Windows acceptance PASS on `28b105638af230c598fe2ab27542909496f225df`;
+- 503 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
+- frozen B8-4 source, incident binding, provenance preservation, source immutability, deterministic prediction, insufficient-evidence, and authority-boundary gates PASS;
+- controlled `PROCESS -> SCRIPT -> PERSISTENCE` evidence predicts `DNS` at confidence `0.78`;
+- predictions remain advisory hypotheses, never evidence or execution authority.
 
 ### B8-6 — Predictive Multi-Stage Attack Chains
 
