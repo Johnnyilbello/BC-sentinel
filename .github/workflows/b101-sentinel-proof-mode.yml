@@ -1,0 +1,25 @@
+name: B10-1 Sentinel Proof Mode
+
+on:
+  push:
+    branches:
+      - feature/v011-beta10-b101-sentinel-proof-mode
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Full regression and Sentinel Proof Mode acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V011-BETA10-B101.ps1 -ConfirmSentinelProofMode
