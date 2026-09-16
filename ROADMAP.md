@@ -14,14 +14,14 @@ Beta8  IN PROGRESS
 Current milestone:
 
 ```text
-B8-6 — Predictive Multi-Stage Attack Chains
+B8-7 — Beta8 Windows Acceptance & Freeze
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b85-pass
-28b105638af230c598fe2ab27542909496f225df
+checkpoint/v011-beta8-b86-pass
+ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -329,9 +329,24 @@ Acceptance summary:
 - controlled `PROCESS -> SCRIPT -> PERSISTENCE` evidence predicts `DNS` at confidence `0.78`;
 - predictions remain advisory hypotheses, never evidence or execution authority.
 
-### B8-6 — Predictive Multi-Stage Attack Chains 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B8-6 — Predictive Multi-Stage Attack Chains ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b86-pass
+ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6
+```
 
 Validate three deterministic next-stage predictions across the controlled `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION` chain, with explicit confidence, perfect fixture accuracy, bounded Brier score, monotonic confidence, observed evidence provenance, and fail-closed advisory-only authority boundaries.
+
+Acceptance summary:
+
+- exact-head Windows CI and local Windows acceptance PASS on `ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6`;
+- 509 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
+- predicted stages `PERSISTENCE`, `DNS`, and `DETECTION` match the controlled next stages;
+- confidence is monotonic (`0.65`, `0.78`, `0.88`), fixture accuracy is `1.0`, and Brier score is `0.061767`;
+- predictions remain advisory, are never evidence, and add no execution or remediation authority.
 
 ### B8-7 — Beta8 Windows Acceptance & Freeze
 
