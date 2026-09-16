@@ -299,9 +299,26 @@ Acceptance summary:
 - canonical coverage becomes `PARTIAL=6 / GAP=0 / VERIFIED=0`;
 - no execution, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority added.
 
-### B8-5 — Attack Prediction Engine Foundation
+### B8-5 — Attack Prediction Engine Foundation 🟡 IMPLEMENTED / ACCEPTANCE PENDING
 
-Use accepted graph/correlation sequences to estimate likely next attack stages without inventing evidence or granting execution authority.
+Objective: estimate a likely next attack stage from accepted, incident-bound graph/correlation sequences without inventing evidence or granting execution authority.
+
+Implemented scope:
+
+- deterministic advisory engine in `sentinel/attack_prediction.py`;
+- explicit accepted transitions for controlled `PROCESS -> SCRIPT -> PERSISTENCE -> DNS -> DETECTION` prefixes;
+- `PREDICTED`, `REVIEW_REQUIRED`, and `INSUFFICIENT_EVIDENCE` outcomes with bounded confidence;
+- every prediction binds only to observed node IDs, evidence IDs, one correlated incident, and exact source graph/correlation digests;
+- unknown, incomplete, duplicate, cross-incident, or invalid-correlation input fails closed without a prediction;
+- predicted stages remain hypotheses and are never inserted into the Security Graph or treated as evidence;
+- deterministic serialization, stable digest/round-trip, and source immutability checks;
+- no process, file, network, registry, credential-access, graph/correlation mutation, execution, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
+
+Acceptance required before freeze:
+
+- exact-head Windows CI and local Windows acceptance PASS on the same final source state;
+- full Beta5/Beta6/Beta7/Beta8 regression and frozen B8-4 source gates PASS;
+- deterministic prediction, insufficient-evidence, incident binding, provenance preservation, source immutability, and authority-boundary gates PASS.
 
 ### B8-6 — Predictive Multi-Stage Attack Chains
 

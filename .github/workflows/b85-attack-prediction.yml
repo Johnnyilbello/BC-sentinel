@@ -1,0 +1,33 @@
+name: B8-5 Attack Prediction Foundation Gate
+
+on:
+  push:
+    branches:
+      - feature/v011-beta8-b85-attack-prediction
+  workflow_dispatch:
+
+jobs:
+  b85-attack-prediction:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BC_SENTINEL_REDUCED_MOTION: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Run B8-5 exact acceptance gate
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\tools\acceptance\TEST-V011-BETA8-B85.ps1" -ConfirmAttackPredictionAcceptance
