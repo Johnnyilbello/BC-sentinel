@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -22,10 +23,20 @@ def tree_hashes(root: Path) -> dict[str, str]:
     return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob("*") if p.is_file()}
 
 
+def stable_fixture_reader(root: Path) -> Callable[[Path, int], bytes]:
+    """Keep semantic fixtures independent from host disk/antivirus latency."""
+    samples = {p.resolve(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+    def reader(path: Path, sample_bytes: int) -> bytes:
+        return samples[path.resolve()][:sample_bytes]
+
+    return reader
+
+
 def test_clean_target_is_healthy(tmp_path: Path) -> None:
     root = make_windows(tmp_path / "offline")
     before = tree_hashes(root)
-    result = b51.assess_target(root)
+    result = b51.assess_target(root, reader=stable_fixture_reader(root))
     assert result["state"] == b51.STATE_HEALTHY
     assert result["target_contract_valid"] is True
     assert result["critical_missing"] == []
@@ -36,7 +47,7 @@ def test_clean_target_is_healthy(tmp_path: Path) -> None:
 def test_missing_critical_file_is_damaged(tmp_path: Path) -> None:
     root = make_windows(tmp_path / "offline")
     (root / "Windows" / "System32" / "config" / "SOFTWARE").unlink()
-    result = b51.assess_target(root)
+    result = b51.assess_target(root, reader=stable_fixture_reader(root))
     assert result["state"] == b51.STATE_DAMAGED
     assert "Windows/System32/config/SOFTWARE" in result["critical_missing"]
 
@@ -46,7 +57,7 @@ def test_persistence_active_content_requires_review(tmp_path: Path) -> None:
     startup = root / "ProgramData" / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "StartUp"
     startup.mkdir(parents=True)
     (startup / "persist.ps1").write_text("Write-Output harmless", encoding="utf-8")
-    result = b51.assess_target(root)
+    result = b51.assess_target(root, reader=stable_fixture_reader(root))
     assert result["state"] == b51.STATE_REVIEW
     assert result["counters"]["persistence_review_items"] == 1
     assert any("persistence_active_content_review" in row["reasons"] for row in result["records"])
@@ -57,7 +68,7 @@ def test_user_startup_double_extension_requires_review(tmp_path: Path) -> None:
     startup = root / "Users" / "Alice" / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
     startup.mkdir(parents=True)
     (startup / "invoice.pdf.exe").write_bytes(b"MZ")
-    result = b51.assess_target(root)
+    result = b51.assess_target(root, reader=stable_fixture_reader(root))
     assert result["state"] == b51.STATE_REVIEW
     assert result["counters"]["persistence_review_items"] == 1
 
