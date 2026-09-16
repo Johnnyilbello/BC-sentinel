@@ -39,7 +39,7 @@ GAP       3
 VERIFIED  0
 ```
 
-Accepted B8-1, B8-2 and B8-3 detector evidence supports `B7-RANSOMWARE-001`, `B7-DEFENSE-EVASION-001` and `B7-CREDENTIAL-001` as `PARTIAL`. Aggregate coverage is intentionally recomputed only in B8-4.
+Accepted B8-1, B8-2 and B8-3 detector evidence supports `B7-RANSOMWARE-001`, `B7-DEFENSE-EVASION-001` and `B7-CREDENTIAL-001` as `PARTIAL`. B8-4 now recomputes a candidate `PARTIAL=6 / GAP=0 / VERIFIED=0`; the canonical accepted total remains unchanged until exact-head CI and local Windows acceptance pass.
 
 ## Engineering contract
 
@@ -265,9 +265,29 @@ Acceptance summary:
 - resource budget PASS;
 - all credential-access, data-read, execution, remediation, and privileged authority flags remain false.
 
-### B8-4 — Coverage Verification Campaign
+### B8-4 — Coverage Verification Campaign 🟡 IMPLEMENTED / ACCEPTANCE PENDING
 
-Recompute the coverage ledger from accepted B8 detector evidence. Promote only scenarios that meet the verification contract; unresolved scenarios remain explicit GAP/PARTIAL.
+Objective: recompute the six-scenario coverage ledger from the frozen B8-0 baseline and accepted B8-1/B8-2/B8-3 detector evidence, without promoting synthetic evidence to `VERIFIED`.
+
+Implemented scope:
+
+- deterministic coverage verification in `sentinel/beta8_coverage_verification.py`;
+- machine-readable candidate report in `coverage/beta8_coverage_verification.json`;
+- exact checkpoint and detector/graph/correlation digest binding for B8-1, B8-2 and B8-3;
+- fail-closed rejection of missing, non-deterministic, unaccepted, authority-bearing, or mismatched detector evidence;
+- stable six-scenario ordering and deterministic report digest;
+- candidate recomputation `PARTIAL=6 / GAP=0 / VERIFIED=0`;
+- ransomware-like, defense-evasion, and credential-access scenarios move from baseline `GAP` to candidate `PARTIAL` only;
+- PowerShell, persistence, and suspicious DNS scenarios retain their accepted Beta7 `PARTIAL` state;
+- synthetic detector evidence remains categorically insufficient for `VERIFIED`;
+- no process, file, network, registry, credential-access, remediation, quarantine, repair, restore, delete, termination, allowlist-mutation, or privileged-mutation authority is added.
+
+Acceptance required before freeze:
+
+- exact-head Windows CI PASS on the final B8-4 source state;
+- local Windows acceptance PASS on that same commit;
+- full Beta5/Beta6/Beta7/Beta8 regression, frozen predecessor, determinism, provenance, coverage-summary, repository-hygiene, and authority-boundary gates PASS;
+- only then may `checkpoint/v011-beta8-b84-pass` be created and the recomputed total become canonical.
 
 ### B8-5 — Attack Prediction Engine Foundation
 

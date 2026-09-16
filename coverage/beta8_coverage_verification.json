@@ -1,0 +1,62 @@
+{
+  "schema": "bc-sentinel-beta8-coverage-verification-v1",
+  "profile": "v0.11.0-beta.8-b84-coverage-verification",
+  "source_baseline_checkpoint": "checkpoint/v011-beta8-b80-pass",
+  "source_baseline_commit": "969781bd7633d0b2bc92840e8f12220f00de4279",
+  "accepted_detector_checkpoints": {
+    "B7-RANSOMWARE-001": {
+      "checkpoint": "checkpoint/v011-beta8-b81-pass",
+      "commit": "5d25da3fcb8cd67d9faefbf2440eda19a6086eba",
+      "detector_digest": "8fc3546eebc55477ead90cc7fce5a6df7518a82601e4ef1f57a8044e9fc543ff",
+      "graph_digest": "eebb4b11813b89c2fb1483e81d68a423010fd4944aefc77491412bce49739577",
+      "correlation_digest": "428bd16c0400d723e1047df58f9aa6f53d9c566d1c50822ac56c69961b02da6a"
+    },
+    "B7-DEFENSE-EVASION-001": {
+      "checkpoint": "checkpoint/v011-beta8-b82-pass",
+      "commit": "a4f4b53bf2ea2dcd00744438c716a18ef5287262",
+      "detector_digest": "229e3391ff4c58e2fc3da3c95d3cd7c52687841e7ba6b33574acbdad2df74640",
+      "graph_digest": "06e57de2aec72a124e4ca88559b4dadfca5d28cbc6b71bf5d7738064e43e6b6f",
+      "correlation_digest": "ec5decf55ab32918676f69a55a94457ed17b9ccaabffe83989255c75754984e1"
+    },
+    "B7-CREDENTIAL-001": {
+      "checkpoint": "checkpoint/v011-beta8-b83-pass",
+      "commit": "ccb182f4869ec9ee050e86269a8a9b7269f9dbbf",
+      "detector_digest": "e300839b208c58e7b23fa3947b08594cf6dfb60dcec5787e86475d07e5b4b915",
+      "graph_digest": "5843f479c1953c70a68f0e9f6edf286902c574a8b0aa784ff8b567e7fa543493",
+      "correlation_digest": "cc344300d9df53a7f8a62433188d819196df4585578dc997d8f8b370680cf8b8"
+    }
+  },
+  "summary": {
+    "PARTIAL": 6,
+    "GAP": 0,
+    "VERIFIED": 0
+  },
+  "scenarios": [
+    {"scenario_id": "B7-POWERSHELL-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_BETA7_PARTIAL"},
+    {"scenario_id": "B7-PERSISTENCE-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_BETA7_PARTIAL"},
+    {"scenario_id": "B7-RANSOMWARE-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_SYNTHETIC_DETECTOR"},
+    {"scenario_id": "B7-DEFENSE-EVASION-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_SYNTHETIC_DETECTOR"},
+    {"scenario_id": "B7-C2-DNS-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_BETA7_PARTIAL"},
+    {"scenario_id": "B7-CREDENTIAL-001", "status": "PARTIAL", "evidence_basis": "ACCEPTED_SYNTHETIC_DETECTOR"}
+  ],
+  "read_only": true,
+  "synthetic_evidence_cannot_verify": true,
+  "unsupported_positive_claims_allowed": false,
+  "process_execution": false,
+  "file_write": false,
+  "network_io": false,
+  "registry_mutation": false,
+  "credential_access": false,
+  "remediation_execution": false,
+  "automatic_quarantine": false,
+  "automatic_repair": false,
+  "automatic_restore": false,
+  "general_home_execution_authorized": false,
+  "delete_authorized": false,
+  "repair_authorized": false,
+  "terminate_process_authorized": false,
+  "trust_allowlist_mutation_authorized": false,
+  "privileged_system_mutation_authorized": false,
+  "authority_granted": false,
+  "execution_authority_added": false
+}
