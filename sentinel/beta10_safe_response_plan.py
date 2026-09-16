@@ -2,11 +2,9 @@ from __future__ import annotations
 
 """B10-4 Safe Response Plan Engine.
 
-Turn an accepted B10-2 Attack Story into a deterministic, customer-readable
-response plan. The planner is planning-only: it never executes, authorizes,
-quarantines, repairs, restores, deletes, terminates processes, mutates trust or
-changes privileged system state. Planning an action never counts as an observed
-Attack Story RESPONSE stage.
+Build a deterministic response plan from accepted Attack Story evidence without
+executing or authorizing any response. Planner output is evidence-bound,
+planning-only, and must never make the Attack Story RESPONSE stage observed.
 """
 
 import argparse
@@ -79,6 +77,39 @@ _STORY_CORE_KEYS: Final[tuple[str, ...]] = (
     "privacy",
 )
 
+_PLAN_CORE_KEYS: Final[tuple[str, ...]] = (
+    "schema",
+    "profile",
+    "source_checkpoint",
+    "source_checkpoint_commit",
+    "plan_id",
+    "incident_id",
+    "source_story_id",
+    "source_story_digest",
+    "source_live_control",
+    "plan_state",
+    "actions",
+    "observed_stage_ids",
+    "unknown_stage_ids",
+    "source_response_stage_status",
+    "response_stage_claimed_observed",
+    "plain_language_summary",
+    "technical_summary",
+    "coverage_summary",
+    "coverage_changed",
+    "broad_protection_claimed",
+    "authority_expanded",
+    "execution_api",
+    "execution_available",
+    "execution_authorized",
+    "automatic_action",
+    "remediation_performed",
+    "system_mutation_performed",
+    "legacy_guided_resolution_boundary_preserved",
+    "authority_boundary",
+    "privacy",
+)
+
 
 def _canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -92,8 +123,13 @@ def _story_core(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: payload.get(key) for key in _STORY_CORE_KEYS}
 
 
-def _stage_map(story: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    stages = story.get("stages")
+def _plan_core(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the canonical signed plan body, excluding live-wrapper metadata."""
+    return {key: payload.get(key) for key in _PLAN_CORE_KEYS}
+
+
+def _stage_map(source_story: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    stages = source_story.get("stages")
     if not isinstance(stages, list):
         raise ValueError("safe_response:story_stages_required")
     mapped: dict[str, dict[str, Any]] = {}
@@ -117,15 +153,14 @@ def validate_source_story(payload: object) -> dict[str, Any]:
         failures.append("safe_response:story_schema_or_profile_invalid")
     if payload.get("read_only") is not True or payload.get("broad_protection_claimed") is not False:
         failures.append("safe_response:story_read_only_boundary_invalid")
-    if payload.get("authority_boundary") != attack_story.AUTHORITY_BOUNDARY or any(
-        bool(value) for value in dict(payload.get("authority_boundary") or {}).values()
+    source_authority = payload.get("authority_boundary")
+    if source_authority != attack_story.AUTHORITY_BOUNDARY or any(
+        bool(value) for value in dict(source_authority or {}).values()
     ):
         failures.append("safe_response:story_authority_boundary_invalid")
     if payload.get("privacy") != attack_story.PRIVACY_BOUNDARY:
         failures.append("safe_response:story_privacy_boundary_invalid")
-
-    story_digest = str(payload.get("story_digest") or "")
-    if story_digest != _digest(_story_core(payload)):
+    if str(payload.get("story_digest") or "") != _digest(_story_core(payload)):
         failures.append("safe_response:story_digest_invalid")
 
     try:
@@ -134,8 +169,8 @@ def validate_source_story(payload: object) -> dict[str, Any]:
         failures.append(str(exc))
         stages = {}
 
-    observed_evidence: set[str] = set()
     observed_stages: set[str] = set()
+    observed_evidence: set[str] = set()
     for stage_id, row in stages.items():
         status = row.get("status")
         evidence_ids = row.get("evidence_ids")
@@ -162,12 +197,11 @@ def validate_source_story(payload: object) -> dict[str, Any]:
                 continue
             if claim.get("stage_id") not in observed_stages:
                 failures.append("safe_response:claim_without_observed_stage")
-            evidence_ids = claim.get("evidence_ids")
-            if not isinstance(evidence_ids, list) or not evidence_ids:
+            claim_evidence = claim.get("evidence_ids")
+            if not isinstance(claim_evidence, list) or not claim_evidence:
                 failures.append("safe_response:claim_evidence_required")
-            elif not set(str(item) for item in evidence_ids).issubset(observed_evidence):
+            elif not set(str(item) for item in claim_evidence).issubset(observed_evidence):
                 failures.append("safe_response:claim_evidence_outside_story")
-
     if not observed_stages or not observed_evidence:
         failures.append("safe_response:accepted_observed_evidence_required")
     return {
@@ -228,13 +262,9 @@ def _evidence_for(stages: dict[str, dict[str, Any]], *stage_ids: str) -> list[st
     return sorted(evidence)
 
 
-def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
-    source_validation = validate_source_story(source_story)
-    if not source_validation["passed"]:
-        raise ValueError("safe_response:source_invalid:" + ",".join(source_validation["failures"]))
-
+def _validate_legacy_boundary() -> None:
     legacy = guided_resolution_execution_gate.validate_b654_execution_gate_contract()
-    required_legacy_flags = (
+    required = (
         "confirmed_receipt_is_not_execution_authority",
         "fresh_target_revalidation_after_confirmation_required",
         "provider_execution_boundary_required",
@@ -242,32 +272,36 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
         "journal_storage_binding_required",
         "rollback_binding_required",
     )
-    if not legacy.get("passed") or not all(legacy.get(key) is True for key in required_legacy_flags):
+    if not legacy.get("passed") or not all(legacy.get(key) is True for key in required):
         raise RuntimeError("safe_response:legacy_execution_boundary_not_preserved")
-    if any(
-        legacy.get(key) is True
-        for key in (
-            "execution_api",
-            "execution_authorized",
-            "execution_nonce_issued",
-            "journal_write_authority",
-            "rollback_execution_authority",
-            "automatic_quarantine",
-            "automatic_repair",
-            "automatic_destructive_action",
-        )
-    ):
+    forbidden = (
+        "execution_api",
+        "execution_authorized",
+        "execution_nonce_issued",
+        "journal_write_authority",
+        "rollback_execution_authority",
+        "automatic_quarantine",
+        "automatic_repair",
+        "automatic_destructive_action",
+    )
+    if any(legacy.get(key) is True for key in forbidden):
         raise RuntimeError("safe_response:legacy_boundary_unexpected_authority")
 
+
+def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
+    source_validation = validate_source_story(source_story)
+    if not source_validation["passed"]:
+        raise ValueError("safe_response:source_invalid:" + ",".join(source_validation["failures"]))
+    _validate_legacy_boundary()
+
     stages = _stage_map(source_story)
-    observed = [stage_id for stage_id in attack_story.STAGE_IDS if stages[stage_id].get("status") == "OBSERVED"]
-    unknown = [stage_id for stage_id in attack_story.STAGE_IDS if stages[stage_id].get("status") == "UNKNOWN"]
-    evidence_all = sorted(
-        {eid for stage_id in observed for eid in stages[stage_id].get("evidence_ids", []) if str(eid)}
+    observed = [sid for sid in attack_story.STAGE_IDS if stages[sid].get("status") == "OBSERVED"]
+    unknown = [sid for sid in attack_story.STAGE_IDS if stages[sid].get("status") == "UNKNOWN"]
+    all_evidence = sorted(
+        {str(eid) for sid in observed for eid in stages[sid].get("evidence_ids", []) if str(eid)}
     )
 
-    actions: list[dict[str, Any]] = []
-    actions.append(
+    actions: list[dict[str, Any]] = [
         _action(
             action_id="PRESERVE_INCIDENT_EVIDENCE",
             title="Preserva le prove dell'incidente",
@@ -276,7 +310,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
             state=ACTION_GUIDANCE_ONLY,
             reason="Conservare gli ID di prova e la provenienza accettata prima di qualsiasi futura risposta.",
             evidence_stage_ids=observed,
-            evidence_ids=evidence_all,
+            evidence_ids=all_evidence,
             expected_impact="Nessuna modifica al sistema; mantiene tracciabile la base probatoria del piano.",
             required_authorities=[],
             blockers=[],
@@ -285,10 +319,12 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
             user_confirmation_required=False,
             would_mutate_system_if_executed=False,
         )
-    )
+    ]
 
     if stages["DETECTION"].get("status") == "OBSERVED":
-        containment_stages = [stage_id for stage_id in ("FILE_ACTIVITY", "DETECTION") if stages[stage_id].get("status") == "OBSERVED"]
+        containment_stages = [
+            sid for sid in ("FILE_ACTIVITY", "DETECTION") if stages[sid].get("status") == "OBSERVED"
+        ]
         actions.append(
             _action(
                 action_id="PREPARE_CONTAINMENT",
@@ -331,7 +367,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
                 state=ACTION_GUIDANCE_ONLY,
                 reason="Attack Story mantiene alcune fasi UNKNOWN; il piano le elenca senza inventare causalità o telemetria.",
                 evidence_stage_ids=observed,
-                evidence_ids=evidence_all,
+                evidence_ids=all_evidence,
                 expected_impact="Aumenta la chiarezza investigativa senza cambiare lo stato delle fasi o il sistema.",
                 required_authorities=[],
                 blockers=[],
@@ -351,7 +387,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
             state=ACTION_HANDOFF_ONLY,
             reason="Preserva incidente, prove e contesto di risposta per il futuro flusso Rescue Continuity.",
             evidence_stage_ids=observed,
-            evidence_ids=evidence_all,
+            evidence_ids=all_evidence,
             expected_impact="Crea solo il contesto di handoff; nessuna azione Rescue viene eseguita da B10-4.",
             required_authorities=["EXPLICIT_USER_DECISION_FOR_FUTURE_RESCUE"],
             blockers=["rescue_execution_owned_by_later_milestone"],
@@ -362,8 +398,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
         )
     )
 
-    source_response_status = str(stages["RESPONSE"].get("status"))
-    material = {
+    plan_material = {
         "incident_id": source_story["incident_id"],
         "story_id": source_story["story_id"],
         "story_digest": source_story["story_digest"],
@@ -371,13 +406,12 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
         "observed": observed,
         "unknown": unknown,
     }
-    plan_id = "safe-response:" + _digest(material)[:24]
     payload: dict[str, Any] = {
         "schema": SCHEMA,
         "profile": PROFILE,
         "source_checkpoint": SOURCE_CHECKPOINT,
         "source_checkpoint_commit": SOURCE_CHECKPOINT_COMMIT,
-        "plan_id": plan_id,
+        "plan_id": "safe-response:" + _digest(plan_material)[:24],
         "incident_id": source_story["incident_id"],
         "source_story_id": source_story["story_id"],
         "source_story_digest": source_story["story_digest"],
@@ -386,7 +420,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
         "actions": actions,
         "observed_stage_ids": observed,
         "unknown_stage_ids": unknown,
-        "source_response_stage_status": source_response_status,
+        "source_response_stage_status": str(stages["RESPONSE"].get("status")),
         "response_stage_claimed_observed": False,
         "plain_language_summary": "Piano di risposta preparato; nessuna azione è stata eseguita o autorizzata.",
         "technical_summary": (
@@ -407,7 +441,7 @@ def build_response_plan(source_story: dict[str, Any]) -> dict[str, Any]:
         "authority_boundary": dict(AUTHORITY_BOUNDARY),
         "privacy": dict(PRIVACY_BOUNDARY),
     }
-    payload["plan_digest"] = _digest(payload)
+    payload["plan_digest"] = _digest(_plan_core(payload))
     validation = validate_response_plan(payload)
     if not validation["passed"]:
         raise RuntimeError("safe_response:generated_plan_invalid:" + ",".join(validation["failures"]))
@@ -432,10 +466,18 @@ def validate_response_plan(payload: object) -> dict[str, Any]:
         failures.append("safe_response:planner_cannot_claim_response_observed")
     if payload.get("legacy_guided_resolution_boundary_preserved") is not True:
         failures.append("safe_response:legacy_boundary_missing")
-    for key in ("execution_api", "execution_available", "execution_authorized", "automatic_action", "remediation_performed", "system_mutation_performed"):
+    for key in (
+        "execution_api",
+        "execution_available",
+        "execution_authorized",
+        "automatic_action",
+        "remediation_performed",
+        "system_mutation_performed",
+    ):
         if payload.get(key) is not False:
             failures.append(f"safe_response:forbidden_plan_authority:{key}")
-    if payload.get("authority_boundary") != AUTHORITY_BOUNDARY or any(bool(v) for v in dict(payload.get("authority_boundary") or {}).values()):
+    authority = payload.get("authority_boundary")
+    if authority != AUTHORITY_BOUNDARY or any(bool(v) for v in dict(authority or {}).values()):
         failures.append("safe_response:authority_boundary_invalid")
     if payload.get("privacy") != PRIVACY_BOUNDARY:
         failures.append("safe_response:privacy_boundary_invalid")
@@ -471,8 +513,7 @@ def validate_response_plan(payload: object) -> dict[str, Any]:
     if priorities and priorities != sorted(priorities):
         failures.append("safe_response:action_priority_order_invalid")
 
-    expected_digest = _digest({k: v for k, v in payload.items() if k != "plan_digest"})
-    if payload.get("plan_digest") != expected_digest:
+    if payload.get("plan_digest") != _digest(_plan_core(payload)):
         failures.append("safe_response:plan_digest_invalid")
     expected_plan_id = "safe-response:" + _digest(
         {
@@ -497,12 +538,19 @@ def plan_from_b93_evidence(evidence: object) -> dict[str, Any]:
         plan = build_response_plan(source)
     except (ValueError, RuntimeError) as exc:
         return {"passed": False, "failures": [str(exc)]}
-    plan["passed"] = True
-    plan["source_detector_outcome"] = source.get("source_detector_outcome")
-    plan["source_detector_score"] = source.get("source_detector_score")
-    plan["detector_to_security_graph_bound"] = source.get("detector_to_security_graph_bound")
-    plan["security_graph_to_incident_bound"] = source.get("security_graph_to_incident_bound")
-    plan["synthetic_fallback_used"] = source.get("synthetic_fallback_used")
+    plan.update(
+        {
+            "passed": True,
+            "source_detector_outcome": source.get("source_detector_outcome"),
+            "source_detector_score": source.get("source_detector_score"),
+            "detector_to_security_graph_bound": source.get("detector_to_security_graph_bound"),
+            "security_graph_to_incident_bound": source.get("security_graph_to_incident_bound"),
+            "synthetic_fallback_used": source.get("synthetic_fallback_used"),
+        }
+    )
+    wrapper_validation = validate_response_plan(plan)
+    if not wrapper_validation["passed"]:
+        return {"passed": False, "failures": wrapper_validation["failures"]}
     return plan
 
 
