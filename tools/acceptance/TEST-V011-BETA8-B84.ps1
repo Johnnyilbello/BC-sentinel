@@ -93,7 +93,9 @@ if ($roadmaps.Count -ne 1 -or $roadmaps[0] -ne 'ROADMAP.md') { Fail 'roadmap' 'R
 Write-Host 'Repository-hygiene contract: PASS'
 
 $systemTemp = [System.IO.Path]::GetTempPath()
-$pytestBase = Join-Path $systemTemp ('BCSentinel-TestTemp\b84-pytest-' + [guid]::NewGuid().ToString('N'))
+$base = Join-Path $systemTemp 'BCSentinel-TestTemp'
+New-Item -ItemType Directory -Path $base -Force | Out-Null
+$pytestBase = Join-Path $base ('b84-pytest-' + [guid]::NewGuid().ToString('N'))
 Write-Host ('pytest basetemp: ' + $pytestBase)
 
 Write-Host '[1/6] Compile B8-4...'
