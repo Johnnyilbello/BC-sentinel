@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import copy
-
 import pytest
 
 from sentinel import beta10_attack_story as story
@@ -249,12 +247,67 @@ def test_tampered_source_digest_fails_validation() -> None:
 
 
 def test_multiple_incidents_require_explicit_selection() -> None:
-    graph, correlation = _full_graph()
-    extra = incident_correlation.CorrelationResult(
-        source_graph_id=correlation.source_graph_id,
-        source_graph_digest=correlation.source_graph_digest,
-        max_time_delta=correlation.max_time_delta,
-        incidents=(correlation.incidents[0], copy.deepcopy(correlation.incidents[0])),
+    builder = security_graph.SecurityGraphBuilder()
+    pairs = []
+    for group, base_time in (("a", 10.0), ("b", 20.0)):
+        evidence_id = f"e-{group}"
+        evidence = builder.ingest_observation(
+            {
+                "node_type": "EVIDENCE",
+                "identity": {"group": group, "kind": "file"},
+                "label": f"File activity {group}",
+                "observed_at": base_time,
+                "provenance": _prov("DIRECT"),
+                "evidence_ids": [evidence_id],
+                "confidence": 1.0,
+                "attributes": {
+                    "write_event_count": 24,
+                    "rename_event_count": 18,
+                    "correlation_keys": [f"incident:{group}"],
+                },
+            }
+        )
+        detection = builder.ingest_observation(
+            {
+                "node_type": "DETECTION",
+                "identity": {"group": group, "kind": "detector"},
+                "label": f"Detection {group}",
+                "observed_at": base_time + 0.1,
+                "provenance": _prov("DERIVED"),
+                "evidence_ids": [evidence_id],
+                "confidence": 1.0,
+                "attributes": {"correlation_keys": [f"incident:{group}"]},
+            }
+        )
+        builder.link(
+            edge_type="SUPPORTED_BY",
+            source=detection.node_id,
+            target=evidence.node_id,
+            observed_at=base_time + 0.1,
+            provenance=_prov("DERIVED"),
+            evidence_ids=[evidence_id],
+            confidence=1.0,
+            reason=f"Independent incident {group} relationship.",
+        )
+        pairs.append((evidence, detection))
+
+    graph = builder.build(
+        graph_id="b102-two-incidents",
+        incident_id="b102-two-incidents",
+        created_at=20.1,
+        metadata={"fixture": True},
     )
+    correlation = incident_correlation.IncidentCorrelator(max_time_delta=30.0).correlate(graph)
+    assert len(correlation.incidents) == 2
+
     with pytest.raises(ValueError, match="incident_id_required"):
-        story.generate_story(graph=graph, correlation=extra)
+        story.generate_story(graph=graph, correlation=correlation)
+
+    selected = correlation.incidents[0].incident_id
+    payload = story.generate_story(
+        graph=graph,
+        correlation=correlation,
+        incident_id=selected,
+    ).to_dict()
+    assert payload["incident_id"] == selected
+    assert story.validate_story(payload, graph=graph, correlation=correlation)["passed"]
