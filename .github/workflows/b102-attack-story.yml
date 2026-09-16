@@ -1,0 +1,25 @@
+name: B10-2 Attack Story 2.0
+
+on:
+  push:
+    branches:
+      - feature/v011-beta10-b102-attack-story
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Full regression and Attack Story acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V011-BETA10-B102.ps1 -ConfirmAttackStory
