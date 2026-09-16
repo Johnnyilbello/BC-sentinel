@@ -9,12 +9,13 @@ Beta5  COMPLETE / FROZEN
 Beta6  COMPLETE / FROZEN
 Beta7  COMPLETE / FROZEN
 Beta8  COMPLETE / FROZEN
+Beta9  IN PROGRESS
 ```
 
 Current milestone:
 
 ```text
-Beta8 COMPLETE / FROZEN — next milestone to be defined
+B9-0 — Windows Telemetry Foundation
 ```
 
 Latest accepted engineering checkpoint:
@@ -377,6 +378,39 @@ Acceptance summary:
 - three accepted detectors reproduce `DETECTED` evidence while canonical coverage closes at `PARTIAL=6 / GAP=0 / VERIFIED=0`;
 - controlled predictions remain deterministic and advisory, with three-stage accuracy `1.0` and no prediction treated as evidence;
 - bounded final pipeline resource measurement, deterministic core digest, and all execution/remediation/privileged authority fields false.
+
+## Beta9 — Real Windows Telemetry & Detector Verification
+
+**Status: IN PROGRESS**
+
+Goal: establish privacy-minimal read-only Windows telemetry, then validate the complete event-to-detector-to-incident path using harmless, reproducible local exercises. Existing synthetic coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0` until each scenario meets its own real-path acceptance contract.
+
+### B9-0 — Windows Telemetry Foundation 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+
+- Inventory configuration availability of five allowlisted local channels: System, PowerShell Operational, Windows Defender Operational, Sysmon Operational, and Security.
+- Return `AVAILABLE`, `DISABLED`, `ACCESS_DENIED`, `MISSING`, or `ERROR`; unavailable sources remain explicit and never imply a clean system or detection coverage.
+- Read only channel configuration, following [Microsoft Get-WinEvent documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent). Channel availability does not demonstrate event-read permission.
+- Never collect event messages, payloads, usernames, paths, command lines, script contents, credentials, or host identity. Reject unknown fields and never echo rejected input.
+- No channel enabling, audit-policy changes, elevation, remote access, continuous collection, or remediation authority.
+- Strict inventory schema, deterministic digest for identical input, malformed-input and privacy regression tests, full Beta5–Beta9 Windows regression, and real local/CI inventory probes.
+- Acceptance requires a clean tracked source state descending from frozen Beta8, unchanged historical engineering files, preserved repository hygiene, and the System channel configuration available. Optional channels may be unavailable, with their exact state reported.
+- Freeze only after local Windows and Windows CI PASS on the same commit. Public evidence contains only aggregate test results and allowlisted channel states; raw event data is never published.
+
+### B9-1 — Bounded Metadata Event Reader (planned)
+
+Implement an explicit opt-in, local-only reader with fixed channel/provider/event-ID allowlists, bounded event counts and query timeouts. Export only allowlisted event metadata; distinguish empty results, denied access, unsupported providers, and query errors. Test on real Windows without changing logging configuration. No threat classification from availability alone.
+
+### B9-2 — Harmless Event-to-Incident Acceptance (planned)
+
+Create an isolated benign exercise with an exact correlation marker, bounded lifetime, deterministic cleanup, and assertions binding a freshly observed event to detector output, Security Graph and Incident Correlation. Prove real provenance and distinguish replay/fixtures from live evidence. Missing required sources block the exercise instead of falling back to synthetic success.
+
+### B9-3 — False-Positive Controls & Coverage Decisions (planned)
+
+Run positive, administrative and benign controls for each supported real detector path. Define per-scenario evidence freshness, false-positive, latency and provenance criteria before promotion. Update only scenarios that meet all criteria; others stay PARTIAL with explicit limits. No inferred broad protection claims.
+
+### B9-4 — Beta9 Windows Acceptance & Freeze (planned)
+
+Full regression, privacy and authority checks, independently measured resource budgets, exact-commit local/CI acceptance and immutable checkpoint. Preserve all Beta8 checkpoints and automatic-remediation restrictions.
 
 ## Longer-term innovation programs
 
