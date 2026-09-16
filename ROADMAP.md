@@ -8,20 +8,20 @@ This is the **only roadmap source of truth** for BC Sentinel. Every accepted eng
 Beta5  COMPLETE / FROZEN
 Beta6  COMPLETE / FROZEN
 Beta7  COMPLETE / FROZEN
-Beta8  IN PROGRESS
+Beta8  COMPLETE / FROZEN
 ```
 
 Current milestone:
 
 ```text
-B8-7 — Beta8 Windows Acceptance & Freeze
+Beta8 COMPLETE / FROZEN — next milestone to be defined
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta8-b86-pass
-ee98c6fb908c4a8ff133e8fe94f0afd2c2bc08f6
+checkpoint/v011-beta8-b87-pass
+3c32157dd0c6bb852438319766a9345b0b9f5f1e
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -122,7 +122,7 @@ VERIFIED  0
 
 ## Beta8 — Verified Detection & Predictive Defense
 
-**Status: IN PROGRESS**
+**Status: COMPLETE / FROZEN**
 
 Goal: convert explicit coverage gaps into reproducible detector-path evidence first, then build predictive multi-stage reasoning on top of accepted graph/correlation/confidence foundations.
 
@@ -348,7 +348,14 @@ Acceptance summary:
 - confidence is monotonic (`0.65`, `0.78`, `0.88`), fixture accuracy is `1.0`, and Brier score is `0.061767`;
 - predictions remain advisory, are never evidence, and add no execution or remediation authority.
 
-### B8-7 — Beta8 Windows Acceptance & Freeze 🟡 IMPLEMENTED / ACCEPTANCE PENDING
+### B8-7 — Beta8 Windows Acceptance & Freeze ✅ ACCEPTED / FROZEN
+
+Accepted source:
+
+```text
+checkpoint/v011-beta8-b87-pass
+3c32157dd0c6bb852438319766a9345b0b9f5f1e
+```
 
 Full Windows regression and exact-head CI/local freeze for Beta8, including detector evidence, coverage state, predictive reasoning, safety boundaries, determinism, resource cost, and immutable final checkpoint.
 
@@ -360,6 +367,16 @@ Implemented scope:
 - deterministic core digest plus bounded elapsed-time and peak-memory measurement;
 - explicit rejection of synthetic `VERIFIED` claims, predictions as evidence, and any authority expansion;
 - complete Beta5/Beta6/Beta7/Beta8 Windows regression through one exact-head gate.
+
+Acceptance summary:
+
+- local Windows acceptance PASS on `3c32157dd0c6bb852438319766a9345b0b9f5f1e` using the repository virtual environment on the user's PC;
+- exact-head Windows CI PASS on that same commit: [run 35089441774](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35089441774);
+- 516 Beta5/Beta6/Beta7/Beta8 tests PASS with 36 non-blocking pre-existing UI warnings;
+- protected B2 and accepted B8-4/B8-5/B8-6 paths unchanged, with repository-hygiene and single-roadmap gates PASS;
+- three accepted detectors reproduce `DETECTED` evidence while canonical coverage closes at `PARTIAL=6 / GAP=0 / VERIFIED=0`;
+- controlled predictions remain deterministic and advisory, with three-stage accuracy `1.0` and no prediction treated as evidence;
+- bounded final pipeline resource measurement, deterministic core digest, and all execution/remediation/privileged authority fields false.
 
 ## Longer-term innovation programs
 
