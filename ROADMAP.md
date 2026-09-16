@@ -15,14 +15,14 @@ Beta9  IN PROGRESS
 Current milestone:
 
 ```text
-B9-1 — Bounded Metadata Event Reader
+B9-2 — Harmless Event-to-Incident Acceptance
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta9-b90-pass
-a5a6b08b5e9edfea4d0ce6021f8c9bdab9c5b9b0
+checkpoint/v011-beta9-b91-pass
+c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -40,7 +40,7 @@ GAP       0
 VERIFIED  0
 ```
 
-B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`. B9-0 establishes channel-configuration availability only and does not change coverage state.
+B8-4 deterministically recomputed all six scenarios from accepted evidence. Synthetic detector evidence remains `PARTIAL` and cannot support `VERIFIED`. B9-0 establishes channel-configuration availability only; B9-1 establishes bounded real event-metadata readability only. Neither changes coverage state or verifies detectors.
 
 ## Engineering contract
 
@@ -416,9 +416,36 @@ Acceptance summary:
 - canonical coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0`;
 - no channel mutation, elevation, remediation, automatic execution, or privileged authority was added.
 
-### B9-1 — Bounded Metadata Event Reader (planned)
+### B9-1 — Bounded Metadata Event Reader ✅ ACCEPTED / FROZEN
 
-Implement an explicit opt-in, local-only reader with fixed channel/provider/event-ID allowlists, bounded event counts and query timeouts. Export only allowlisted event metadata; distinguish empty results, denied access, unsupported providers, and query errors. Test on real Windows without changing logging configuration. No threat classification from availability alone.
+Accepted source:
+
+```text
+checkpoint/v011-beta9-b91-pass
+c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69
+```
+
+Implemented scope:
+
+- explicit opt-in, local-only bounded reader for fixed channel/provider/event-ID profiles;
+- maximum event count and query timeout enforced by the live PowerShell reader and validated by the Python contract;
+- export restricted to allowlisted metadata only; event messages, payloads, XML, usernames, machine identity, paths, command lines and script contents remain excluded;
+- per-profile states distinguish `OK`, `EMPTY`, `ACCESS_DENIED`, `UNSUPPORTED`, `TIMEOUT` and `ERROR` without treating unavailable sources as clean evidence;
+- no logging configuration changes, remote access, elevation, threat classification, detector verification or remediation authority;
+- canonical coverage remains unchanged until B9-2/B9-3 establish real detector-path evidence.
+
+Acceptance summary:
+
+- local Windows acceptance PASS on `c4cf63fb0c61e9fc65287b624cb0f59c0cf74c69` on the user's PC;
+- exact-head Windows CI PASS on that same commit: [run 35093305720](https://github.com/Johnnyilbello/BC-sentinel/actions/runs/35093305720);
+- 615 Beta5/Beta6/Beta7/Beta8/Beta9 tests PASS locally and in CI with 36 non-blocking pre-existing UI warnings;
+- repository hygiene and frozen B9-0 path preservation PASS;
+- local bounded query states: System Kernel-General `EMPTY`, PowerShell Operational `EMPTY`, Windows Defender Operational `EMPTY`, Sysmon Operational `UNSUPPORTED`, Security Auditing `ACCESS_DENIED`;
+- CI bounded query states: System Kernel-General, PowerShell Operational, Windows Defender Operational and Security Auditing `EMPTY`; Sysmon Operational `UNSUPPORTED`;
+- local readable profile count `3`; CI readable profile count `4`; zero matching events is accepted as `EMPTY` and does not imply absence of threats;
+- `event_readability_tested=true`, while `detector_verification_performed=false` and `threat_classification_performed=false`;
+- canonical coverage remains `PARTIAL=6 / GAP=0 / VERIFIED=0`;
+- no event messages/payloads, personal data, remote access, logging mutation, remediation or privileged authority were added.
 
 ### B9-2 — Harmless Event-to-Incident Acceptance (planned)
 
