@@ -6,6 +6,7 @@ $env:QT_QPA_PLATFORM = 'offscreen'
 $env:BC_SENTINEL_REDUCED_MOTION = '1'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-Location $repoRoot
+$env:PYTHONPATH = $repoRoot
 
 if (-not $ConfirmLiveCoverageExpansion) { throw 'Explicit Beta10 B10-3 live coverage confirmation required.' }
 $commit = & git rev-parse HEAD
