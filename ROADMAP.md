@@ -10,20 +10,20 @@ Beta6   COMPLETE / FROZEN
 Beta7   COMPLETE / FROZEN
 Beta8   COMPLETE / FROZEN
 Beta9   COMPLETE / FROZEN
-Beta10  IN PROGRESS — FINAL ACCEPTANCE
+Beta10  COMPLETE / FROZEN
 ```
 
 Current milestone:
 
 ```text
-B10-9 — Windows Competitive Acceptance & Freeze
+B10-9 — Windows Competitive Acceptance & Freeze ✅ ACCEPTED / FROZEN
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b108-pass
-aa0c2b4e4b79381f9a20a5d69e99e972dee46971
+checkpoint/v011-beta10-b109-pass
+89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -149,7 +149,14 @@ Final Beta9 acceptance:
 
 ## Beta10 — Verifiable Protection, Explainable Response & Product Value
 
-**Status: IN PROGRESS — FINAL ACCEPTANCE**
+**Status: COMPLETE / FROZEN**
+
+Final checkpoint:
+
+```text
+checkpoint/v011-beta10-b109-pass
+89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
+```
 
 Goal: turn BC Sentinel from a capable security engine into a differentiated security product for professionals, technicians and small organizations by making protection demonstrable, incidents understandable, response safe/reversible and operational impact measurable.
 
@@ -304,32 +311,40 @@ Acceptance:
 
 B10-8 makes the accepted evidence, limits, privacy and response boundaries understandable in the product without changing what the engine is allowed to claim or execute.
 
-### B10-9 — Windows Competitive Acceptance & Freeze 🚧 CURRENT / FREEZE CANDIDATE
-
-B10-9 is the final Beta10 gate. It adds no protection capability. It independently composes and rechecks the entire accepted Beta10 value/safety contract before an immutable final freeze can be created.
-
-Acceptance requirements:
-
-- B10-8 immutable checkpoint identity must be exact and all accepted predecessor paths must remain unchanged;
-- full Beta5→Beta10 regression must pass on Windows;
-- fresh live PowerShell positive / administrative / benign controls must pass;
-- fresh Operational Impact measurement must remain within accepted latency/CPU/RAM/user-interruption budgets;
-- Trust Center UI smoke must pass at all accepted widths with zero horizontal overflow;
-- harmless B10-6 pilot must again demonstrate `QUARANTINED -> ROLLED_BACK` with journal and exact narrow authority;
-- all six B10-0 value pillars must be demonstrated by accepted evidence;
-- final coverage must remain `PARTIAL=4 / GAP=0 / VERIFIED=2` unless a separately accepted live detector milestone changes it;
-- general response execution must remain disabled;
-- Rescue Continuity must remain non-executing and local-first;
-- no new B10-9 authority, broad-protection claim, presentation-driven coverage promotion or external market-superiority claim is permitted;
-- exact Windows CI **and local acceptance on the same final SHA** are required before `checkpoint/v011-beta10-b109-pass` may be created and Beta10 may be marked `COMPLETE / FROZEN`.
-
-Current engineering branch:
+### B10-9 — Windows Competitive Acceptance & Freeze ✅ ACCEPTED / FROZEN
 
 ```text
-feature/v011-beta10-b109-windows-competitive-acceptance-freeze
+checkpoint/v011-beta10-b109-pass
+89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
 ```
 
-The branch is a freeze candidate only. Beta10 remains `IN PROGRESS` until the final exact-commit local acceptance succeeds.
+B10-9 is the final Beta10 gate. It adds no protection capability; it independently composes and rechecks the entire accepted Beta10 value/safety contract before freeze.
+
+Final acceptance:
+
+- Windows CI run `35230121430` PASS on exact SHA `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
+- local Windows PASS on the same exact SHA;
+- CI: `845 passed, 38 warnings in 89.33s`;
+- local: `845 passed, 38 warnings in 89.40s`;
+- all `6/6` Beta10 value pillars demonstrated by accepted evidence;
+- all `10` Beta10 milestones accounted for;
+- competitive internal value/safety contract PASS;
+- external market-superiority claim remains `false`;
+- final coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- verified scenarios remain `B7-POWERSHELL-001` and `B7-RANSOMWARE-001`;
+- local p95 wall `0.3633 ms`;
+- local p95 CPU `0.0 ms`;
+- local max RSS delta `0.003906 MiB`;
+- local user interruptions `0`;
+- Trust Center remains `7` pages with zero horizontal overflow at accepted widths;
+- reversible-response pilot again completed `QUARANTINED -> ROLLED_BACK` with `4` journal records;
+- reversible-response scope remains exactly `DISPOSABLE_TEMP_WORKSPACE_ONLY`;
+- Rescue Continuity remains non-executing and local-first;
+- general response execution remains disabled;
+- presentation cannot promote coverage;
+- no new B10-9 authority expansion, broad-protection claim, credential access, network I/O or cloud requirement.
+
+Beta10 is therefore **COMPLETE / FROZEN** at immutable engineering checkpoint `checkpoint/v011-beta10-b109-pass`.
 
 ## Longer-term programs
 
