@@ -22,6 +22,71 @@ function Remove-BestEffort([string]$Path) {
     catch { Write-Host ('B11-2 cleanup warning path=' + $Path + ' reason=' + $_.Exception.Message) -ForegroundColor DarkYellow }
 }
 
+function Resolve-ExactBuildCommit([string]$RepoRoot) {
+    $gitLines = @()
+    $gitExit = -1
+    try {
+        $oldEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $gitLines = @(& git -C $RepoRoot rev-parse --verify HEAD 2>&1)
+        $gitExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldEap
+    }
+
+    $candidate = @(
+        $gitLines |
+        ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } |
+        Where-Object { $_ -match '^[0-9a-f]{40}$' }
+    ) | Select-Object -Last 1
+    if ($gitExit -eq 0 -and -not [string]::IsNullOrWhiteSpace([string]$candidate)) {
+        return [string]$candidate
+    }
+
+    # Fail-safe fallback for local Windows shells where nested native git output
+    # can be wrapped/redirected unexpectedly. The parent acceptance gate already
+    # verifies repository cleanliness and exact HEAD; this fallback only resolves
+    # the same immutable commit directly from .git metadata.
+    $dotGit = Join-Path $RepoRoot '.git'
+    if (-not (Test-Path -LiteralPath $dotGit)) {
+        throw ('Cannot resolve exact build commit. git_exit=' + $gitExit + '; .git missing.')
+    }
+
+    $gitDir = $dotGit
+    if (Test-Path -LiteralPath $dotGit -PathType Leaf) {
+        $pointer = (Get-Content -LiteralPath $dotGit -Raw -Encoding UTF8).Trim()
+        if ($pointer -notmatch '^gitdir:\s*(.+)$') { throw 'Cannot resolve .git indirection.' }
+        $gitDirCandidate = $Matches[1].Trim()
+        if ([IO.Path]::IsPathRooted($gitDirCandidate)) { $gitDir = $gitDirCandidate }
+        else { $gitDir = (Join-Path $RepoRoot $gitDirCandidate) }
+    }
+
+    $headPath = Join-Path $gitDir 'HEAD'
+    if (-not (Test-Path -LiteralPath $headPath -PathType Leaf)) { throw 'Cannot resolve exact build commit: HEAD missing.' }
+    $head = (Get-Content -LiteralPath $headPath -Raw -Encoding UTF8).Trim()
+    if ($head -match '^[0-9a-fA-F]{40}$') { return $head.ToLowerInvariant() }
+    if ($head -notmatch '^ref:\s*(.+)$') { throw 'Cannot resolve exact build commit: HEAD invalid.' }
+
+    $refName = $Matches[1].Trim().Replace('/', [IO.Path]::DirectorySeparatorChar)
+    $refPath = Join-Path $gitDir $refName
+    if (Test-Path -LiteralPath $refPath -PathType Leaf) {
+        $refValue = (Get-Content -LiteralPath $refPath -Raw -Encoding UTF8).Trim().ToLowerInvariant()
+        if ($refValue -match '^[0-9a-f]{40}$') { return $refValue }
+    }
+
+    $packedRefs = Join-Path $gitDir 'packed-refs'
+    if (Test-Path -LiteralPath $packedRefs -PathType Leaf) {
+        $refUnix = $Matches[1]
+        foreach ($line in Get-Content -LiteralPath $packedRefs -Encoding UTF8) {
+            if ($line -match '^([0-9a-fA-F]{40})\s+(.+)$' -and $Matches[2] -eq $refUnix) {
+                return $Matches[1].ToLowerInvariant()
+            }
+        }
+    }
+    throw ('Cannot resolve exact build commit. git_exit=' + $gitExit + '; no valid HEAD ref found.')
+}
+
 try {
     $RepoRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
     $VenvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe'
@@ -47,8 +112,8 @@ try {
     $Exe = Join-Path $FinalFolder ($Name + '.exe')
     $Manifest = Join-Path $FinalFolder 'artifact-integrity.json'
 
-    $BuildCommit = (& git rev-parse HEAD 2>$null | Select-Object -First 1).Trim().ToLowerInvariant()
-    if ($LASTEXITCODE -ne 0 -or $BuildCommit -notmatch '^[0-9a-f]{40}$') { throw 'Cannot resolve exact build commit.' }
+    $BuildCommit = Resolve-ExactBuildCommit $RepoRoot
+    if ($BuildCommit -notmatch '^[0-9a-f]{40}$') { throw 'Cannot resolve exact build commit.' }
     $PythonVersion = (& $Py -c 'import platform; print(platform.python_version())' | Select-Object -First 1).Trim()
     $PyInstallerVersion = (& $Py -c 'import PyInstaller; print(PyInstaller.__version__)' | Select-Object -First 1).Trim()
 
