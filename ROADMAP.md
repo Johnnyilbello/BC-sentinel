@@ -16,14 +16,14 @@ Beta10  IN PROGRESS
 Current milestone:
 
 ```text
-B10-5 — Rescue Continuity
+B10-8 — Trust Center Product Integration
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b104-pass
-a23550a0cf31aecdce54d5eca333b3930ca2edc7
+checkpoint/v011-beta10-b107-pass
+2428817e99b9e0969fc00e4c76e383a1004ba26c
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -52,7 +52,7 @@ B7-RANSOMWARE-001
 
 ## Engineering contract
 
-- Exact Windows CI + local acceptance first; immutable checkpoint second.
+- Exact Windows CI + local acceptance first; immutable accepted checkpoint second.
 - Missing evidence fails closed; synthetic evidence alone cannot support `VERIFIED`.
 - Predictions are advisory and never evidence.
 - Security exercises use harmless fixtures, temporary resources, simulations, disposable/offline targets and explicit opt-in.
@@ -62,7 +62,7 @@ B7-RANSOMWARE-001
 
 ### Authority boundary
 
-Unless a later explicit milestone expands authority and passes acceptance:
+General product authority remains:
 
 ```text
 automatic quarantine          = false
@@ -75,6 +75,8 @@ TERMINATE_PROCESS             = false
 TRUST/ALLOWLIST mutation      = false
 privileged/system mutation    = false
 ```
+
+B10-6 introduced one explicit exception only: reversible quarantine + rollback inside an explicitly initialized disposable temporary workspace, with operator confirmation, exact target binding, tamper-evident journal and rollback. It does **not** grant broad Home execution or autonomous remediation.
 
 ## Accepted foundations
 
@@ -161,157 +163,144 @@ Goal: turn BC Sentinel from a capable security engine into a differentiated secu
 
 ### B10-0 — Value Foundation + Competitive Contract ✅ ACCEPTED / FROZEN
 
-Accepted source:
-
 ```text
 checkpoint/v011-beta10-b100-pass
 8f9b315eb3137f461dce1f679af32d8a9d680990
 ```
 
-Acceptance:
-
-- Windows CI run `35100878497` PASS on exact SHA;
-- local Windows PASS on the same SHA;
+- Windows CI + local PASS on exact SHA;
 - `731 passed, 36 warnings` locally;
-- deterministic value contract PASS;
-- `pillar_count=6`, `milestone_count=10`;
+- six value pillars and ten milestones fixed;
 - Beta9 baseline preserved at `PARTIAL=5 / GAP=0 / VERIFIED=1`;
-- `authority_expanded=false`;
-- `protection_claim_expanded=false`.
-
-B10-0 establishes the rule that Beta10 is judged by measurable trust, clarity, recovery continuity, noise and safety rather than by feature count.
+- no authority or protection-claim expansion.
 
 ### B10-1 — Sentinel Proof Mode ✅ ACCEPTED / FROZEN
-
-Accepted source:
 
 ```text
 checkpoint/v011-beta10-b101-pass
 d1ea57abcc69407cf0e17d5ff1e008bcf48ca9af
 ```
 
-Delivered an evidence-backed Proof Mode that exposes all six security scenarios with exact accepted status, evidence basis, limitation and proof capability. The presentation layer cannot promote coverage, and stale/replayed live evidence fails closed.
+Evidence-backed Proof Mode exposes all six security scenarios with exact accepted status, evidence basis, limitation and proof capability. Presentation cannot promote coverage and stale/replayed evidence fails closed.
 
-Acceptance:
-
-- Windows CI run `35102521115` PASS on exact SHA;
-- local Windows PASS on the same SHA;
-- `741 passed, 36 warnings` locally;
-- baseline report preserves `PARTIAL=5 / GAP=0 / VERIFIED=1`;
-- fresh on-demand local ransomware-like proof PASS;
-- live controls: positive `24 writes / 18 renames -> DETECTED`, administrative `24 / 18 -> REVIEW_REQUIRED`, benign `2 / 0 -> NO_MATCH`;
-- only `B7-RANSOMWARE-001` receives `fresh_proof=true`;
-- detector → Security Graph → Incident Correlation binding PASS;
-- positive score `10` with accepted signals `BULK_RENAME`, `BULK_REWRITE`, `CANARY_TOUCH`, `ENTROPY_SHIFT`, `EXTENSION_CHURN`;
-- `synthetic_fallback_used=false`;
-- `broad_protection_claimed=false`;
-- no user-file access, file-content collection, personal-data collection, remote access or remediation authority.
-
-B10-1 makes protection evidence visible without overstating coverage and provides the trusted input contract for Attack Story and the later Trust Center UI.
+Acceptance included `741 passed, 36 warnings`, fresh ransomware-like on-demand proof, detector → Security Graph → Incident Correlation binding and no remediation/privacy-boundary expansion.
 
 ### B10-2 — Attack Story 2.0 ✅ ACCEPTED / FROZEN
-
-Accepted source:
 
 ```text
 checkpoint/v011-beta10-b102-pass
 9882a6f675bcf53e99fee8cd8d6b92286dd3ce66
 ```
 
-Delivered a deterministic evidence-backed incident narrative built from Security Graph + Incident Correlation. Plain-language and technical views are projections of the same accepted evidence. Missing stages fail closed as `UNKNOWN`; the story never invents an entry point, execution, persistence, network activity or response when those stages are not demonstrated.
+Deterministic evidence-backed incident narrative. Plain-language and technical views project the same accepted evidence; missing stages remain `UNKNOWN` and are never invented.
 
-Acceptance:
-
-- Windows CI run `35106886446` PASS on exact SHA;
-- local Windows PASS on the same SHA;
-- `753 passed, 36 warnings` locally;
-- live file-control evidence PASS with positive `24 writes / 18 renames`, administrative `24 / 18`, benign `2 / 0`, all cleanup `CLEAN`;
-- live Attack Story PASS with exactly two observed stages: `FILE_ACTIVITY` and `DETECTION`;
-- `ENTRY_POINT`, `EXECUTION`, `PERSISTENCE`, `NETWORK_ACTIVITY` and `RESPONSE` remain explicitly `UNKNOWN`;
-- exactly two evidence-backed claims are emitted;
-- detector → Security Graph and Security Graph → Incident Correlation bindings PASS;
-- `source_live_control=true` and `synthetic_fallback_used=false`;
-- coverage remains `PARTIAL=5 / GAP=0 / VERIFIED=1`;
-- `authority_expanded=false` and `broad_protection_claimed=false`;
-- local-first privacy boundaries preserve no absolute-path export, no file-content collection, no personal-data collection and no remote access.
-
-B10-2 turns accepted evidence into an understandable incident story while preserving uncertainty instead of filling evidence gaps with inference.
+Acceptance included `753 passed, 36 warnings`, two observed stages (`FILE_ACTIVITY`, `DETECTION`), five explicit `UNKNOWN` stages and no broad protection claim.
 
 ### B10-3 — Live Coverage Expansion I ✅ ACCEPTED / FROZEN
-
-Accepted source:
 
 ```text
 checkpoint/v011-beta10-b103-pass
 b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8
 ```
 
-Delivered a safe real-path PowerShell verification using only Windows PowerShell lifecycle metadata. The accepted detector reasons over session density, lifecycle completeness and an explicit administrative suppressor; it never reads command text, script content, event Message, event payload or event Properties.
+Safe real-path PowerShell verification using lifecycle metadata only. No command text, script content, event Message, payload or Properties are read.
 
 Acceptance:
 
-- Windows CI run `35115633300` PASS on exact SHA `b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8`;
-- local Windows PASS on the same SHA;
+- Windows CI + local PASS on exact SHA;
 - `760 passed, 36 warnings` locally;
-- positive live control: `8` sessions / `8` starts / `8` stops / `8` unique processes -> `DETECTED`;
-- administrative live control: `8` sessions / `8` starts / `8` stops / `8` unique processes -> `REVIEW_REQUIRED`;
-- benign live control: `1` session / `1` start / `1` stop / `1` unique process -> `NO_MATCH`;
-- `B7-POWERSHELL-001` promoted to `VERIFIED` with evidence basis `CONTROLLED_LIVE_POWERSHELL_METADATA_DETECTOR_PATH`;
-- `B7-RANSOMWARE-001` remains `VERIFIED`;
-- canonical coverage advances to `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- detector → Security Graph and Security Graph → Incident Correlation bindings PASS;
-- `synthetic_fallback_used=false`;
-- `powershell_content_read=false`;
-- `authority_expanded=false` and `broad_powershell_protection_claimed=false`;
-- no user-file access, file-content collection, personal-data collection, remote access, network I/O, registry mutation, audit-policy mutation, logging-configuration mutation, credential access, automatic quarantine or remediation authority.
-
-Remaining `PARTIAL` scenarios retain explicit blockers: persistence lacks an accepted harmless live positive detector source; defense-evasion would require protected security-control mutation under the current boundary; DNS/C2 lacks accepted network test authority; credential-access would require sensitive access prohibited by the privacy boundary.
-
-B10-3 expands verified live coverage without reading PowerShell content or widening product authority.
+- positive `8/8/8/8 -> DETECTED`;
+- administrative `8/8/8/8 -> REVIEW_REQUIRED`;
+- benign `1/1/1/1 -> NO_MATCH`;
+- PowerShell promoted to `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- no network, credential, remediation or privileged-mutation authority.
 
 ### B10-4 — Safe Response Plan Engine ✅ ACCEPTED / FROZEN
-
-Accepted source:
 
 ```text
 checkpoint/v011-beta10-b104-pass
 a23550a0cf31aecdce54d5eca333b3930ca2edc7
 ```
 
-Delivered a deterministic planning-only response layer over the accepted Attack Story. For an evidence-backed incident it emits ordered proposed actions with reason, expected impact, required authorities, reversibility, rollback requirement, confirmation requirement and explicit blocker state. Planning never counts as execution and never turns the `RESPONSE` Attack Story stage into observed evidence.
+Planning-only response layer over Attack Story. Proposed actions expose reason, expected impact, required authority, reversibility, rollback and confirmation before execution.
+
+Acceptance included `771 passed, 36 warnings`; containment remained `BLOCKED_AUTHORITY`; `execution_available=false`; `RESPONSE` stayed `UNKNOWN`; coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=2`.
+
+### B10-5 — Rescue Continuity ✅ INTEGRATED / IMMUTABLE SOURCE
+
+```text
+checkpoint/v011-beta10-b105-pass
+259fdbf988e442366f0deb3a07b3de248cf309ba
+```
+
+Carries incident IDs, evidence provenance and recommended recovery context from the installed product into accepted portable/rescue workflows while remaining integrity-bound, local-first and non-executing.
+
+Evidence status:
+
+- Windows CI run `35121043861` PASS on source SHA;
+- source paths remain unchanged through the later B10-7 exact CI/local acceptance;
+- included in the B10-7 full regression chain.
+
+### B10-6 — Reversible Response Pilot ✅ INTEGRATED / IMMUTABLE SOURCE
+
+```text
+checkpoint/v011-beta10-b106-pass
+79293c641d1ecf5e1ce8d1fa313b9ea4b03f3868
+```
+
+Introduced one deliberately narrow response action: reversible quarantine of one regular file inside an explicitly initialized disposable temporary workspace. Requires exact operator confirmation, target identity/hash binding, tamper-evident local journal and rollback.
+
+Evidence status:
+
+- Windows CI run `35217808582` PASS on source SHA;
+- `803 passed, 36 warnings` in CI;
+- harmless exercise finished `QUARANTINED -> ROLLED_BACK`;
+- no broad Home execution, automatic remediation, delete, repair, process termination, trust mutation, privileged mutation or rescue write authority;
+- source paths remain unchanged through the later B10-7 exact CI/local acceptance.
+
+### B10-7 — Live Coverage Expansion II + Operational Impact ✅ ACCEPTED / FROZEN
+
+```text
+checkpoint/v011-beta10-b107-pass
+2428817e99b9e0969fc00e4c76e383a1004ba26c
+```
+
+Measured the operational cost and low-noise behavior of the accepted live PowerShell metadata path and explicitly evaluated all remaining safe live-coverage candidates without forcing unsafe authority expansion.
 
 Acceptance:
 
-- Windows CI run `35119030890` PASS on exact SHA `a23550a0cf31aecdce54d5eca333b3930ca2edc7`;
-- local Windows PASS on the same SHA;
-- `771 passed, 36 warnings` locally;
-- local live controls remain clean: ransomware-like `24 writes / 18 renames`, administrative `24 / 18`, benign `2 / 0`;
-- exact action order: `PRESERVE_INCIDENT_EVIDENCE`, `PREPARE_CONTAINMENT`, `VERIFY_UNKNOWN_STAGES`, `PREPARE_RESCUE_HANDOFF`;
-- containment remains `BLOCKED_AUTHORITY` and explicitly requires user confirmation, target identity binding, quarantine authority, journal binding and rollback binding before any future execution;
-- `execution_available=false`, `execution_authorized=false`, `remediation_performed=false`, `system_mutation_performed=false`;
-- `authority_expanded=false` and the legacy Guided Resolution execution boundary remains preserved;
-- `RESPONSE` remains `UNKNOWN` and `response_stage_claimed_observed=false`;
-- plan integrity is bound to a canonical signed core while allowed live wrapper metadata does not invalidate that core; core tampering fails closed;
-- coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- `synthetic_fallback_used=false`, `personal_data_collected=false`, `absolute_paths_exported=false`, `file_content_collected=false`, `remote_access=false`.
+- Windows CI run `35221374534` PASS on exact SHA `2428817e99b9e0969fc00e4c76e383a1004ba26c`;
+- local Windows PASS on the same exact SHA;
+- CI: `818 passed, 36 warnings`;
+- local: `818 passed, 36 warnings in 94.00s`;
+- local p95 wall `0.5493 ms`;
+- local p95 CPU `15.625 ms`;
+- local max RSS delta `0.003906 MiB`;
+- local user interruptions `0`;
+- false-positive controls PASS (`DETECTED` / `REVIEW_REQUIRED` / `NO_MATCH`);
+- coverage remains honestly `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- persistence remains deferred without a harmless accepted live source;
+- defense-evasion and DNS/C2 remain blocked by authority boundaries;
+- credential access remains blocked by privacy boundaries;
+- no new authority expansion and no broad protection claim.
 
-B10-4 makes BC Sentinel explain what it would do next without silently gaining permission to do it.
+B10-7 establishes an accepted product-performance baseline without weakening safety or privacy to inflate coverage.
 
-### B10-5 — Rescue Continuity (current)
+### B10-8 — Trust Center Product Integration 🚧 CURRENT
 
-Carry incident IDs, evidence provenance and recommended recovery context from the installed product into accepted portable/rescue workflows. Continuity must remain integrity-bound, local-first and non-executing unless a later milestone separately grants and verifies action authority.
+Integrate Protection Proof, Attack Story, coverage limitations, privacy boundaries, Safe Response, the narrow reversible-response pilot, Rescue Continuity and Operational Impact into one coherent customer-facing Trust Center/UI.
 
-### B10-6 — Reversible Response Pilot
+Acceptance requirements:
 
-Introduce only narrowly scoped, explicitly authorized and rollback-capable response actions that pass dedicated safety acceptance. No broad autonomous remediation.
-
-### B10-7 — Live Coverage Expansion II + Operational Impact
-
-Attempt remaining safe live detector verification and measure detection latency, false-positive controls, CPU/RAM cost and user-interruption budget.
-
-### B10-8 — Trust Center Product Integration
-
-Integrate Protection Proof, Attack Story, coverage limitations, privacy boundaries and accepted response capabilities into a coherent customer-facing Trust Center/UI.
+- read-only product integration must not promote coverage;
+- canonical coverage must remain `PARTIAL=4 / GAP=0 / VERIFIED=2` unless new accepted live evidence independently changes it;
+- Attack Story must remain evidence-only and preserve unknown stages;
+- general response execution remains disabled;
+- the B10-6 pilot must be shown with its exact `DISPOSABLE_TEMP_WORKSPACE_ONLY` scope;
+- privacy and authority boundaries must be visible and machine-verifiable;
+- responsive Trust Center must have no horizontal overflow at acceptance widths;
+- full Beta5→Beta10 regression, Windows CI and local exact-commit acceptance required before freeze.
 
 ### B10-9 — Windows Competitive Acceptance & Freeze
 
