@@ -2,15 +2,10 @@ from __future__ import annotations
 
 """B11-8 clean/disposable Windows lifecycle acceptance.
 
-This milestone executes install, upgrade and uninstall semantics against a real
-filesystem, but only inside an explicitly confirmed disposable temporary
-workspace.  It never maps the fixture to real Program Files, ProgramData, HKLM,
-Start Menu, services, drivers, autostart, Defender, firewall or user documents.
-
-The execution harness proves the accepted B11-3/B11-5/B11-6 lifecycle rules:
-product-owned resources require exact ownership evidence, persistent data is
-preserved, upgrade is staged/verified and keeps the previous payload, unknown
-children survive uninstall, and missing/tampered evidence fails closed.
+Install, upgrade and uninstall semantics execute against a real filesystem only
+inside an explicitly confirmed disposable OS-temp workspace.  The harness never
+maps fixture resources to real Program Files, ProgramData, HKLM, Start Menu,
+services, drivers, autostart, Defender, firewall or user documents.
 """
 
 import argparse
@@ -134,6 +129,13 @@ def _is_relative_to(path: Path, root: Path) -> bool:
         return False
 
 
+def _is_link_or_junction(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction and path.exists() and is_junction())
+
+
 def _allowed_temp_roots() -> tuple[Path, ...]:
     values = [Path(tempfile.gettempdir()).resolve()]
     runner_temp = os.environ.get("RUNNER_TEMP")
@@ -148,7 +150,7 @@ def _workspace_root(root: str | os.PathLike[str]) -> Path:
     path = Path(root)
     if not path.exists() or not path.is_dir():
         raise LifecycleSafetyError("b118:workspace_missing")
-    if path.is_symlink():
+    if _is_link_or_junction(path):
         raise LifecycleSafetyError("b118:workspace_symlink_rejected")
     resolved = path.resolve()
     if resolved == Path(resolved.anchor):
@@ -161,11 +163,33 @@ def _workspace_root(root: str | os.PathLike[str]) -> Path:
 
 
 def _safe_path(root: Path, relative: str) -> Path:
+    """Return a bounded lexical child path without Windows short-name re-resolution.
+
+    `root` may be represented by Windows using an 8.3 component (for example
+    RUNNER~1). Resolving a deeper existing child can expand that component and
+    make a purely lexical `Path.relative_to` check fail even though the child is
+    still inside the same workspace. We therefore reject absolute/parent/drive
+    syntax up front and walk existing ancestors for symlink/junction escapes,
+    without re-resolving the candidate path.
+    """
+
     candidate_rel = Path(relative)
-    if candidate_rel.is_absolute() or any(part in {"..", ""} for part in candidate_rel.parts):
+    parts = candidate_rel.parts
+    if (
+        not parts
+        or candidate_rel.is_absolute()
+        or any(part in {"..", "", "."} or ":" in part for part in parts)
+    ):
         raise LifecycleSafetyError("b118:path_escape_rejected")
-    candidate = (root / candidate_rel).resolve(strict=False)
-    if not _is_relative_to(candidate, root) or candidate == root:
+
+    current = root
+    for part in parts[:-1]:
+        current = current / part
+        if current.exists() and _is_link_or_junction(current):
+            raise LifecycleSafetyError("b118:path_escape_rejected")
+
+    candidate = root.joinpath(*parts)
+    if candidate == root:
         raise LifecycleSafetyError("b118:path_escape_rejected")
     return candidate
 
@@ -196,7 +220,7 @@ def initialize_disposable_workspace(
 def _verify_workspace(root: str | os.PathLike[str]) -> Path:
     workspace = _workspace_root(root)
     marker = _safe_path(workspace, MARKER_FILENAME)
-    if not marker.is_file() or marker.is_symlink():
+    if not marker.is_file() or _is_link_or_junction(marker):
         raise LifecycleSafetyError("b118:workspace_marker_missing")
     try:
         observed = json.loads(marker.read_text(encoding="utf-8"))
@@ -210,7 +234,7 @@ def _verify_workspace(root: str | os.PathLike[str]) -> Path:
 def _write_bytes(root: Path, relative: str, payload: bytes) -> dict[str, Any]:
     target = _safe_path(root, relative)
     target.parent.mkdir(parents=True, exist_ok=True)
-    if target.is_symlink():
+    if _is_link_or_junction(target):
         raise LifecycleSafetyError("b118:managed_target_symlink_rejected")
     target.write_bytes(payload)
     return {"path": relative, "sha256": _sha256_bytes(payload)}
@@ -234,9 +258,15 @@ def _fixture_payload(version: str) -> dict[str, tuple[str, bytes]]:
         }
     ).encode("utf-8")
     return {
-        ARTIFACT_FIXTURE_REL: ("APPLICATION_PAYLOAD", f"BC Sentinel fixture payload {version}\n".encode("utf-8")),
+        ARTIFACT_FIXTURE_REL: (
+            "APPLICATION_PAYLOAD",
+            f"BC Sentinel fixture payload {version}\n".encode("utf-8"),
+        ),
         RUNTIME_IDENTITY_REL: ("APPLICATION_PAYLOAD", runtime),
-        SHORTCUT_FIXTURE_REL: ("START_MENU_SHORTCUT", b"BC Sentinel disposable shortcut fixture\n"),
+        SHORTCUT_FIXTURE_REL: (
+            "START_MENU_SHORTCUT",
+            b"BC Sentinel disposable shortcut fixture\n",
+        ),
         UNINSTALL_METADATA_REL: ("UNINSTALL_METADATA", uninstall),
     }
 
@@ -264,7 +294,7 @@ def _write_manifest(root: Path, version: str, entries: list[dict[str, Any]]) -> 
 
 def _read_manifest(root: Path) -> dict[str, Any]:
     target = _safe_path(root, OWNERSHIP_MANIFEST_REL)
-    if not target.is_file() or target.is_symlink():
+    if not target.is_file() or _is_link_or_junction(target):
         raise LifecycleSafetyError("b118:ownership_manifest_missing")
     try:
         manifest = json.loads(target.read_text(encoding="utf-8"))
@@ -305,13 +335,15 @@ def _verify_managed_files(root: Path, manifest: dict[str, Any]) -> None:
             raise LifecycleSafetyError("b118:duplicate_owned_path")
         seen.add(relative)
         target = _safe_path(root, relative)
-        if not target.is_file() or target.is_symlink():
+        if not target.is_file() or _is_link_or_junction(target):
             raise LifecycleSafetyError("b118:managed_file_missing")
         if _sha256_file(target) != entry["sha256"]:
             raise LifecycleSafetyError("b118:managed_file_hash_mismatch")
 
 
-def install_fixture(root: str | os.PathLike[str], *, version: str = "0.11.0-b118-a") -> dict[str, Any]:
+def install_fixture(
+    root: str | os.PathLike[str], *, version: str = "0.11.0-b118-a"
+) -> dict[str, Any]:
     workspace = _verify_workspace(root)
     unexpected = [item for item in workspace.iterdir() if item.name != MARKER_FILENAME]
     if unexpected:
@@ -334,14 +366,19 @@ def _tree_digest(root: Path, relative_root: str) -> str:
     base = _safe_path(root, relative_root)
     if not base.exists():
         return _digest([])
-    if not base.is_dir() or base.is_symlink():
+    if not base.is_dir() or _is_link_or_junction(base):
         raise LifecycleSafetyError("b118:tree_root_invalid")
     inventory: list[dict[str, str]] = []
     for path in sorted(base.rglob("*"), key=lambda item: item.as_posix()):
-        if path.is_symlink():
+        if _is_link_or_junction(path):
             raise LifecycleSafetyError("b118:tree_symlink_rejected")
         if path.is_file():
-            inventory.append({"path": path.relative_to(base).as_posix(), "sha256": _sha256_file(path)})
+            inventory.append(
+                {
+                    "path": path.relative_to(base).as_posix(),
+                    "sha256": _sha256_file(path),
+                }
+            )
     return _digest(inventory)
 
 
@@ -381,8 +418,8 @@ def upgrade_fixture(
         raise LifecycleSafetyError("b118:staging_already_exists")
     staging.mkdir(parents=True, exist_ok=False)
 
-    target_fixture = _fixture_payload(target_version)
     staged: dict[str, tuple[str, bytes, str]] = {}
+    target_fixture = _fixture_payload(target_version)
     try:
         for relative, (resource_id, payload) in sorted(target_fixture.items()):
             staged_rel = f"{staging_rel}/{relative}"
@@ -394,7 +431,9 @@ def upgrade_fixture(
         kept_entries: list[dict[str, Any]] = []
         for relative in (ARTIFACT_FIXTURE_REL, RUNTIME_IDENTITY_REL):
             current = _safe_path(workspace, relative)
-            previous_rel = f"ProgramFiles/BC Sentinel/.previous/{source_version}/{Path(relative).name}"
+            previous_rel = (
+                f"ProgramFiles/BC Sentinel/.previous/{source_version}/{Path(relative).name}"
+            )
             previous = _safe_path(workspace, previous_rel)
             previous.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(current, previous)
@@ -407,7 +446,7 @@ def upgrade_fixture(
             )
 
         new_entries: list[dict[str, Any]] = []
-        for relative, (resource_id, payload, expected_hash) in sorted(staged.items()):
+        for relative, (resource_id, _payload, expected_hash) in sorted(staged.items()):
             staged_file = _safe_path(workspace, f"{staging_rel}/{relative}")
             if _sha256_file(staged_file) != expected_hash:
                 raise LifecycleSafetyError("b118:staging_hash_mismatch")
@@ -416,9 +455,13 @@ def upgrade_fixture(
             shutil.copyfile(staged_file, target)
             if _sha256_file(target) != expected_hash:
                 raise LifecycleSafetyError("b118:activated_hash_mismatch")
-            new_entries.append({"path": relative, "sha256": expected_hash, "resource_id": resource_id})
+            new_entries.append(
+                {"path": relative, "sha256": expected_hash, "resource_id": resource_id}
+            )
 
-        manifest_digest = _write_manifest(workspace, target_version, new_entries + kept_entries)
+        manifest_digest = _write_manifest(
+            workspace, target_version, new_entries + kept_entries
+        )
     finally:
         if staging.exists():
             shutil.rmtree(staging)
@@ -444,7 +487,12 @@ def upgrade_fixture(
 def _remove_empty_parents(path: Path, stop: Path) -> None:
     current = path
     while current != stop and _is_relative_to(current, stop):
-        if not current.exists() or not current.is_dir() or current.is_symlink() or any(current.iterdir()):
+        if (
+            not current.exists()
+            or not current.is_dir()
+            or _is_link_or_junction(current)
+            or any(current.iterdir())
+        ):
             return
         current.rmdir()
         current = current.parent
@@ -457,7 +505,9 @@ def uninstall_fixture(root: str | os.PathLike[str]) -> dict[str, Any]:
     persistent_before = _tree_digest(workspace, PERSISTENT_ROOT_REL)
 
     entries = list(manifest["managed_files"])
-    for entry in sorted(entries, key=lambda item: len(Path(item["path"]).parts), reverse=True):
+    for entry in sorted(
+        entries, key=lambda item: len(Path(item["path"]).parts), reverse=True
+    ):
         target = _safe_path(workspace, str(entry["path"]))
         target.unlink()
         _remove_empty_parents(target.parent, workspace)
@@ -521,7 +571,10 @@ def validate_contract(data: object) -> tuple[str, ...]:
         failures.append("b118:unexpected_or_missing_fields")
     if data.get("schema") != SCHEMA or data.get("profile") != PROFILE:
         failures.append("b118:identity_invalid")
-    if data.get("source_checkpoint") != SOURCE_CHECKPOINT or data.get("source_checkpoint_commit") != SOURCE_CHECKPOINT_COMMIT:
+    if (
+        data.get("source_checkpoint") != SOURCE_CHECKPOINT
+        or data.get("source_checkpoint_commit") != SOURCE_CHECKPOINT_COMMIT
+    ):
         failures.append("b118:source_checkpoint_invalid")
     bindings = {
         "source_b113_contract_digest": SOURCE_B113_CONTRACT_DIGEST,
@@ -536,14 +589,21 @@ def validate_contract(data: object) -> tuple[str, ...]:
         failures.append("b118:coverage_changed")
     if tuple(data.get("verified_scenarios") or ()) != VERIFIED_SCENARIOS:
         failures.append("b118:verified_scenarios_changed")
-    if data.get("execution_scope") != EXECUTION_SCOPE or data.get("lifecycle_policy") != LIFECYCLE_POLICY:
+    if (
+        data.get("execution_scope") != EXECUTION_SCOPE
+        or data.get("lifecycle_policy") != LIFECYCLE_POLICY
+    ):
         failures.append("b118:lifecycle_policy_changed")
     state = data.get("implementation_state")
     if state != IMPLEMENTATION_STATE:
         failures.append("b118:implementation_state_changed")
     elif state.get("disposable_workspace_lifecycle_execution_available") is not True:
         failures.append("b118:disposable_execution_missing")
-    elif any(value for key, value in state.items() if key != "disposable_workspace_lifecycle_execution_available"):
+    elif any(
+        value
+        for key, value in state.items()
+        if key != "disposable_workspace_lifecycle_execution_available"
+    ):
         failures.append("b118:host_authority_or_claim_expanded")
     return tuple(dict.fromkeys(failures))
 
@@ -564,20 +624,28 @@ def run_disposable_acceptance() -> dict[str, Any]:
 
         initialize_disposable_workspace(workspace, confirmed=True)
         events.append(install_fixture(workspace))
-        seed = seed_runtime_persistent_data(workspace)
-        events.append(seed)
+        seeded = seed_runtime_persistent_data(workspace)
+        events.append(seeded)
 
-        unknown = _safe_path(workspace, "ProgramFiles/BC Sentinel/operator-owned.keep")
+        unknown = _safe_path(
+            workspace, "ProgramFiles/BC Sentinel/operator-owned.keep"
+        )
         unknown.parent.mkdir(parents=True, exist_ok=True)
         unknown.write_text("must survive product uninstall", encoding="utf-8")
 
         events.append(upgrade_fixture(workspace))
         events.append(uninstall_fixture(workspace))
 
-        unknown_child_preserved = unknown.read_text(encoding="utf-8") == "must survive product uninstall"
+        unknown_child_preserved = (
+            unknown.read_text(encoding="utf-8") == "must survive product uninstall"
+        )
         persistent_after = _tree_digest(workspace, PERSISTENT_ROOT_REL)
-        persistent_data_preserved = persistent_after == seed["persistent_tree_digest"]
-        outside_canary_preserved = outside_canary.read_text(encoding="utf-8") == "outside-workspace-canary"
+        persistent_data_preserved = (
+            persistent_after == seeded["persistent_tree_digest"]
+        )
+        outside_canary_preserved = (
+            outside_canary.read_text(encoding="utf-8") == "outside-workspace-canary"
+        )
 
         unsafe = parent / "not-a-b118-workspace"
         unsafe.mkdir()
@@ -662,7 +730,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-disposable-acceptance", action="store_true")
     args = parser.parse_args(argv)
     if not args.run_disposable_acceptance:
-        print(json.dumps({"passed": False, "failures": ["b118:explicit_execution_flag_required"]}, indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "passed": False,
+                    "failures": ["b118:explicit_execution_flag_required"],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 2
     result = self_check()
     print(json.dumps(result, indent=2, sort_keys=True))
