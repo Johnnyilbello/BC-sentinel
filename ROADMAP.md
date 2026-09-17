@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-4 — First-Run Health + Repair Guidance
+B11-5 — Persistent App Data + Logs + Quarantine Model
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b113-pass
-4ce33199bb72d87c09b0c204a40c2046efcb615a
+checkpoint/v011-beta11-b114-pass
+5ec361050f4c490652f88c30ad3a3b60e586fecb
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -209,6 +209,7 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-1 — Canonical Desktop Entry + Runtime Identity** — `checkpoint/v011-beta11-b111-pass` / `2d49bc2037d3d1f3fb40280277cf8d53927cc68b` — ACCEPTED / FROZEN.
 - **B11-2 — Reproducible Windows Onedir Build** — `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1` — ACCEPTED / FROZEN.
 - **B11-3 — Installer / Uninstaller Contract** — `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a` — ACCEPTED / FROZEN.
+- **B11-4 — First-Run Health + Repair Guidance** — `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb` — ACCEPTED / FROZEN.
 
 ### B11-2 accepted evidence
 
@@ -255,27 +256,45 @@ Windows CI run `35249033734` and local Windows acceptance both PASS on exact SHA
 - no coverage promotion and no response-authority expansion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
 
-### B11-4 — First-Run Health + Repair Guidance 🚧 CURRENT
+### B11-4 accepted evidence
 
-Implement a deterministic read-only health surface that can explain whether the packaged/runtime prerequisites required by the accepted desktop entry are healthy before the user relies on the product. Guidance may tell the operator what to repair, but B11-4 may not silently repair, install, elevate or mutate the machine.
+Windows CI run `35251500218` and local Windows acceptance both PASS on exact SHA `5ec361050f4c490652f88c30ad3a3b60e586fecb`.
+
+- CI: `905 passed, 38 warnings in 121.53s`;
+- local: `905 passed, 38 warnings in 90.25s`;
+- deterministic health-contract digest `1c079318ceac42c510216cf6bdb70d3067a21bf47c36ba21be47766fed0f6632` matched CI and local;
+- live first-run health status `READY` in CI and local acceptance;
+- `10` critical checks and `6` optional checks modeled;
+- local acceptance reported `critical_failure_count=0`, `warning_count=0` and `ready_to_start=true`;
+- Windows/x64/Python 3.12, canonical runtime identity and Trust Center core all validated;
+- required runtime modules and accepted feature dependencies were available in the local probe;
+- health diagnostics remain read-only and non-mutating;
+- repair execution, package installation, privilege elevation, service/driver/autostart registration, Defender/firewall changes, automatic update execution, network and cloud requirements remain unavailable;
+- no coverage promotion and no response-authority expansion;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
+
+### B11-5 — Persistent App Data + Logs + Quarantine Model 🚧 CURRENT
+
+Define the canonical persistent-data ownership model before installer execution is introduced. B11-5 may specify product-owned paths, data classes, permissions, retention and uninstall/upgrade behavior, but it may not silently migrate, delete, quarantine, restore or otherwise mutate a real machine.
 
 Acceptance requirements:
 
-- exact accepted predecessor is `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a`;
-- accepted B11-3 source paths remain immutable except canonical roadmap documentation;
-- health checks are deterministic and read-only;
-- missing critical runtime prerequisites fail closed and block a healthy/ready claim;
-- optional/degraded prerequisites are distinguished from critical failures;
-- repair guidance is bounded, factual and non-executing;
-- no hidden package installation, privilege elevation, service/driver registration, autostart, firewall/Defender changes, updater execution or network dependency;
-- health status cannot promote detection coverage or remediation authority;
+- exact accepted predecessor is `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb`;
+- accepted B11-4 milestone-specific source paths remain immutable except canonical roadmap documentation;
+- one deterministic machine-data root is defined for persistent BC Sentinel state;
+- configuration/state, logs, quarantine metadata/payloads and lifecycle metadata have distinct owned subroots and policies;
+- every persistent data class has explicit ownership, sensitivity, retention, upgrade, rollback and uninstall behavior;
+- quarantine payloads must be separated from logs/configuration and never treated as ordinary user files;
+- unknown children and unmanifested data fail closed for destructive lifecycle decisions;
+- uninstall preserves persistent data by default; any future purge requires a separate explicit operator choice and exact ownership evidence;
+- no hidden migration, cleanup, repair, quarantine, restore, privilege elevation or installer/uninstaller execution is introduced by B11-5;
+- no network/cloud requirement, service/driver/autostart registration or protection-coverage promotion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b114-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b115-pass` may be created.
 
 ### Remaining planned Beta11 line
 
-- **B11-5 — Persistent App Data + Logs + Quarantine Model** — define ownership, permissions and lifecycle of persistent product data.
 - **B11-6 — Upgrade / Rollback + Config Migration** — deterministic migration and rollback rules across accepted product versions.
 - **B11-7 — Release Provenance + Signing Readiness** — artifact provenance, factual signing state, hashes and release evidence; signing is never implied when absent.
 - **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — real Windows lifecycle acceptance on clean/disposable systems.
