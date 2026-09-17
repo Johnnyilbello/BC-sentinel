@@ -1,0 +1,33 @@
+name: B11-8 Clean-PC Lifecycle Acceptance
+
+on:
+  push:
+    branches:
+      - feature/v011-beta11-b118-clean-pc-lifecycle-acceptance
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Full regression and B11-8 disposable lifecycle acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V011-BETA11-B118.ps1 -ConfirmCleanPcLifecycleAcceptance
