@@ -303,7 +303,7 @@ Acceptance requirements:
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b114-first-run-health-repair-guidance
+feature/v011-beta11-b115-persistent-app-data-lifecycle
 ```
 
 ## Longer-term programs
