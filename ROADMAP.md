@@ -10,20 +10,21 @@ Beta6   COMPLETE / FROZEN
 Beta7   COMPLETE / FROZEN
 Beta8   COMPLETE / FROZEN
 Beta9   COMPLETE / FROZEN
-Beta10  IN PROGRESS — FINAL ACCEPTANCE
+Beta10  COMPLETE / FROZEN
+Beta11  IN PROGRESS
 ```
 
 Current milestone:
 
 ```text
-B10-9 — Windows Competitive Acceptance & Freeze
+B11-0 — Windows Productization Foundation
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b108-pass
-aa0c2b4e4b79381f9a20a5d69e99e972dee46971
+checkpoint/v011-beta10-b109-pass
+89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -58,8 +59,9 @@ B7-RANSOMWARE-001
 - Security exercises use harmless fixtures, temporary resources, simulations, disposable/offline targets and explicit opt-in.
 - Scope is not widened while repairing acceptance failures.
 - Product claims may never exceed accepted evidence.
-- Beta10 milestones must improve at least one measurable customer-value pillar; feature count alone is not success.
-- B10-9 `competitive` means conformance to the internal Beta10 value/safety contract; it is **not** an external market-superiority claim.
+- Beta10 value/safety boundaries remain inherited by Beta11 unless a later milestone explicitly earns new authority.
+- Productization may not silently promote detection coverage or remediation authority.
+- Installer, signing, service, driver, auto-update or release claims require their own accepted evidence before they can be presented as available.
 
 ### Authority boundary
 
@@ -129,14 +131,6 @@ checkpoint/v011-beta9-b94-pass
 cc32c2c31ebb9b863624632a38175ec5825430e4
 ```
 
-Accepted line:
-
-- B9-0 Windows telemetry foundation — `checkpoint/v011-beta9-b90-pass`
-- B9-1 bounded metadata reader — `checkpoint/v011-beta9-b91-pass`
-- B9-2 harmless event-to-incident acceptance — `checkpoint/v011-beta9-b92-pass`
-- B9-3 live false-positive controls / coverage decisions — `checkpoint/v011-beta9-b93-pass`
-- B9-4 Windows final acceptance & freeze — `checkpoint/v011-beta9-b94-pass`
-
 Final Beta9 acceptance:
 
 - Windows CI + local PASS on exact SHA `cc32c2c31ebb9b863624632a38175ec5825430e4`;
@@ -149,191 +143,104 @@ Final Beta9 acceptance:
 
 ## Beta10 — Verifiable Protection, Explainable Response & Product Value
 
-**Status: IN PROGRESS — FINAL ACCEPTANCE**
+**Status: COMPLETE / FROZEN**
 
-Goal: turn BC Sentinel from a capable security engine into a differentiated security product for professionals, technicians and small organizations by making protection demonstrable, incidents understandable, response safe/reversible and operational impact measurable.
-
-### Value pillars
-
-1. **Protection Proof** — show exactly what is proven on this machine, when it was last proven and what remains partial.
-2. **Attack Story** — turn accepted evidence into an ordered incident narrative without inventing missing stages.
-3. **Safe Response** — show proposed action, expected impact, required authority and rollback before execution.
-4. **Rescue Continuity** — preserve incident/evidence continuity between normal Windows and portable/rescue workflows.
-5. **Low-Noise Operation** — false positives, latency, resource use and user interruptions are product KPIs.
-6. **Local-First Privacy** — basic proof and reasoning remain local-first with explicit privacy boundaries.
-
-### B10-0 — Value Foundation + Competitive Contract ✅ ACCEPTED / FROZEN
+Final checkpoint:
 
 ```text
-checkpoint/v011-beta10-b100-pass
-8f9b315eb3137f461dce1f679af32d8a9d680990
+checkpoint/v011-beta10-b109-pass
+89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
 ```
 
-- Windows CI + local PASS on exact SHA;
-- `731 passed, 36 warnings` locally;
-- six value pillars and ten milestones fixed;
-- Beta9 baseline preserved at `PARTIAL=5 / GAP=0 / VERIFIED=1`;
-- no authority or protection-claim expansion.
+Beta10 made protection demonstrable, incidents explainable, response planning bounded/reversible where accepted, rescue continuity explicit and operational impact measurable.
 
-### B10-1 — Sentinel Proof Mode ✅ ACCEPTED / FROZEN
+### Beta10 accepted line
 
-```text
-checkpoint/v011-beta10-b101-pass
-d1ea57abcc69407cf0e17d5ff1e008bcf48ca9af
-```
+- B10-0 Value Foundation + Competitive Contract — `checkpoint/v011-beta10-b100-pass`
+- B10-1 Sentinel Proof Mode — `checkpoint/v011-beta10-b101-pass`
+- B10-2 Attack Story 2.0 — `checkpoint/v011-beta10-b102-pass`
+- B10-3 Live Coverage Expansion I — `checkpoint/v011-beta10-b103-pass`
+- B10-4 Safe Response Plan Engine — `checkpoint/v011-beta10-b104-pass`
+- B10-5 Rescue Continuity — `checkpoint/v011-beta10-b105-pass`
+- B10-6 Reversible Response Pilot — `checkpoint/v011-beta10-b106-pass`
+- B10-7 Live Coverage Expansion II + Operational Impact — `checkpoint/v011-beta10-b107-pass`
+- B10-8 Trust Center Product Integration — `checkpoint/v011-beta10-b108-pass`
+- B10-9 Windows Competitive Acceptance & Freeze — `checkpoint/v011-beta10-b109-pass`
 
-Evidence-backed Proof Mode exposes all six security scenarios with exact accepted status, evidence basis, limitation and proof capability. Presentation cannot promote coverage and stale/replayed evidence fails closed.
+Final Beta10 acceptance:
 
-Acceptance included `741 passed, 36 warnings`, fresh ransomware-like on-demand proof, detector → Security Graph → Incident Correlation binding and no remediation/privacy-boundary expansion.
-
-### B10-2 — Attack Story 2.0 ✅ ACCEPTED / FROZEN
-
-```text
-checkpoint/v011-beta10-b102-pass
-9882a6f675bcf53e99fee8cd8d6b92286dd3ce66
-```
-
-Deterministic evidence-backed incident narrative. Plain-language and technical views project the same accepted evidence; missing stages remain `UNKNOWN` and are never invented.
-
-Acceptance included `753 passed, 36 warnings`, two observed stages (`FILE_ACTIVITY`, `DETECTION`), five explicit `UNKNOWN` stages and no broad protection claim.
-
-### B10-3 — Live Coverage Expansion I ✅ ACCEPTED / FROZEN
-
-```text
-checkpoint/v011-beta10-b103-pass
-b3de7f34cb7ddc381499f34cf68ebd4dd02c0fb8
-```
-
-Safe real-path PowerShell verification using lifecycle metadata only. No command text, script content, event Message, payload or Properties are read.
-
-Acceptance:
-
-- Windows CI + local PASS on exact SHA;
-- `760 passed, 36 warnings` locally;
-- positive `8/8/8/8 -> DETECTED`;
-- administrative `8/8/8/8 -> REVIEW_REQUIRED`;
-- benign `1/1/1/1 -> NO_MATCH`;
-- PowerShell promoted to `VERIFIED`;
-- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- no network, credential, remediation or privileged-mutation authority.
-
-### B10-4 — Safe Response Plan Engine ✅ ACCEPTED / FROZEN
-
-```text
-checkpoint/v011-beta10-b104-pass
-a23550a0cf31aecdce54d5eca333b3930ca2edc7
-```
-
-Planning-only response layer over Attack Story. Proposed actions expose reason, expected impact, required authority, reversibility, rollback and confirmation before execution.
-
-Acceptance included `771 passed, 36 warnings`; containment remained `BLOCKED_AUTHORITY`; `execution_available=false`; `RESPONSE` stayed `UNKNOWN`; coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=2`.
-
-### B10-5 — Rescue Continuity ✅ INTEGRATED / IMMUTABLE SOURCE
-
-```text
-checkpoint/v011-beta10-b105-pass
-259fdbf988e442366f0deb3a07b3de248cf309ba
-```
-
-Carries incident IDs, evidence provenance and recommended recovery context from the installed product into accepted portable/rescue workflows while remaining integrity-bound, local-first and non-executing.
-
-- Windows CI run `35121043861` PASS on source SHA;
-- source remains immutable in the later accepted regression chain;
-- target binding remains required and no rescue write/execution authority is implied.
-
-### B10-6 — Reversible Response Pilot ✅ INTEGRATED / IMMUTABLE SOURCE
-
-```text
-checkpoint/v011-beta10-b106-pass
-79293c641d1ecf5e1ce8d1fa313b9ea4b03f3868
-```
-
-Introduced one deliberately narrow response action: reversible quarantine of one regular file inside an explicitly initialized disposable temporary workspace. Requires exact operator confirmation, target identity/hash binding, tamper-evident local journal and rollback.
-
-- Windows CI run `35217808582` PASS;
-- `803 passed, 36 warnings` in CI;
-- harmless exercise `QUARANTINED -> ROLLED_BACK`;
-- no broad Home execution, automatic remediation, delete, repair, process termination, trust mutation, privileged mutation or rescue write authority.
-
-### B10-7 — Live Coverage Expansion II + Operational Impact ✅ ACCEPTED / FROZEN
-
-```text
-checkpoint/v011-beta10-b107-pass
-2428817e99b9e0969fc00e4c76e383a1004ba26c
-```
-
-Measured the operational cost and low-noise behavior of the accepted live PowerShell metadata path and evaluated all remaining safe live-coverage candidates without forcing unsafe authority expansion.
-
-Acceptance:
-
-- Windows CI run `35221374534` PASS on exact SHA;
+- Windows CI run `35230121430` PASS on exact SHA `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
 - local Windows PASS on the same exact SHA;
-- `818 passed, 36 warnings`;
-- local p95 wall `0.5493 ms`;
-- local p95 CPU `15.625 ms`;
-- local max RSS delta `0.003906 MiB`;
-- local user interruptions `0`;
-- false-positive controls PASS (`DETECTED` / `REVIEW_REQUIRED` / `NO_MATCH`);
-- coverage remains honestly `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- no new authority expansion and no broad protection claim.
-
-### B10-8 — Trust Center Product Integration ✅ ACCEPTED / FROZEN
-
-```text
-checkpoint/v011-beta10-b108-pass
-aa0c2b4e4b79381f9a20a5d69e99e972dee46971
-```
-
-Integrated Protection Proof, Attack Story boundaries, coverage limitations, privacy boundaries, Safe Response, the narrow reversible-response pilot, Rescue Continuity and Operational Impact into one coherent read-only Trust Center/UI.
-
-Acceptance:
-
-- Windows CI run `35227868672` PASS on exact SHA `aa0c2b4e4b79381f9a20a5d69e99e972dee46971`;
-- local Windows PASS on the same exact SHA;
-- CI: `830 passed, 38 warnings`;
-- local: `830 passed, 38 warnings in 79.60s`;
-- Trust Center exposes `6` scenarios and `6` accepted capabilities;
-- application shell has `7` pages with Trust Center navigation enabled;
-- no horizontal overflow at `560`, `680`, `960`, `1440` px in CI and local smoke tests;
-- local operational measurement: p95 wall `0.3276 ms`, p95 CPU `0.0 ms`, max RSS delta `0.003906 MiB`, user interruptions `0`;
-- coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- CI: `845 passed, 38 warnings in 89.33s`;
+- local: `845 passed, 38 warnings in 89.40s`;
+- all `6/6` Beta10 value pillars demonstrated by accepted evidence;
+- all `10` Beta10 milestones accounted for;
+- final coverage `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- verified scenarios `B7-POWERSHELL-001` and `B7-RANSOMWARE-001`;
+- local p95 wall `0.3633 ms`, p95 CPU `0.0 ms`, max RSS delta `0.003906 MiB`, user interruptions `0`;
+- Trust Center `7` pages with zero horizontal overflow at accepted widths;
+- reversible-response pilot completed `QUARANTINED -> ROLLED_BACK` with `4` journal records;
+- reversible-response scope `DISPOSABLE_TEMP_WORKSPACE_ONLY`;
+- Rescue Continuity non-executing and local-first;
+- general response execution disabled;
 - presentation cannot promote coverage;
-- general response execution remains disabled;
-- reversible-response scope remains exactly `DISPOSABLE_TEMP_WORKSPACE_ONLY`;
-- no new authority expansion and no broad protection claim.
+- no new B10-9 authority expansion, broad-protection claim, credential access, network I/O or cloud requirement.
 
-B10-8 makes the accepted evidence, limits, privacy and response boundaries understandable in the product without changing what the engine is allowed to claim or execute.
+Beta10 is **COMPLETE / FROZEN** at immutable checkpoint `checkpoint/v011-beta10-b109-pass`.
 
-### B10-9 — Windows Competitive Acceptance & Freeze 🚧 CURRENT / FREEZE CANDIDATE
+## Beta11 — Windows Productization & Release Readiness
 
-B10-9 is the final Beta10 gate. It adds no protection capability. It independently composes and rechecks the entire accepted Beta10 value/safety contract before an immutable final freeze can be created.
+**Status: IN PROGRESS**
+
+Goal: convert the accepted Beta10 source into a Windows product that can be built, installed, started, upgraded, rolled back and uninstalled predictably on real PCs without weakening the accepted security, privacy or evidence boundaries.
+
+### Productization pillars
+
+1. **Canonical Desktop Entry** — one supported Windows entrypoint with explicit runtime identity and predictable startup behavior.
+2. **Reproducible Artifact** — release artifacts bind to an immutable source checkpoint, tool versions and SHA-256 manifest.
+3. **Install Lifecycle** — install, repair, upgrade and uninstall behavior is explicit and limited to product-owned resources.
+4. **First-Run Health** — startup can explain missing/broken runtime prerequisites before protection claims are relied upon.
+5. **Release Provenance** — checkpoint, artifact, signing state and exact CI/local evidence are traceable and factual.
+6. **Safe Upgrade Recovery** — persistent product data/configuration survive accepted upgrades and rollback remains bounded.
+
+### B11-0 — Windows Productization Foundation 🚧 CURRENT
+
+Contract-only milestone. It freezes the Beta10 source identity and defines what Beta11 must prove before BC Sentinel may be treated as a distributable Windows product.
 
 Acceptance requirements:
 
-- B10-8 immutable checkpoint identity must be exact and all accepted predecessor paths must remain unchanged;
-- full Beta5→Beta10 regression must pass on Windows;
-- fresh live PowerShell positive / administrative / benign controls must pass;
-- fresh Operational Impact measurement must remain within accepted latency/CPU/RAM/user-interruption budgets;
-- Trust Center UI smoke must pass at all accepted widths with zero horizontal overflow;
-- harmless B10-6 pilot must again demonstrate `QUARANTINED -> ROLLED_BACK` with journal and exact narrow authority;
-- all six B10-0 value pillars must be demonstrated by accepted evidence;
-- final coverage must remain `PARTIAL=4 / GAP=0 / VERIFIED=2` unless a separately accepted live detector milestone changes it;
-- general response execution must remain disabled;
-- Rescue Continuity must remain non-executing and local-first;
-- no new B10-9 authority, broad-protection claim, presentation-driven coverage promotion or external market-superiority claim is permitted;
-- exact Windows CI **and local acceptance on the same final SHA** are required before `checkpoint/v011-beta10-b109-pass` may be created and Beta10 may be marked `COMPLETE / FROZEN`.
+- exact source must remain `checkpoint/v011-beta10-b109-pass` / `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
+- accepted Beta10 source paths may not be changed by B11-0;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- the two verified scenarios remain unchanged;
+- six productization pillars and ten Beta11 milestones must be deterministic and machine-verifiable;
+- B11-0 must not claim an installer, signed artifact, service, driver, autostart or auto-update as available;
+- core startup remains local-first with no network/cloud requirement introduced by the foundation;
+- general remediation/privileged authority remains unchanged;
+- full Beta5→Beta11 regression must pass on Windows;
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b110-pass` may be created.
+
+### Planned Beta11 line
+
+- **B11-1 — Canonical Desktop Entry + Runtime Identity** — replace historical/technician launch ambiguity with one product entrypoint and explicit runtime/source identity.
+- **B11-2 — Reproducible Windows Onedir Build** — build the accepted product UI into an integrity-manifested Windows artifact.
+- **B11-3 — Installer / Uninstaller Contract** — define install scope, product-owned resources, uninstall safety and elevation boundaries before execution.
+- **B11-4 — First-Run Health + Repair Guidance** — read-only health diagnosis and bounded repair guidance without hidden mutation.
+- **B11-5 — Persistent App Data + Logs + Quarantine Model** — define ownership, permissions and lifecycle of persistent product data.
+- **B11-6 — Upgrade / Rollback + Config Migration** — deterministic migration and rollback rules across accepted product versions.
+- **B11-7 — Release Provenance + Signing Readiness** — artifact provenance, factual signing state, hashes and release evidence; signing is never implied when absent.
+- **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — real Windows lifecycle acceptance on clean/disposable systems.
+- **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression and immutable release-candidate freeze.
 
 Current engineering branch:
 
 ```text
-feature/v011-beta10-b109-windows-competitive-acceptance-freeze
+feature/v011-beta11-b110-productization-foundation
 ```
-
-The branch is a freeze candidate only. Beta10 remains `IN PROGRESS` until the final exact-commit local acceptance succeeds.
 
 ## Longer-term programs
 
-Future work after Beta10 may include broader self-healing, adaptive local intelligence, deception/canary expansion, sandboxing/dynamic analysis, network IDS/IPS, identity protection, fleet management and production/commercial packaging. None is an accepted protection claim until its own milestone passes.
+Future work after the current accepted roadmap may include broader self-healing, adaptive local intelligence, deception/canary expansion, sandboxing/dynamic analysis, network IDS/IPS, identity protection and fleet management. None is an accepted protection claim until its own milestone passes.
 
 ## Repository/documentation policy
 
