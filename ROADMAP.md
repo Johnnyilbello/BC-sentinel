@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-5 — Persistent App Data + Logs + Quarantine Model
+B11-6 — Upgrade / Rollback + Config Migration
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b114-pass
-5ec361050f4c490652f88c30ad3a3b60e586fecb
+checkpoint/v011-beta11-b115-pass
+19e40b9b41f4d87b3f081bb7e8bfb5b155db4660
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -210,6 +210,7 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-2 — Reproducible Windows Onedir Build** — `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1` — ACCEPTED / FROZEN.
 - **B11-3 — Installer / Uninstaller Contract** — `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a` — ACCEPTED / FROZEN.
 - **B11-4 — First-Run Health + Repair Guidance** — `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb` — ACCEPTED / FROZEN.
+- **B11-5 — Persistent App Data + Logs + Quarantine Model** — `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660` — ACCEPTED / FROZEN.
 
 ### B11-2 accepted evidence
 
@@ -273,29 +274,46 @@ Windows CI run `35251500218` and local Windows acceptance both PASS on exact SHA
 - no coverage promotion and no response-authority expansion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
 
-### B11-5 — Persistent App Data + Logs + Quarantine Model 🚧 CURRENT
+### B11-5 accepted evidence
 
-Define the canonical persistent-data ownership model before installer execution is introduced. B11-5 may specify product-owned paths, data classes, permissions, retention and uninstall/upgrade behavior, but it may not silently migrate, delete, quarantine, restore or otherwise mutate a real machine.
+Windows CI run `35253271696` and local Windows acceptance both PASS on exact SHA `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660`.
+
+- CI: `920 passed, 38 warnings in 119.99s`;
+- local: `920 passed, 38 warnings in 102.01s`;
+- deterministic persistent-data model digest `38df2751392cd71bec8662c6d4f80b287c30aeb70841606399057254fe7a2a08` matched CI and local;
+- canonical machine-data root is `{PROGRAM_DATA}\BC Sentinel`;
+- `5` distinct persistent data classes are modeled: configuration/state, logs, quarantine metadata, quarantine payloads and lifecycle metadata;
+- quarantine metadata and untrusted payloads remain separated;
+- legacy B6 storage remains `{LOCAL_APP_DATA}\BCSentinel\B656` and automatic migration is not performed by B11-5;
+- uninstall preserves persistent data by default;
+- exact ownership evidence is required and unknown children fail closed for destructive lifecycle decisions;
+- destructive execution, permission enforcement, migration execution and installer/uninstaller execution remain unavailable;
+- no network/cloud requirement, coverage promotion or response-authority expansion;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
+
+### B11-6 — Upgrade / Rollback + Config Migration 🚧 CURRENT
+
+Define deterministic upgrade, rollback and configuration-migration rules over the accepted B11-5 persistent-data model without mutating a real host. B11-6 is a planning and integrity milestone; clean-PC lifecycle execution remains reserved for later acceptance.
 
 Acceptance requirements:
 
-- exact accepted predecessor is `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb`;
-- accepted B11-4 milestone-specific source paths remain immutable except canonical roadmap documentation;
-- one deterministic machine-data root is defined for persistent BC Sentinel state;
-- configuration/state, logs, quarantine metadata/payloads and lifecycle metadata have distinct owned subroots and policies;
-- every persistent data class has explicit ownership, sensitivity, retention, upgrade, rollback and uninstall behavior;
-- quarantine payloads must be separated from logs/configuration and never treated as ordinary user files;
-- unknown children and unmanifested data fail closed for destructive lifecycle decisions;
-- uninstall preserves persistent data by default; any future purge requires a separate explicit operator choice and exact ownership evidence;
-- no hidden migration, cleanup, repair, quarantine, restore, privilege elevation or installer/uninstaller execution is introduced by B11-5;
+- exact accepted predecessor is `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660`;
+- accepted B11-5 source paths remain immutable except canonical roadmap documentation;
+- the B11-6 contract binds to the exact accepted B11-5 persistent-data model digest;
+- legacy B6 quarantine payloads and rollback snapshots remain typed as `QUARANTINE_PAYLOADS`; journal and restart-safe recovery records remain `QUARANTINE_METADATA`;
+- legacy migration mode is `COPY_VERIFY_SWITCH_KEEP_SOURCE`: source data is preserved and never silently moved/deleted;
+- every migrated file requires integrity evidence and destination hashes must match source hashes before a future activation;
+- unknown source children, unmanifested destination entries, path escapes and symlink/reparse escapes fail closed;
+- config migration accepts only a known schema with a valid source digest, is deterministic/idempotent and preserves the source payload on failure;
+- rollback requires previous dataset identity + manifest digest, preserves both current and legacy datasets, and never implies quarantine restore;
+- host migration, host upgrade, host rollback, config writes, legacy-source deletion, installer/uninstaller execution and privilege elevation remain unavailable in B11-6;
 - no network/cloud requirement, service/driver/autostart registration or protection-coverage promotion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b115-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b116-pass` may be created.
 
 ### Remaining planned Beta11 line
 
-- **B11-6 — Upgrade / Rollback + Config Migration** — deterministic migration and rollback rules across accepted product versions.
 - **B11-7 — Release Provenance + Signing Readiness** — artifact provenance, factual signing state, hashes and release evidence; signing is never implied when absent.
 - **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — real Windows lifecycle acceptance on clean/disposable systems.
 - **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression and immutable release-candidate freeze.
@@ -303,7 +321,7 @@ Acceptance requirements:
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b115-persistent-app-data-lifecycle
+feature/v011-beta11-b116-upgrade-rollback-config-migration
 ```
 
 ## Longer-term programs
