@@ -1,0 +1,34 @@
+name: B10-9 Windows Competitive Acceptance Freeze
+
+on:
+  push:
+    branches:
+      - feature/v011-beta10-b109-windows-competitive-acceptance-freeze
+    paths:
+      - 'sentinel/beta10_final_acceptance.py'
+      - 'tests/test_v011_beta10_b109_final_acceptance.py'
+      - 'tools/acceptance/RUN-V011-BETA10-B109-FINAL.py'
+      - 'tools/acceptance/TEST-V011-BETA10-B109.ps1'
+      - '.github/workflows/b109-windows-competitive-acceptance-freeze.yml'
+      - 'ROADMAP.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Full regression and B10-9 competitive acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V011-BETA10-B109.ps1 -ConfirmBeta10FinalAcceptance
