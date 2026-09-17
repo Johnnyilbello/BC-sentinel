@@ -1,0 +1,36 @@
+name: B11-2 Reproducible Windows Onedir Build
+
+on:
+  push:
+    branches:
+      - feature/v011-beta11-b112-reproducible-windows-onedir-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Full regression, build and packaged-runtime acceptance
+        shell: powershell
+        run: >-
+          ./tools/acceptance/TEST-V011-BETA11-B112.ps1
+          -ConfirmReproducibleOnedirBuild
+          -DistRoot .\dist\Beta11-B112
