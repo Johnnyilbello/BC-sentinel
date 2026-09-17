@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-6 — Upgrade / Rollback + Config Migration
+B11-7 — Release Provenance + Signing Readiness
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b115-pass
-19e40b9b41f4d87b3f081bb7e8bfb5b155db4660
+checkpoint/v011-beta11-b116-pass
+25fc9b50b17d9deb65d61a8e8994334259bb5042
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -211,6 +211,7 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-3 — Installer / Uninstaller Contract** — `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a` — ACCEPTED / FROZEN.
 - **B11-4 — First-Run Health + Repair Guidance** — `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb` — ACCEPTED / FROZEN.
 - **B11-5 — Persistent App Data + Logs + Quarantine Model** — `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660` — ACCEPTED / FROZEN.
+- **B11-6 — Upgrade / Rollback + Config Migration** — `checkpoint/v011-beta11-b116-pass` / `25fc9b50b17d9deb65d61a8e8994334259bb5042` — ACCEPTED / FROZEN.
 
 ### B11-2 accepted evidence
 
@@ -291,37 +292,54 @@ Windows CI run `35253271696` and local Windows acceptance both PASS on exact SHA
 - no network/cloud requirement, coverage promotion or response-authority expansion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
 
-### B11-6 — Upgrade / Rollback + Config Migration 🚧 CURRENT
+### B11-6 accepted evidence
 
-Define deterministic upgrade, rollback and configuration-migration rules over the accepted B11-5 persistent-data model without mutating a real host. B11-6 is a planning and integrity milestone; clean-PC lifecycle execution remains reserved for later acceptance.
+Windows CI run `35255724334` and local Windows acceptance both PASS on exact SHA `25fc9b50b17d9deb65d61a8e8994334259bb5042`.
+
+- CI: `938 passed, 38 warnings in 119.89s`;
+- local: `938 passed, 38 warnings in 87.32s`;
+- deterministic upgrade-migration contract digest `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9` matched CI and local;
+- accepted B11-5 predecessor identity, source immutability and repository hygiene PASS;
+- legacy migration mode is `COPY_VERIFY_SWITCH_KEEP_SOURCE`;
+- rollback mode is `POINTER_ROLLBACK_KEEP_BOTH_DATASETS`;
+- configuration migration is deterministic/idempotent and preserves source data;
+- legacy source deletion and quarantine restore remain unavailable;
+- host migration, host upgrade, host rollback and configuration writes remain unavailable;
+- no network/cloud requirement, coverage promotion or response-authority expansion;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
+
+### B11-7 — Release Provenance + Signing Readiness 🚧 CURRENT
+
+Define a deterministic release-provenance contract that binds artifact hashes, exact build commit, CI/local acceptance evidence and factual Windows signing state without signing, mutating or publishing artifacts in B11-7.
 
 Acceptance requirements:
 
-- exact accepted predecessor is `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660`;
-- accepted B11-5 source paths remain immutable except canonical roadmap documentation;
-- the B11-6 contract binds to the exact accepted B11-5 persistent-data model digest;
-- legacy B6 quarantine payloads and rollback snapshots remain typed as `QUARANTINE_PAYLOADS`; journal and restart-safe recovery records remain `QUARANTINE_METADATA`;
-- legacy migration mode is `COPY_VERIFY_SWITCH_KEEP_SOURCE`: source data is preserved and never silently moved/deleted;
-- every migrated file requires integrity evidence and destination hashes must match source hashes before a future activation;
-- unknown source children, unmanifested destination entries, path escapes and symlink/reparse escapes fail closed;
-- config migration accepts only a known schema with a valid source digest, is deterministic/idempotent and preserves the source payload on failure;
-- rollback requires previous dataset identity + manifest digest, preserves both current and legacy datasets, and never implies quarantine restore;
-- host migration, host upgrade, host rollback, config writes, legacy-source deletion, installer/uninstaller execution and privilege elevation remain unavailable in B11-6;
-- no network/cloud requirement, service/driver/autostart registration or protection-coverage promotion;
+- exact accepted predecessor is `checkpoint/v011-beta11-b116-pass` / `25fc9b50b17d9deb65d61a8e8994334259bb5042`;
+- accepted B11-6 source paths remain immutable except canonical roadmap documentation;
+- B11-7 binds to the exact accepted B11-6 upgrade-migration contract digest `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9`;
+- the accepted B11-2 artifact identity and manifest schema remain reused rather than silently redefined;
+- every release-provenance record requires artifact SHA-256, artifact-tree digest and artifact-manifest digest;
+- release evidence requires an exact build commit and both successful CI and local acceptance bound to that same commit;
+- signing state is derived only from evidence and is limited to `UNSIGNED`, `SIGNED_UNVERIFIED` or `SIGNED_VERIFIED`;
+- absent signature evidence is always `UNSIGNED`; hashes, filenames or certificate metadata alone never imply a signed artifact;
+- `SIGNED_VERIFIED` requires explicit signature presence, successful verification, signer subject, SHA-256 certificate thumbprint and explicit Windows Authenticode verification evidence;
+- contradictory or incomplete signing evidence fails closed;
+- B11-7 does not execute signing, Authenticode verification, private-key access, certificate enrollment, timestamping, release publication or artifact mutation;
+- installer/uninstaller execution, automatic update, privilege elevation, service/driver/autostart registration remain unavailable;
+- no network/cloud requirement, response-authority expansion or protection-coverage promotion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b116-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b117-pass` may be created.
 
 ### Remaining planned Beta11 line
 
-- **B11-7 — Release Provenance + Signing Readiness** — artifact provenance, factual signing state, hashes and release evidence; signing is never implied when absent.
 - **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — real Windows lifecycle acceptance on clean/disposable systems.
 - **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression and immutable release-candidate freeze.
 
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b116-upgrade-rollback-config-migration
+feature/v011-beta11-b117-release-provenance-signing-readiness
 ```
 
 ## Longer-term programs
