@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-3 — Installer / Uninstaller Contract
+B11-4 — First-Run Health + Repair Guidance
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b112-pass
-92b6317aa9e642a0062268bce9f92bb0a4ffb1a1
+checkpoint/v011-beta11-b113-pass
+4ce33199bb72d87c09b0c204a40c2046efcb615a
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -208,6 +208,7 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-0 — Windows Productization Foundation** — `checkpoint/v011-beta11-b110-pass` / `0bee65100c6713d11dedd56c28ee3118f0082624` — ACCEPTED / FROZEN.
 - **B11-1 — Canonical Desktop Entry + Runtime Identity** — `checkpoint/v011-beta11-b111-pass` / `2d49bc2037d3d1f3fb40280277cf8d53927cc68b` — ACCEPTED / FROZEN.
 - **B11-2 — Reproducible Windows Onedir Build** — `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1` — ACCEPTED / FROZEN.
+- **B11-3 — Installer / Uninstaller Contract** — `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a` — ACCEPTED / FROZEN.
 
 ### B11-2 accepted evidence
 
@@ -235,29 +236,45 @@ Local Windows evidence:
 
 B11-2 reproducibility means immutable source binding, deterministic manifest rules, complete artifact inventory/hashing and runtime acceptance. It does **not** claim byte-identical PyInstaller output across different dependency/tool versions or Windows build environments.
 
-### B11-3 — Installer / Uninstaller Contract 🚧 CURRENT
+### B11-3 accepted evidence
 
-Contract-only milestone. It defines install scope, product-owned resources, elevation rules and uninstall safety before installer execution is allowed.
+Windows CI run `35249033734` and local Windows acceptance both PASS on exact SHA `4ce33199bb72d87c09b0c204a40c2046efcb615a`.
+
+- CI: `893 passed, 38 warnings in 118.07s`;
+- local: `893 passed, 38 warnings in 172.84s`;
+- deterministic contract digest `f084b67d16b87e17722e70890be13ba33fcd10d7c3ece43b499fcb01020e5aa6` matched CI and local;
+- accepted B11-2 predecessor immutability and repository hygiene PASS;
+- lifecycle operation count `4`: INSTALL, REPAIR, UPGRADE, UNINSTALL;
+- planned product-owned resource count `4`;
+- ownership manifest required before removal;
+- unknown children preserved and persistent app data preserved by default;
+- elevation policy `ON_DEMAND_MACHINE_SCOPE_ONLY`;
+- installer/uninstaller execution remains unavailable at this milestone;
+- service/driver installation and autostart registration remain unavailable;
+- artifact signing remains false;
+- no coverage promotion and no response-authority expansion;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
+
+### B11-4 — First-Run Health + Repair Guidance 🚧 CURRENT
+
+Implement a deterministic read-only health surface that can explain whether the packaged/runtime prerequisites required by the accepted desktop entry are healthy before the user relies on the product. Guidance may tell the operator what to repair, but B11-4 may not silently repair, install, elevate or mutate the machine.
 
 Acceptance requirements:
 
-- exact source predecessor must remain `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1`;
-- accepted B11-2 source paths may not be modified except canonical roadmap documentation;
-- installer and uninstaller execution remain unavailable in B11-3;
-- every planned removable resource must be explicitly product-owned and require exact ownership evidence;
-- uninstall must fail closed when ownership evidence is missing;
-- unknown files/children and user documents must be preserved;
-- persistent app data, logs and quarantine are preserve-by-default until B11-5 defines their lifecycle;
-- lifecycle operations require explicit operator action and cannot silently mutate the machine;
-- elevation is limited to future on-demand machine-scope lifecycle operations and is not inherited by normal app runtime;
-- no service, driver, autostart, scheduled task, Defender exclusion, firewall rule, certificate-store change or automatic updater may be introduced by B11-3;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2` and response authority remains unchanged;
+- exact accepted predecessor is `checkpoint/v011-beta11-b113-pass` / `4ce33199bb72d87c09b0c204a40c2046efcb615a`;
+- accepted B11-3 source paths remain immutable except canonical roadmap documentation;
+- health checks are deterministic and read-only;
+- missing critical runtime prerequisites fail closed and block a healthy/ready claim;
+- optional/degraded prerequisites are distinguished from critical failures;
+- repair guidance is bounded, factual and non-executing;
+- no hidden package installation, privilege elevation, service/driver registration, autostart, firewall/Defender changes, updater execution or network dependency;
+- health status cannot promote detection coverage or remediation authority;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b113-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b114-pass` may be created.
 
 ### Remaining planned Beta11 line
 
-- **B11-4 — First-Run Health + Repair Guidance** — read-only health diagnosis and bounded repair guidance without hidden mutation.
 - **B11-5 — Persistent App Data + Logs + Quarantine Model** — define ownership, permissions and lifecycle of persistent product data.
 - **B11-6 — Upgrade / Rollback + Config Migration** — deterministic migration and rollback rules across accepted product versions.
 - **B11-7 — Release Provenance + Signing Readiness** — artifact provenance, factual signing state, hashes and release evidence; signing is never implied when absent.
@@ -267,7 +284,7 @@ Acceptance requirements:
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b113-installer-uninstaller-contract
+feature/v011-beta11-b114-first-run-health-repair-guidance
 ```
 
 ## Longer-term programs
