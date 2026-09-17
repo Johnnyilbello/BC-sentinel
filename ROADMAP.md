@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-0 — Windows Productization Foundation
+B11-3 — Installer / Uninstaller Contract
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta10-b109-pass
-89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
+checkpoint/v011-beta11-b112-pass
+92b6317aa9e642a0062268bce9f92bb0a4ffb1a1
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -203,28 +203,60 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 5. **Release Provenance** — checkpoint, artifact, signing state and exact CI/local evidence are traceable and factual.
 6. **Safe Upgrade Recovery** — persistent product data/configuration survive accepted upgrades and rollback remains bounded.
 
-### B11-0 — Windows Productization Foundation 🚧 CURRENT
+### Accepted Beta11 line
 
-Contract-only milestone. It freezes the Beta10 source identity and defines what Beta11 must prove before BC Sentinel may be treated as a distributable Windows product.
+- **B11-0 — Windows Productization Foundation** — `checkpoint/v011-beta11-b110-pass` / `0bee65100c6713d11dedd56c28ee3118f0082624` — ACCEPTED / FROZEN.
+- **B11-1 — Canonical Desktop Entry + Runtime Identity** — `checkpoint/v011-beta11-b111-pass` / `2d49bc2037d3d1f3fb40280277cf8d53927cc68b` — ACCEPTED / FROZEN.
+- **B11-2 — Reproducible Windows Onedir Build** — `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1` — ACCEPTED / FROZEN.
+
+### B11-2 accepted evidence
+
+Windows CI run `35244670724` and local Windows acceptance both PASS on exact SHA `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1`.
+
+CI evidence:
+
+- `876 passed, 38 warnings in 123.57s`;
+- Python `3.12.10`, PyInstaller `6.22.3`;
+- onedir artifact `BC-Sentinel-Beta11.exe` produced and integrity-validated;
+- `217` files / `132916675` bytes;
+- artifact SHA-256 `b072e918505c9590a4ac5ba95282c3a3a992b8f7a990371416d2ba0f35552cfa`;
+- tree digest `2b82e97e749e482c50d50dcddce48b822292cb4134f40d3bc9c45ad7a7fd7e69`;
+- packaged `--identity-json`, `--self-check` and `--smoke` probes PASS.
+
+Local Windows evidence:
+
+- `876 passed, 38 warnings in 99.39s`;
+- Python `3.12.10`, PyInstaller `6.22.2`;
+- onedir artifact produced and integrity-validated;
+- `215` files / `124433579` bytes;
+- artifact SHA-256 `d85afc0850db24470b90d10495b28193b8c873fb4ef847b9488d9601653c70d1`;
+- tree digest `f58f87ca200511b429397277ea520fe80937cf3ef38ea90bc371458aa5078a39`;
+- packaged `--identity-json`, `--self-check` and `--smoke` probes PASS.
+
+B11-2 reproducibility means immutable source binding, deterministic manifest rules, complete artifact inventory/hashing and runtime acceptance. It does **not** claim byte-identical PyInstaller output across different dependency/tool versions or Windows build environments.
+
+### B11-3 — Installer / Uninstaller Contract 🚧 CURRENT
+
+Contract-only milestone. It defines install scope, product-owned resources, elevation rules and uninstall safety before installer execution is allowed.
 
 Acceptance requirements:
 
-- exact source must remain `checkpoint/v011-beta10-b109-pass` / `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
-- accepted Beta10 source paths may not be changed by B11-0;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- the two verified scenarios remain unchanged;
-- six productization pillars and ten Beta11 milestones must be deterministic and machine-verifiable;
-- B11-0 must not claim an installer, signed artifact, service, driver, autostart or auto-update as available;
-- core startup remains local-first with no network/cloud requirement introduced by the foundation;
-- general remediation/privileged authority remains unchanged;
+- exact source predecessor must remain `checkpoint/v011-beta11-b112-pass` / `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1`;
+- accepted B11-2 source paths may not be modified except canonical roadmap documentation;
+- installer and uninstaller execution remain unavailable in B11-3;
+- every planned removable resource must be explicitly product-owned and require exact ownership evidence;
+- uninstall must fail closed when ownership evidence is missing;
+- unknown files/children and user documents must be preserved;
+- persistent app data, logs and quarantine are preserve-by-default until B11-5 defines their lifecycle;
+- lifecycle operations require explicit operator action and cannot silently mutate the machine;
+- elevation is limited to future on-demand machine-scope lifecycle operations and is not inherited by normal app runtime;
+- no service, driver, autostart, scheduled task, Defender exclusion, firewall rule, certificate-store change or automatic updater may be introduced by B11-3;
+- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2` and response authority remains unchanged;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b110-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b113-pass` may be created.
 
-### Planned Beta11 line
+### Remaining planned Beta11 line
 
-- **B11-1 — Canonical Desktop Entry + Runtime Identity** — replace historical/technician launch ambiguity with one product entrypoint and explicit runtime/source identity.
-- **B11-2 — Reproducible Windows Onedir Build** — build the accepted product UI into an integrity-manifested Windows artifact.
-- **B11-3 — Installer / Uninstaller Contract** — define install scope, product-owned resources, uninstall safety and elevation boundaries before execution.
 - **B11-4 — First-Run Health + Repair Guidance** — read-only health diagnosis and bounded repair guidance without hidden mutation.
 - **B11-5 — Persistent App Data + Logs + Quarantine Model** — define ownership, permissions and lifecycle of persistent product data.
 - **B11-6 — Upgrade / Rollback + Config Migration** — deterministic migration and rollback rules across accepted product versions.
@@ -235,7 +267,7 @@ Acceptance requirements:
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b110-productization-foundation
+feature/v011-beta11-b113-installer-uninstaller-contract
 ```
 
 ## Longer-term programs
