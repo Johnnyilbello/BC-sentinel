@@ -131,7 +131,14 @@ assert c["privacy"]["cloud_required"] is False
 print("B10-6 contract assertions: PASS")
 '@
 
-& $py -c $contractCode
-if ($LASTEXITCODE -ne 0) { throw 'B10-6 contract assertions failed.' }
+$contractScript = Join-Path ([IO.Path]::GetTempPath()) ('BCSentinel-b106-contract-' + [guid]::NewGuid().ToString('N') + '.py')
+try {
+    Set-Content -LiteralPath $contractScript -Value $contractCode -Encoding UTF8
+    & $py $contractScript
+    if ($LASTEXITCODE -ne 0) { throw 'B10-6 contract assertions failed.' }
+}
+finally {
+    Remove-Item -LiteralPath $contractScript -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host 'BC SENTINEL v0.11.0-beta.10 B10-6 REVERSIBLE RESPONSE PILOT - PASS'
