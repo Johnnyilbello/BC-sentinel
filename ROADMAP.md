@@ -1,6 +1,6 @@
 # BC Sentinel — Canonical Roadmap
 
-This is the **only roadmap source of truth** for BC Sentinel. Accepted engineering checkpoints are immutable. Documentation may advance after an engineering freeze, but accepted checkpoints never move.
+This is the **only roadmap source of truth** for BC Sentinel. Accepted engineering checkpoints are immutable. Documentation may advance after an engineering freeze, but accepted checkpoints never move. Detailed historical evidence remains recoverable from Git history and immutable checkpoint refs.
 
 ## Current state
 
@@ -17,14 +17,14 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-7 — Release Provenance + Signing Readiness
+B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b116-pass
-25fc9b50b17d9deb65d61a8e8994334259bb5042
+checkpoint/v011-beta11-b117-pass
+c7ca5e86af196863cc980bcd1e8616447d9f3d8a
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -81,6 +81,8 @@ privileged/system mutation    = false
 
 B10-6 introduced one explicit exception only: reversible quarantine + rollback inside an explicitly initialized disposable temporary workspace, with operator confirmation, exact target binding, tamper-evident journal and rollback. It does **not** grant broad Home execution or autonomous remediation.
 
+B11-8 introduces a second tightly bounded execution surface only for product-lifecycle acceptance: install/upgrade/uninstall fixture execution inside an explicitly confirmed disposable OS-temp workspace. It does **not** grant real machine-scope installation, HKLM mutation, Program Files/ProgramData mutation, privilege elevation, service/driver registration or autostart.
+
 ## Accepted foundations
 
 ### Beta5 — Technician / recovery hardening
@@ -96,8 +98,6 @@ checkpoint/v011-beta6-b67-pass
 eb08758a304eb838d08af890ef9c4786264afbc0
 ```
 
-Windows UI, Home security overview, Smart Scan UX, threat cards, guided-resolution foundations and portable GUI, while preserving no-automatic-remediation boundaries.
-
 ### Beta7 — Detection Coverage & Incident Intelligence
 
 **COMPLETE / FROZEN**
@@ -106,8 +106,6 @@ Windows UI, Home security overview, Smart Scan UX, threat cards, guided-resoluti
 checkpoint/v011-beta7-b77-pass
 4d57f749276c588782147d47078ef4c52d1adc51
 ```
-
-Coverage ledger, Security Graph, Incident Correlation, Confidence Gate, attack-chain acceptance, explainable security and explicit coverage accounting.
 
 ### Beta8 — Verified Detection & Predictive Defense
 
@@ -118,7 +116,7 @@ checkpoint/v011-beta8-b87-pass
 3c32157dd0c6bb852438319766a9345b0b9f5f1e
 ```
 
-Deterministic ransomware-like, defense-evasion and credential-access detector evidence plus attack prediction. Beta8 intentionally remained `PARTIAL=6 / GAP=0 / VERIFIED=0` because detector evidence was synthetic/in-memory.
+Beta8 intentionally remained `PARTIAL=6 / GAP=0 / VERIFIED=0` because detector evidence was synthetic/in-memory.
 
 ## Beta9 — Real Windows Telemetry & Detector Verification
 
@@ -135,7 +133,6 @@ Final Beta9 acceptance:
 
 - Windows CI + local PASS on exact SHA `cc32c2c31ebb9b863624632a38175ec5825430e4`;
 - `721 passed, 36 warnings`;
-- local live pipeline `5.586691 s`;
 - deterministic core PASS;
 - privacy / no-remediation / no-privileged-mutation boundaries PASS;
 - ransomware-like controlled local detector path promoted to `VERIFIED`;
@@ -152,8 +149,6 @@ checkpoint/v011-beta10-b109-pass
 89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9
 ```
 
-Beta10 made protection demonstrable, incidents explainable, response planning bounded/reversible where accepted, rescue continuity explicit and operational impact measurable.
-
 ### Beta10 accepted line
 
 - B10-0 Value Foundation + Competitive Contract — `checkpoint/v011-beta10-b100-pass`
@@ -169,30 +164,20 @@ Beta10 made protection demonstrable, incidents explainable, response planning bo
 
 Final Beta10 acceptance:
 
-- Windows CI run `35230121430` PASS on exact SHA `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
-- local Windows PASS on the same exact SHA;
-- CI: `845 passed, 38 warnings in 89.33s`;
-- local: `845 passed, 38 warnings in 89.40s`;
+- Windows CI run `35230121430` PASS and local Windows PASS on exact SHA `89d2b0d59c73ad5d07d46af58db03d03c6fbfdc9`;
+- `845 passed, 38 warnings` in both environments;
 - all `6/6` Beta10 value pillars demonstrated by accepted evidence;
-- all `10` Beta10 milestones accounted for;
 - final coverage `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - verified scenarios `B7-POWERSHELL-001` and `B7-RANSOMWARE-001`;
-- local p95 wall `0.3633 ms`, p95 CPU `0.0 ms`, max RSS delta `0.003906 MiB`, user interruptions `0`;
-- Trust Center `7` pages with zero horizontal overflow at accepted widths;
-- reversible-response pilot completed `QUARANTINED -> ROLLED_BACK` with `4` journal records;
 - reversible-response scope `DISPOSABLE_TEMP_WORKSPACE_ONLY`;
-- Rescue Continuity non-executing and local-first;
 - general response execution disabled;
-- presentation cannot promote coverage;
-- no new B10-9 authority expansion, broad-protection claim, credential access, network I/O or cloud requirement.
-
-Beta10 is **COMPLETE / FROZEN** at immutable checkpoint `checkpoint/v011-beta10-b109-pass`.
+- no broad-protection claim, credential access, network I/O or cloud requirement.
 
 ## Beta11 — Windows Productization & Release Readiness
 
 **Status: IN PROGRESS**
 
-Goal: convert the accepted Beta10 source into a Windows product that can be built, installed, started, upgraded, rolled back and uninstalled predictably on real PCs without weakening the accepted security, privacy or evidence boundaries.
+Goal: convert the accepted Beta10 source into a Windows product that can be built, installed, started, upgraded, rolled back and uninstalled predictably without weakening the accepted security, privacy or evidence boundaries.
 
 ### Productization pillars
 
@@ -212,134 +197,56 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-4 — First-Run Health + Repair Guidance** — `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb` — ACCEPTED / FROZEN.
 - **B11-5 — Persistent App Data + Logs + Quarantine Model** — `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660` — ACCEPTED / FROZEN.
 - **B11-6 — Upgrade / Rollback + Config Migration** — `checkpoint/v011-beta11-b116-pass` / `25fc9b50b17d9deb65d61a8e8994334259bb5042` — ACCEPTED / FROZEN.
+- **B11-7 — Release Provenance + Signing Readiness** — `checkpoint/v011-beta11-b117-pass` / `c7ca5e86af196863cc980bcd1e8616447d9f3d8a` — ACCEPTED / FROZEN.
 
-### B11-2 accepted evidence
+### Accepted Beta11 evidence summary
 
-Windows CI run `35244670724` and local Windows acceptance both PASS on exact SHA `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1`.
+**B11-2** — Windows CI and local acceptance PASS on exact SHA `92b6317aa9e642a0062268bce9f92bb0a4ffb1a1`; reproducible manifest rules, complete inventory/hashing and packaged runtime probes accepted. PyInstaller byte identity across differing tool environments is not claimed.
 
-CI evidence:
+**B11-3** — Windows CI run `35249033734` and local acceptance PASS on exact SHA `4ce33199bb72d87c09b0c204a40c2046efcb615a`; contract digest `f084b67d16b87e17722e70890be13ba33fcd10d7c3ece43b499fcb01020e5aa6`; exact ownership evidence required; unknown children and persistent data preserved by default.
 
-- `876 passed, 38 warnings in 123.57s`;
-- Python `3.12.10`, PyInstaller `6.22.3`;
-- onedir artifact `BC-Sentinel-Beta11.exe` produced and integrity-validated;
-- `217` files / `132916675` bytes;
-- artifact SHA-256 `b072e918505c9590a4ac5ba95282c3a3a992b8f7a990371416d2ba0f35552cfa`;
-- tree digest `2b82e97e749e482c50d50dcddce48b822292cb4134f40d3bc9c45ad7a7fd7e69`;
-- packaged `--identity-json`, `--self-check` and `--smoke` probes PASS.
+**B11-4** — Windows CI run `35251500218` and local acceptance PASS on exact SHA `5ec361050f4c490652f88c30ad3a3b60e586fecb`; health-contract digest `1c079318ceac42c510216cf6bdb70d3067a21bf47c36ba21be47766fed0f6632`; diagnostics remain read-only.
 
-Local Windows evidence:
+**B11-5** — Windows CI run `35253271696` and local acceptance PASS on exact SHA `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660`; persistent-data model digest `38df2751392cd71bec8662c6d4f80b287c30aeb70841606399057254fe7a2a08`; five persistent classes; uninstall preserves persistent data by default.
 
-- `876 passed, 38 warnings in 99.39s`;
-- Python `3.12.10`, PyInstaller `6.22.2`;
-- onedir artifact produced and integrity-validated;
-- `215` files / `124433579` bytes;
-- artifact SHA-256 `d85afc0850db24470b90d10495b28193b8c873fb4ef847b9488d9601653c70d1`;
-- tree digest `f58f87ca200511b429397277ea520fe80937cf3ef38ea90bc371458aa5078a39`;
-- packaged `--identity-json`, `--self-check` and `--smoke` probes PASS.
+**B11-6** — Windows CI run `35255724334` and local acceptance PASS on exact SHA `25fc9b50b17d9deb65d61a8e8994334259bb5042`; `938 passed, 38 warnings`; upgrade-migration digest `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9`; migration mode `COPY_VERIFY_SWITCH_KEEP_SOURCE`; rollback mode `POINTER_ROLLBACK_KEEP_BOTH_DATASETS`.
 
-B11-2 reproducibility means immutable source binding, deterministic manifest rules, complete artifact inventory/hashing and runtime acceptance. It does **not** claim byte-identical PyInstaller output across different dependency/tool versions or Windows build environments.
+**B11-7** — Windows CI run `35258890265` and local Windows acceptance PASS on exact SHA `c7ca5e86af196863cc980bcd1e8616447d9f3d8a`; CI `958 passed, 38 warnings`; release-provenance contract digest `a19d1ea8ad887b670cbbb9aef1a09db17e806fd59e5e89b603f9574c1912f109`; factual signing states are `UNSIGNED`, `SIGNED_UNVERIFIED`, `SIGNED_VERIFIED`; signing, verification, private-key use, certificate enrollment, timestamping, publication and artifact mutation remain unavailable.
 
-### B11-3 accepted evidence
+Across accepted B11 milestones, canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2` and no general response-authority expansion has occurred.
 
-Windows CI run `35249033734` and local Windows acceptance both PASS on exact SHA `4ce33199bb72d87c09b0c204a40c2046efcb615a`.
+### B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance 🚧 CURRENT
 
-- CI: `893 passed, 38 warnings in 118.07s`;
-- local: `893 passed, 38 warnings in 172.84s`;
-- deterministic contract digest `f084b67d16b87e17722e70890be13ba33fcd10d7c3ece43b499fcb01020e5aa6` matched CI and local;
-- accepted B11-2 predecessor immutability and repository hygiene PASS;
-- lifecycle operation count `4`: INSTALL, REPAIR, UPGRADE, UNINSTALL;
-- planned product-owned resource count `4`;
-- ownership manifest required before removal;
-- unknown children preserved and persistent app data preserved by default;
-- elevation policy `ON_DEMAND_MACHINE_SCOPE_ONLY`;
-- installer/uninstaller execution remains unavailable at this milestone;
-- service/driver installation and autostart registration remain unavailable;
-- artifact signing remains false;
-- no coverage promotion and no response-authority expansion;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
-
-### B11-4 accepted evidence
-
-Windows CI run `35251500218` and local Windows acceptance both PASS on exact SHA `5ec361050f4c490652f88c30ad3a3b60e586fecb`.
-
-- CI: `905 passed, 38 warnings in 121.53s`;
-- local: `905 passed, 38 warnings in 90.25s`;
-- deterministic health-contract digest `1c079318ceac42c510216cf6bdb70d3067a21bf47c36ba21be47766fed0f6632` matched CI and local;
-- live first-run health status `READY` in CI and local acceptance;
-- `10` critical checks and `6` optional checks modeled;
-- local acceptance reported `critical_failure_count=0`, `warning_count=0` and `ready_to_start=true`;
-- Windows/x64/Python 3.12, canonical runtime identity and Trust Center core all validated;
-- required runtime modules and accepted feature dependencies were available in the local probe;
-- health diagnostics remain read-only and non-mutating;
-- repair execution, package installation, privilege elevation, service/driver/autostart registration, Defender/firewall changes, automatic update execution, network and cloud requirements remain unavailable;
-- no coverage promotion and no response-authority expansion;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
-
-### B11-5 accepted evidence
-
-Windows CI run `35253271696` and local Windows acceptance both PASS on exact SHA `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660`.
-
-- CI: `920 passed, 38 warnings in 119.99s`;
-- local: `920 passed, 38 warnings in 102.01s`;
-- deterministic persistent-data model digest `38df2751392cd71bec8662c6d4f80b287c30aeb70841606399057254fe7a2a08` matched CI and local;
-- canonical machine-data root is `{PROGRAM_DATA}\BC Sentinel`;
-- `5` distinct persistent data classes are modeled: configuration/state, logs, quarantine metadata, quarantine payloads and lifecycle metadata;
-- quarantine metadata and untrusted payloads remain separated;
-- legacy B6 storage remains `{LOCAL_APP_DATA}\BCSentinel\B656` and automatic migration is not performed by B11-5;
-- uninstall preserves persistent data by default;
-- exact ownership evidence is required and unknown children fail closed for destructive lifecycle decisions;
-- destructive execution, permission enforcement, migration execution and installer/uninstaller execution remain unavailable;
-- no network/cloud requirement, coverage promotion or response-authority expansion;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
-
-### B11-6 accepted evidence
-
-Windows CI run `35255724334` and local Windows acceptance both PASS on exact SHA `25fc9b50b17d9deb65d61a8e8994334259bb5042`.
-
-- CI: `938 passed, 38 warnings in 119.89s`;
-- local: `938 passed, 38 warnings in 87.32s`;
-- deterministic upgrade-migration contract digest `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9` matched CI and local;
-- accepted B11-5 predecessor identity, source immutability and repository hygiene PASS;
-- legacy migration mode is `COPY_VERIFY_SWITCH_KEEP_SOURCE`;
-- rollback mode is `POINTER_ROLLBACK_KEEP_BOTH_DATASETS`;
-- configuration migration is deterministic/idempotent and preserves source data;
-- legacy source deletion and quarantine restore remain unavailable;
-- host migration, host upgrade, host rollback and configuration writes remain unavailable;
-- no network/cloud requirement, coverage promotion or response-authority expansion;
-- canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`.
-
-### B11-7 — Release Provenance + Signing Readiness 🚧 CURRENT
-
-Define a deterministic release-provenance contract that binds artifact hashes, exact build commit, CI/local acceptance evidence and factual Windows signing state without signing, mutating or publishing artifacts in B11-7.
+Execute and verify the accepted install-lifecycle semantics on Windows using a real filesystem lifecycle inside an explicitly confirmed disposable OS-temp workspace. B11-8 is execution evidence for bounded product-owned lifecycle behavior; it is not permission to install into the operator's real machine scope.
 
 Acceptance requirements:
 
-- exact accepted predecessor is `checkpoint/v011-beta11-b116-pass` / `25fc9b50b17d9deb65d61a8e8994334259bb5042`;
-- accepted B11-6 source paths remain immutable except canonical roadmap documentation;
-- B11-7 binds to the exact accepted B11-6 upgrade-migration contract digest `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9`;
-- the accepted B11-2 artifact identity and manifest schema remain reused rather than silently redefined;
-- every release-provenance record requires artifact SHA-256, artifact-tree digest and artifact-manifest digest;
-- release evidence requires an exact build commit and both successful CI and local acceptance bound to that same commit;
-- signing state is derived only from evidence and is limited to `UNSIGNED`, `SIGNED_UNVERIFIED` or `SIGNED_VERIFIED`;
-- absent signature evidence is always `UNSIGNED`; hashes, filenames or certificate metadata alone never imply a signed artifact;
-- `SIGNED_VERIFIED` requires explicit signature presence, successful verification, signer subject, SHA-256 certificate thumbprint and explicit Windows Authenticode verification evidence;
-- contradictory or incomplete signing evidence fails closed;
-- B11-7 does not execute signing, Authenticode verification, private-key access, certificate enrollment, timestamping, release publication or artifact mutation;
-- installer/uninstaller execution, automatic update, privilege elevation, service/driver/autostart registration remain unavailable;
+- exact accepted predecessor is `checkpoint/v011-beta11-b117-pass` / `c7ca5e86af196863cc980bcd1e8616447d9f3d8a`;
+- accepted B11-7 source paths remain immutable except canonical roadmap documentation;
+- exact accepted bindings remain B11-3 contract `f084b67d16b87e17722e70890be13ba33fcd10d7c3ece43b499fcb01020e5aa6`, B11-5 model `38df2751392cd71bec8662c6d4f80b287c30aeb70841606399057254fe7a2a08`, B11-6 contract `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9` and B11-7 provenance contract `a19d1ea8ad887b670cbbb9aef1a09db17e806fd59e5e89b603f9574c1912f109`;
+- execution scope is exactly `EXPLICIT_DISPOSABLE_TEMP_WORKSPACE_ONLY`;
+- initialization requires explicit confirmation, a clean OS-temp workspace, the B11-8 workspace-name prefix and an exact lifecycle marker;
+- clean install creates only fixture representations of the product payload, Start Menu shortcut and uninstall metadata under the disposable workspace; no real `Program Files`, `ProgramData`, Start Menu or HKLM mutation occurs;
+- exact ownership manifest and per-file SHA-256 verification are required before destructive lifecycle actions;
+- runtime-created persistent configuration, logs, quarantine metadata, quarantine payload and lifecycle metadata are distinct from installer-owned files;
+- upgrade stages the target payload, verifies staged hashes before activation, preserves the persistent-data tree and keeps the previous application payload;
+- uninstall removes only hash-verified manifested product files, preserves unknown children and preserves persistent data by default;
+- missing/tampered ownership evidence, marker mismatch, path escape or non-disposable scope fails closed before destructive action;
+- an outside-workspace canary must remain unchanged across the full lifecycle;
+- real machine-scope install/upgrade/uninstall, HKLM mutation, privilege elevation, service/driver/autostart registration, Defender/firewall changes, automatic update, signing and release publication remain unavailable;
 - no network/cloud requirement, response-authority expansion or protection-coverage promotion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b117-pass` may be created.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b118-pass` may be created.
 
 ### Remaining planned Beta11 line
 
-- **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — real Windows lifecycle acceptance on clean/disposable systems.
-- **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression and immutable release-candidate freeze.
+- **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression, final productization evidence reconciliation and immutable release-candidate freeze.
 
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b117-release-provenance-signing-readiness
+feature/v011-beta11-b118-clean-pc-lifecycle-acceptance
 ```
 
 ## Longer-term programs
