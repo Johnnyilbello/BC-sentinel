@@ -103,7 +103,7 @@ $impactPath = Join-Path $runRoot 'operational-impact.json'
 $trustPath = Join-Path $runRoot 'trust-center.json'
 $pilotPath = Join-Path $runRoot 'reversible-pilot.json'
 $finalPath = Join-Path $runRoot 'beta10-final.json'
-$pilotWorkspace = Join-Path $runRoot 'pilot-workspace'
+$pilotWorkspace = Join-Path ([IO.Path]::GetTempPath()) ('BCSentinel-b106-pilot-' + [guid]::NewGuid().ToString('N'))
 
 try {
     & '.\tools\acceptance\RUN-V011-BETA10-B103-POWERSHELL.ps1' `
@@ -179,6 +179,9 @@ try {
 finally {
     if (Test-Path -LiteralPath $runRoot) {
         Remove-Item -LiteralPath $runRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path -LiteralPath $pilotWorkspace) {
+        Remove-Item -LiteralPath $pilotWorkspace -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
