@@ -38,7 +38,8 @@ def test_b115_canonical_machine_root_and_data_classes_are_distinct() -> None:
         "LIFECYCLE_METADATA",
     ]
     assert len({item["path_token"].casefold() for item in classes}) == 5
-    assert all(item["path_token"].casefold().startswith(r"{program_data}\bc sentinel\") for item in classes)
+    expected_prefix = "{program_data}\\bc sentinel\\"
+    assert all(item["path_token"].casefold().startswith(expected_prefix) for item in classes)
 
 
 def test_b115_all_persistent_classes_are_owned_and_preserved() -> None:
