@@ -104,8 +104,8 @@ def test_b116_migration_plan_fails_closed_on_ownership_unknown_or_unmanifested_d
     assert plan["eligible"] is False
     assert plan["reasons"] == [
         "ownership_manifest_invalid",
-        "unmanifested_destination_entries_present",
         "unknown_source_children_present",
+        "unmanifested_destination_entries_present",
     ]
 
 
