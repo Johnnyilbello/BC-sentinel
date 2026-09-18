@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-4 — Suspicious Process Tree Intelligence
+B12-5 — Ransomware Protection Expansion
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b123-pass
-90776f9b0e3f1a9c034b79a5886b30df0db41e5c
+checkpoint/v012-beta12-b124-pass
+8e1cb119ef225efbf89471bddc645dc5416c8e01
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -348,6 +348,20 @@ Windows CI run `35354447114` and local Windows acceptance both PASS on exact SHA
 - no real Startup folder, Registry Run key, Scheduled Task or service mutation occurred;
 - no authority, network or cloud requirement expansion occurred.
 
+### B12-4 accepted evidence
+
+Windows CI run `35356083040` and local Windows acceptance both PASS on exact SHA `8e1cb119ef225efbf89471bddc645dc5416c8e01`.
+
+- CI: `1113 passed, 38 warnings in 128.26s`;
+- local: `1113 passed, 38 warnings in 97.13s`;
+- contract digest matched exactly: `52cd72997ecc33293e50d447d15feca83ebc397d0b122a2bb5ca7bc71907b2f6`;
+- positive process chain: `DETECTED`;
+- administrative process chain: `REVIEW_REQUIRED`;
+- benign process chain: `NO_MATCH`;
+- new scenario `B12-PROCESS-TREE-001` earned `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=5`;
+- no command line or raw path export and no response-authority expansion occurred.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
@@ -364,7 +378,7 @@ Windows CI run `35354447114` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b124-suspicious-process-tree-intelligence
+feature/v012-beta12-b125-ransomware-protection-expansion
 ```
 
 ## Longer-term programs
