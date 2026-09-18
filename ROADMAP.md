@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-2 — PowerShell & Script Abuse Expansion
+B12-3 — Persistence & Autostart Detection
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b121-pass
-cd8b3e89211afe29bf32a2646f4210c73179bc1f
+checkpoint/v012-beta12-b122-pass
+dedf78ae920b87f44636a0b9bd0c9708d2ae760b
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -315,12 +315,28 @@ Windows CI run `35349190717` and local Windows acceptance both PASS on exact SHA
 - coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=2`;
 - no authority, network or cloud requirement expansion occurred.
 
+### B12-2 accepted evidence
+
+Windows CI run `35350665000` and local Windows acceptance both PASS on exact SHA `dedf78ae920b87f44636a0b9bd0c9708d2ae760b`.
+
+- CI: `1065 passed, 38 warnings in 66.70s`;
+- local: `1065 passed, 38 warnings in 85.87s`;
+- contract digest matched exactly: `c2e02eebf4ef9f7dadc0bdd60d306c38d02e8fc97b126e672fcccd80417b3e07`;
+- positive live script-mutation control: `DETECTED`;
+- administrative control: `REVIEW_REQUIRED`;
+- benign control: `NO_MATCH`;
+- new scenario `B12-SCRIPT-ABUSE-001` earned `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=3`;
+- detector→Security Graph→incident binding PASS;
+- no command line, script content or raw path was exported;
+- no authority, network or cloud requirement expansion occurred.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
 2. **B12-1 — Process/File Correlation 2.0** — `checkpoint/v012-beta12-b121-pass` / `cd8b3e89211afe29bf32a2646f4210c73179bc1f` — ACCEPTED / FROZEN.
-3. **B12-2 — PowerShell & Script Abuse Expansion** — 🚧 CURRENT — broaden harmless real-Windows script-abuse verification.
-4. **B12-3 — Persistence & Autostart Detection** — evidence-backed startup/persistence detection with benign controls.
+3. **B12-2 — PowerShell & Script Abuse Expansion** — `checkpoint/v012-beta12-b122-pass` / `dedf78ae920b87f44636a0b9bd0c9708d2ae760b` — ACCEPTED / FROZEN.
+4. **B12-3 — Persistence & Autostart Detection** — 🚧 CURRENT — live Windows shortcut-pattern detection with positive/admin/benign controls and no real startup-surface mutation.
 5. **B12-4 — Suspicious Process Tree Intelligence** — deterministic parent/child and suspicious-chain analysis.
 6. **B12-5 — Ransomware Protection Expansion** — broaden safe ransomware-like evidence and reduce false positives.
 7. **B12-6 — Local Reputation & Hash Intelligence** — local signer/hash/known-good context without mandatory cloud lookup.
@@ -331,7 +347,7 @@ Windows CI run `35349190717` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b122-powershell-script-abuse-expansion
+feature/v012-beta12-b123-persistence-autostart-detection
 ```
 
 ## Longer-term programs
