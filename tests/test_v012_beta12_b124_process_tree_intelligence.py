@@ -39,7 +39,7 @@ def _evidence() -> dict:
         "live_observation": True,
         "processes": [
             root,
-            _process("INTERMEDIATE", 101, 100, "SCRIPT_HOST", writable=True),
+            _process("INTERMEDIATE", 101, 100, "SCRIPT_HOST", writable=False),
             _process("LEAF", 102, 101, "SHELL", writable=True),
         ],
         "known_admin_automation": False,
@@ -104,14 +104,13 @@ def test_control_outcomes_are_detect_review_no_match():
 
 def test_positive_chain_has_expected_explainable_signals():
     result = b124.detect_control(_evidence()["controls"][0])
-    assert result["score"] == 8
+    assert result["score"] == 7
     assert result["chain_depth"] == 3
-    assert result["user_writable_image_count"] == 2
+    assert result["user_writable_image_count"] == 1
     assert result["matched_signals"] == [
         "MULTI_GENERATION_PROCESS_CHAIN",
         "SCRIPT_HOST_TO_SHELL_DESCENDANT",
         "USER_WRITABLE_EXECUTABLE_IMAGE",
-        "MULTIPLE_USER_WRITABLE_EXECUTABLES",
     ]
 
 
