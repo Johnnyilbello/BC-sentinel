@@ -1,0 +1,33 @@
+name: B12-4 Suspicious Process Tree Intelligence
+
+on:
+  push:
+    branches:
+      - feature/v012-beta12-b124-suspicious-process-tree-intelligence
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Beta12 B12-4 full regression and live process-tree acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V012-BETA12-B124.ps1 -ConfirmLiveProcessTreeIntelligence
