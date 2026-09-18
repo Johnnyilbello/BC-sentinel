@@ -82,8 +82,14 @@ $liveBase = Join-Path ([IO.Path]::GetTempPath()) ('BCSentinel-b127-live-' + [gui
 New-Item -ItemType Directory -Path $liveBase -Force | Out-Null
 $reportFile = Join-Path $liveBase 'b127-performance.json'
 try {
-    & $py -m sentinel.beta12_low_noise_performance --measure --repeats 20 > $reportFile
-    if ($LASTEXITCODE -ne 0) {
+    $measureOutput = @(& $py -m sentinel.beta12_low_noise_performance --measure --repeats 20)
+    $measureExit = $LASTEXITCODE
+    [IO.File]::WriteAllText(
+        $reportFile,
+        (($measureOutput -join [Environment]::NewLine) + [Environment]::NewLine),
+        (New-Object Text.UTF8Encoding($false))
+    )
+    if ($measureExit -ne 0) {
         Get-Content -LiteralPath $reportFile
         throw 'B12-7 measured performance/noise gate failed.'
     }
