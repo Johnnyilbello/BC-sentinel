@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-3 — Persistence & Autostart Detection
+B12-4 — Suspicious Process Tree Intelligence
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b122-pass
-dedf78ae920b87f44636a0b9bd0c9708d2ae760b
+checkpoint/v012-beta12-b123-pass
+90776f9b0e3f1a9c034b79a5886b30df0db41e5c
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -331,13 +331,30 @@ Windows CI run `35350665000` and local Windows acceptance both PASS on exact SHA
 - no command line, script content or raw path was exported;
 - no authority, network or cloud requirement expansion occurred.
 
+### B12-3 accepted evidence
+
+Windows CI run `35354447114` and local Windows acceptance both PASS on exact SHA `90776f9b0e3f1a9c034b79a5886b30df0db41e5c`.
+
+- CI: `1089 passed, 38 warnings in 125.90s`;
+- local: `1089 passed, 38 warnings in 102.01s`;
+- contract digest matched exactly: `f5328e918e767e8e170cd794d695db52ba388b35bfbfb49aa5a1cc9b58a647b6`;
+- positive autostart-like shortcut: `DETECTED`;
+- administrative shortcut: `REVIEW_REQUIRED`;
+- benign shortcut: `NO_MATCH`;
+- new scenario `B12-AUTOSTART-LINK-001` earned `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=4`;
+- Beta12 minimum VERIFIED target is now met;
+- `B7-PERSISTENCE-001` remains correctly `PARTIAL`;
+- no real Startup folder, Registry Run key, Scheduled Task or service mutation occurred;
+- no authority, network or cloud requirement expansion occurred.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
 2. **B12-1 — Process/File Correlation 2.0** — `checkpoint/v012-beta12-b121-pass` / `cd8b3e89211afe29bf32a2646f4210c73179bc1f` — ACCEPTED / FROZEN.
 3. **B12-2 — PowerShell & Script Abuse Expansion** — `checkpoint/v012-beta12-b122-pass` / `dedf78ae920b87f44636a0b9bd0c9708d2ae760b` — ACCEPTED / FROZEN.
-4. **B12-3 — Persistence & Autostart Detection** — 🚧 CURRENT — live Windows shortcut-pattern detection with positive/admin/benign controls and no real startup-surface mutation.
-5. **B12-4 — Suspicious Process Tree Intelligence** — deterministic parent/child and suspicious-chain analysis.
+4. **B12-3 — Persistence & Autostart Detection** — `checkpoint/v012-beta12-b123-pass` / `90776f9b0e3f1a9c034b79a5886b30df0db41e5c` — ACCEPTED / FROZEN.
+5. **B12-4 — Suspicious Process Tree Intelligence** — 🚧 CURRENT — live parent→child→grandchild analysis with explainable scoring and benign/admin controls.
 6. **B12-5 — Ransomware Protection Expansion** — broaden safe ransomware-like evidence and reduce false positives.
 7. **B12-6 — Local Reputation & Hash Intelligence** — local signer/hash/known-good context without mandatory cloud lookup.
 8. **B12-7 — Low-Noise Tuning & Performance** — false-positive, latency and resource-budget gates.
@@ -347,7 +364,7 @@ Windows CI run `35350665000` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b123-persistence-autostart-detection
+feature/v012-beta12-b124-suspicious-process-tree-intelligence
 ```
 
 ## Longer-term programs
