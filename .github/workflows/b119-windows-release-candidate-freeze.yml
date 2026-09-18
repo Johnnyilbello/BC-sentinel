@@ -1,0 +1,33 @@
+name: B11-9 Windows Release Candidate Acceptance Freeze
+
+on:
+  push:
+    branches:
+      - feature/v011-beta11-b119-windows-release-candidate-freeze
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Final Beta11 regression, RC build and freeze acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V011-BETA11-B119.ps1 -ConfirmReleaseCandidateFreeze -DistRoot .\dist\Beta11-B119-RC
