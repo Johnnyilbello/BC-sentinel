@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-6 — Local Reputation & Hash Intelligence
+B12-7 — Low-Noise Tuning & Performance
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b125-pass
-04dfef15f5cb5583fd49b878efc9de663e74cdcb
+checkpoint/v012-beta12-b126-pass
+b1f55ea32564d72cae6056308f90f8b41137dc94
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -375,6 +375,20 @@ Windows CI run `35357431834` and local Windows acceptance both PASS on exact SHA
 - coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=6`;
 - no new file-mutation harness, no broad ransomware claim, and no authority/network/cloud expansion occurred.
 
+### B12-6 accepted evidence
+
+Windows CI run `35377927800` and local Windows acceptance both PASS on exact SHA `b1f55ea32564d72cae6056308f90f8b41137dc94`.
+
+- CI: `1158 passed, 38 warnings in 121.26s`;
+- local: `1158 passed, 38 warnings in 90.61s`;
+- contract digest matched exactly: `7a16fbc6a4deef6d4a8f5a71a7b55e260dd98091eac2b0d5c19643ed2efd51f7`;
+- known-good signed + local allowlist: `TRUSTED_LOCAL`;
+- signed unknown: `UNKNOWN_SIGNED`;
+- unsigned unknown: `UNKNOWN_UNSIGNED`;
+- new scenario `B12-LOCAL-REPUTATION-001` earned `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- no maliciousness verdict for unknown files, no trust mutation, no file execution, and no network/cloud authority expansion.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
@@ -391,7 +405,7 @@ Windows CI run `35357431834` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b126-local-reputation-hash-intelligence
+feature/v012-beta12-b127-low-noise-tuning-performance
 ```
 
 ## Longer-term programs
