@@ -17,7 +17,7 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-Beta11 COMPLETE / FROZEN — Windows Release Candidate accepted
+B12-0 — Active Protection Foundation
 ```
 
 Latest accepted engineering checkpoint:
@@ -255,6 +255,58 @@ Windows CI run `35336006673` and local Windows acceptance both PASS on exact SHA
 - immutable final Beta11 checkpoint is `checkpoint/v011-beta11-b119-pass` at `3c5204ca949d41d3a740b8745ab9af06913b8555`.
 
 **Beta11 is COMPLETE / FROZEN.**
+
+## Beta12 — Active Protection & Detection Expansion
+
+**Status: IN PROGRESS**
+
+Goal: improve Sentinel as an antivirus before installer/public-release work by expanding evidence-backed Windows detection, correlation, verification and low-noise operation while preserving the accepted Beta11 authority and privacy boundaries.
+
+Baseline inherited from Beta11:
+
+```text
+PARTIAL   4
+GAP       0
+VERIFIED  2
+```
+
+Verified baseline scenarios remain exactly:
+
+```text
+B7-POWERSHELL-001
+B7-RANSOMWARE-001
+```
+
+### Beta12 freeze target
+
+- at least **4 total VERIFIED scenarios**, therefore at least **2 newly earned VERIFIED scenarios**;
+- every new VERIFIED promotion requires accepted Windows evidence; synthetic-only evidence cannot promote VERIFIED;
+- positive controls and benign/negative controls are required for new detection claims;
+- performance regressions must fail acceptance;
+- canonical GAP remains zero;
+- no broad-protection claim may exceed accepted evidence;
+- no automatic quarantine, repair, restore, process termination, trust mutation or privileged/system mutation is added by the foundation;
+- core acceptance remains local-first with no mandatory cloud or network dependency;
+- installer, signing and public-release work are explicitly deferred until after Beta12.
+
+### Planned Beta12 line
+
+1. **B12-0 — Active Protection Foundation** — freeze scope, evidence rules, safety boundary and measurable final target.
+2. **B12-1 — Process/File Correlation 2.0** — stronger process→file→hash/signer/ancestry evidence graph.
+3. **B12-2 — PowerShell & Script Abuse Expansion** — broaden harmless real-Windows script-abuse verification.
+4. **B12-3 — Persistence & Autostart Detection** — evidence-backed startup/persistence detection with benign controls.
+5. **B12-4 — Suspicious Process Tree Intelligence** — deterministic parent/child and suspicious-chain analysis.
+6. **B12-5 — Ransomware Protection Expansion** — broaden safe ransomware-like evidence and reduce false positives.
+7. **B12-6 — Local Reputation & Hash Intelligence** — local signer/hash/known-good context without mandatory cloud lookup.
+8. **B12-7 — Low-Noise Tuning & Performance** — false-positive, latency and resource-budget gates.
+9. **B12-8 — Verified Coverage Expansion & Product Integration** — reconcile earned verification into product evidence/UI.
+10. **B12-9 — Windows Active Protection Acceptance & Freeze** — final exact CI + local acceptance and immutable checkpoint.
+
+Current engineering branch:
+
+```text
+feature/v012-beta12-b120-active-protection-foundation
+```
 
 ## Longer-term programs
 
