@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-1 — Process/File Correlation 2.0
+B12-2 — PowerShell & Script Abuse Expansion
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b120-pass
-0015feb80c550b9c67707f24f4042a45412e7af3
+checkpoint/v012-beta12-b121-pass
+cd8b3e89211afe29bf32a2646f4210c73179bc1f
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -301,11 +301,25 @@ Windows CI run `35338604879` and local Windows acceptance both PASS on exact SHA
 - no coverage promotion, protection-claim expansion or response-authority expansion occurred;
 - installer/signing/publication work remains deferred until after Beta12.
 
+### B12-1 accepted evidence
+
+Windows CI run `35349190717` and local Windows acceptance both PASS on exact SHA `cd8b3e89211afe29bf32a2646f4210c73179bc1f`.
+
+- CI: `1042 passed, 38 warnings in 118.45s`;
+- local: `1042 passed, 38 warnings in 90.65s`;
+- contract digest matched exactly: `1ebfed393e8a63fe7bdc57bba634a1af7a04a1ffb341d049a603b1910ecd91d6`;
+- process→file correlation binding PASS;
+- optional parent→child ancestry binding PASS;
+- missing ancestry remains explicitly unknown;
+- raw paths, command lines and usernames remain uncollected;
+- coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- no authority, network or cloud requirement expansion occurred.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
-2. **B12-1 — Process/File Correlation 2.0** — 🚧 CURRENT — stronger process→file→hash/signer/ancestry evidence graph.
-3. **B12-2 — PowerShell & Script Abuse Expansion** — broaden harmless real-Windows script-abuse verification.
+2. **B12-1 — Process/File Correlation 2.0** — `checkpoint/v012-beta12-b121-pass` / `cd8b3e89211afe29bf32a2646f4210c73179bc1f` — ACCEPTED / FROZEN.
+3. **B12-2 — PowerShell & Script Abuse Expansion** — 🚧 CURRENT — broaden harmless real-Windows script-abuse verification.
 4. **B12-3 — Persistence & Autostart Detection** — evidence-backed startup/persistence detection with benign controls.
 5. **B12-4 — Suspicious Process Tree Intelligence** — deterministic parent/child and suspicious-chain analysis.
 6. **B12-5 — Ransomware Protection Expansion** — broaden safe ransomware-like evidence and reduce false positives.
@@ -317,7 +331,7 @@ Windows CI run `35338604879` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b121-process-file-correlation
+feature/v012-beta12-b122-powershell-script-abuse-expansion
 ```
 
 ## Longer-term programs
