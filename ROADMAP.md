@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-0 — Active Protection Foundation
+B12-1 — Process/File Correlation 2.0
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v011-beta11-b119-pass
-3c5204ca949d41d3a740b8745ab9af06913b8555
+checkpoint/v012-beta12-b120-pass
+0015feb80c550b9c67707f24f4042a45412e7af3
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -289,10 +289,22 @@ B7-RANSOMWARE-001
 - core acceptance remains local-first with no mandatory cloud or network dependency;
 - installer, signing and public-release work are explicitly deferred until after Beta12.
 
+### B12-0 accepted evidence
+
+Windows CI run `35338604879` and local Windows acceptance both PASS on exact SHA `0015feb80c550b9c67707f24f4042a45412e7af3`.
+
+- CI: `1006 passed, 38 warnings in 98.11s`;
+- local: `1006 passed, 38 warnings in 82.88s`;
+- contract digest matched exactly: `ce63f8841986fd9707e72011573b9907e251963854cc235ab3d3fb824b9fd857`;
+- baseline remained `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- final Beta12 target requires at least `4` total VERIFIED scenarios and at least `2` newly earned VERIFIED scenarios;
+- no coverage promotion, protection-claim expansion or response-authority expansion occurred;
+- installer/signing/publication work remains deferred until after Beta12.
+
 ### Planned Beta12 line
 
-1. **B12-0 — Active Protection Foundation** — freeze scope, evidence rules, safety boundary and measurable final target.
-2. **B12-1 — Process/File Correlation 2.0** — stronger process→file→hash/signer/ancestry evidence graph.
+1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
+2. **B12-1 — Process/File Correlation 2.0** — 🚧 CURRENT — stronger process→file→hash/signer/ancestry evidence graph.
 3. **B12-2 — PowerShell & Script Abuse Expansion** — broaden harmless real-Windows script-abuse verification.
 4. **B12-3 — Persistence & Autostart Detection** — evidence-backed startup/persistence detection with benign controls.
 5. **B12-4 — Suspicious Process Tree Intelligence** — deterministic parent/child and suspicious-chain analysis.
@@ -305,7 +317,7 @@ B7-RANSOMWARE-001
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b120-active-protection-foundation
+feature/v012-beta12-b121-process-file-correlation
 ```
 
 ## Longer-term programs
