@@ -435,14 +435,11 @@ def _build_graph(
             },
         }
     )
-    leaf = max(control["processes"], key=lambda row: _depth([candidate for candidate in control["processes"] if True]))
-    # Bind detection to a deterministic non-root process; explicit scoring remains in detection attributes.
-    candidate_nodes = [
-        node_by_pid[row["pid"]]
-        for row in control["processes"]
-        if row["role"] != "ROOT"
-    ]
-    target_node = sorted(candidate_nodes, key=lambda node: node.node_id)[-1]
+    leaf_rows = [row for row in control["processes"] if row["role"] == "LEAF"]
+    target_row = leaf_rows[0] if leaf_rows else [
+        row for row in control["processes"] if row["role"] != "ROOT"
+    ][-1]
+    target_node = node_by_pid[target_row["pid"]]
     builder.link(
         edge_type="SUPPORTED_BY",
         source=detection.node_id,
