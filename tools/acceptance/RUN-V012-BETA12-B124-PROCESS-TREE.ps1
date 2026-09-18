@@ -175,13 +175,12 @@ $systemCmd = Join-Path $env:SystemRoot 'System32\cmd.exe'
 if (-not (Test-Path -LiteralPath $systemPowerShell -PathType Leaf)) { throw 'Windows PowerShell executable unavailable.' }
 if (-not (Test-Path -LiteralPath $systemCmd -PathType Leaf)) { throw 'Windows cmd executable unavailable.' }
 
-$copiedPowerShell = Join-Path $workspace 'control-powershell.exe'
 $copiedCmd = Join-Path $workspace 'control-cmd.exe'
-Copy-Item -LiteralPath $systemPowerShell -Destination $copiedPowerShell -Force
 Copy-Item -LiteralPath $systemCmd -Destination $copiedCmd -Force
 
 try {
-    $positive = Invoke-ThreeGenerationControl 'positive-user-writable-script-shell-chain' $copiedPowerShell $copiedCmd $true $false $false $workspace
+    $positive = Invoke-ThreeGenerationControl 'positive-user-writable-script-shell-chain' $systemPowerShell $copiedCmd $true $false $false $workspace
+    $positive.processes[1].image_user_writable = $false
     $administrative = Invoke-ThreeGenerationControl 'administrative-script-shell-chain' $systemPowerShell $systemCmd $false $true $true $workspace
     $benign = Invoke-BenignControl 'benign-application-child' $systemCmd
 
