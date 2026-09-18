@@ -17,14 +17,14 @@ Beta11  COMPLETE / FROZEN
 Current milestone:
 
 ```text
-B12-5 — Ransomware Protection Expansion
+B12-6 — Local Reputation & Hash Intelligence
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b124-pass
-8e1cb119ef225efbf89471bddc645dc5416c8e01
+checkpoint/v012-beta12-b125-pass
+04dfef15f5cb5583fd49b878efc9de663e74cdcb
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -362,6 +362,19 @@ Windows CI run `35356083040` and local Windows acceptance both PASS on exact SHA
 - coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=5`;
 - no command line or raw path export and no response-authority expansion occurred.
 
+### B12-5 accepted evidence
+
+Windows CI run `35357431834` and local Windows acceptance both PASS on exact SHA `04dfef15f5cb5583fd49b878efc9de663e74cdcb`.
+
+- CI: `1133 passed, 38 warnings in 123.92s`;
+- local: `1133 passed, 38 warnings in 88.37s`;
+- contract digest matched exactly: `9e4398b3a8049537636b6f21579a24425ab0ad3673ff780064e3677fd6164550`;
+- accepted B9 live controls retained outcomes `DETECTED / REVIEW_REQUIRED / NO_MATCH`;
+- exact live harness process attribution bound successfully into the Security Graph and incident;
+- new scenario `B12-RANSOMWARE-PROCESS-001` earned `VERIFIED`;
+- coverage advanced to `PARTIAL=4 / GAP=0 / VERIFIED=6`;
+- no new file-mutation harness, no broad ransomware claim, and no authority/network/cloud expansion occurred.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
@@ -378,7 +391,7 @@ Windows CI run `35356083040` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b125-ransomware-protection-expansion
+feature/v012-beta12-b126-local-reputation-hash-intelligence
 ```
 
 ## Longer-term programs
