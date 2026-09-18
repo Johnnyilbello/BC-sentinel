@@ -17,7 +17,7 @@ Beta11  IN PROGRESS
 Current milestone:
 
 ```text
-B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance
+B11-9 — Windows Release Candidate Acceptance & Freeze
 ```
 
 Latest accepted engineering checkpoint:
@@ -197,7 +197,7 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 - **B11-4 — First-Run Health + Repair Guidance** — `checkpoint/v011-beta11-b114-pass` / `5ec361050f4c490652f88c30ad3a3b60e586fecb` — ACCEPTED / FROZEN.
 - **B11-5 — Persistent App Data + Logs + Quarantine Model** — `checkpoint/v011-beta11-b115-pass` / `19e40b9b41f4d87b3f081bb7e8bfb5b155db4660` — ACCEPTED / FROZEN.
 - **B11-6 — Upgrade / Rollback + Config Migration** — `checkpoint/v011-beta11-b116-pass` / `25fc9b50b17d9deb65d61a8e8994334259bb5042` — ACCEPTED / FROZEN.
-- **B11-7 — Release Provenance + Signing Readiness** — `checkpoint/v011-beta11-b117-pass` / `c7ca5e86af196863cc980bcd1e8616447d9f3d8a` — ACCEPTED / FROZEN.
+- **B11-7 — Release Provenance + Signing Readiness** — `checkpoint/v011-beta11-b117-pass` / `c7ca5e86af196863cc980bcd1e8616447d9f3d8a` — ACCEPTED / FROZEN.\n- **B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance** — `checkpoint/v011-beta11-b118-pass` / `46d18b77aa382573e1e4e2a2eb381bcb71e03a69` — ACCEPTED / FROZEN.
 
 ### Accepted Beta11 evidence summary
 
@@ -215,38 +215,49 @@ Goal: convert the accepted Beta10 source into a Windows product that can be buil
 
 Across accepted B11 milestones, canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2` and no general response-authority expansion has occurred.
 
-### B11-8 — Clean-PC Install / Upgrade / Uninstall Acceptance 🚧 CURRENT
+### B11-8 accepted evidence
 
-Execute and verify the accepted install-lifecycle semantics on Windows using a real filesystem lifecycle inside an explicitly confirmed disposable OS-temp workspace. B11-8 is execution evidence for bounded product-owned lifecycle behavior; it is not permission to install into the operator's real machine scope.
+Windows CI run `35262528541` and local Windows acceptance both PASS on exact SHA `46d18b77aa382573e1e4e2a2eb381bcb71e03a69`.
+
+- CI: `981 passed, 38 warnings in 117.42s`;
+- local: `981 passed, 38 warnings in 98.02s`;
+- lifecycle contract digest `8fb9060e3e41146a400a9cebdeec8978b96909c6aa6b2e29327ad9c60fb36269` matched CI and local;
+- lifecycle transcript digest `1d010b2ff4a4e52f8fed405180ff404331c4ada08684cf1bc1e126600b62bf22` matched CI and local;
+- execution remained exactly `EXPLICIT_DISPOSABLE_TEMP_WORKSPACE_ONLY`;
+- install, upgrade and uninstall fixture lifecycle executed successfully;
+- persistent data, unknown product children and the outside-workspace canary were preserved;
+- unsafe scope was rejected;
+- real machine-scope install/upgrade/uninstall, HKLM mutation, privilege elevation, service/driver/autostart registration remained unavailable;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=2`;
+- no response-authority or protection-coverage expansion occurred.
+
+### B11-9 — Windows Release Candidate Acceptance & Freeze 🚧 CURRENT
+
+Final Beta11 gate. Reconcile the complete productization evidence, rebuild a fresh Windows onedir candidate from the exact B11-9 commit, validate the artifact manifest and packaged runtime, replay the accepted B11-8 lifecycle, require live first-run health `READY`, observe the actual Authenticode state, and freeze Beta11 only after exact Windows CI + local acceptance on the same SHA.
 
 Acceptance requirements:
 
-- exact accepted predecessor is `checkpoint/v011-beta11-b117-pass` / `c7ca5e86af196863cc980bcd1e8616447d9f3d8a`;
-- accepted B11-7 source paths remain immutable except canonical roadmap documentation;
-- exact accepted bindings remain B11-3 contract `f084b67d16b87e17722e70890be13ba33fcd10d7c3ece43b499fcb01020e5aa6`, B11-5 model `38df2751392cd71bec8662c6d4f80b287c30aeb70841606399057254fe7a2a08`, B11-6 contract `d2aa15228ba6d7e84b8cef074f132718549373d51b35d93da6f12aac54c700d9` and B11-7 provenance contract `a19d1ea8ad887b670cbbb9aef1a09db17e806fd59e5e89b603f9574c1912f109`;
-- execution scope is exactly `EXPLICIT_DISPOSABLE_TEMP_WORKSPACE_ONLY`;
-- initialization requires explicit confirmation, a clean OS-temp workspace, the B11-8 workspace-name prefix and an exact lifecycle marker;
-- clean install creates only fixture representations of the product payload, Start Menu shortcut and uninstall metadata under the disposable workspace; no real `Program Files`, `ProgramData`, Start Menu or HKLM mutation occurs;
-- exact ownership manifest and per-file SHA-256 verification are required before destructive lifecycle actions;
-- runtime-created persistent configuration, logs, quarantine metadata, quarantine payload and lifecycle metadata are distinct from installer-owned files;
-- upgrade stages the target payload, verifies staged hashes before activation, preserves the persistent-data tree and keeps the previous application payload;
-- uninstall removes only hash-verified manifested product files, preserves unknown children and preserves persistent data by default;
-- missing/tampered ownership evidence, marker mismatch, path escape or non-disposable scope fails closed before destructive action;
-- an outside-workspace canary must remain unchanged across the full lifecycle;
-- real machine-scope install/upgrade/uninstall, HKLM mutation, privilege elevation, service/driver/autostart registration, Defender/firewall changes, automatic update, signing and release publication remain unavailable;
+- exact accepted predecessor is `checkpoint/v011-beta11-b118-pass` / `46d18b77aa382573e1e4e2a2eb381bcb71e03a69`;
+- every accepted Beta11 checkpoint B11-0 through B11-8 must resolve to its immutable accepted SHA;
+- accepted B11-8 source paths remain immutable except canonical roadmap documentation;
+- full Beta5→Beta11 regression must pass on Windows;
+- B11-9 freeze contract must preserve the accepted B11-3, B11-5, B11-6, B11-7 and B11-8 evidence bindings;
+- a fresh Windows onedir artifact must be built from the exact B11-9 acceptance commit and its manifest must validate against that same commit;
+- packaged `--identity-json`, `--self-check` and `--smoke` probes must pass;
+- live first-run health must report `READY` with zero critical failures and zero warnings;
+- the B11-8 disposable lifecycle must replay with exact contract digest `8fb9060e3e41146a400a9cebdeec8978b96909c6aa6b2e29327ad9c60fb36269` and transcript digest `1d010b2ff4a4e52f8fed405180ff404331c4ada08684cf1bc1e126600b62bf22`;
+- actual Windows Authenticode state must be observed. `UNSIGNED` is allowed for the engineering release candidate but cannot be described as signed-release-ready; a present but invalid/unverified signature fails closed;
+- B11-9 does not sign artifacts, access private keys, enroll certificates or publish a release;
+- real machine-scope install, HKLM mutation, privilege elevation, service/driver/autostart registration and automatic update remain unavailable;
 - no network/cloud requirement, response-authority expansion or protection-coverage promotion;
 - canonical coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=2`;
-- full Beta5→Beta11 regression must pass on Windows;
-- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b118-pass` may be created.
-
-### Remaining planned Beta11 line
-
-- **B11-9 — Windows Release Candidate Acceptance & Freeze** — full regression, final productization evidence reconciliation and immutable release-candidate freeze.
+- exact Windows CI + local acceptance on the same SHA are required before `checkpoint/v011-beta11-b119-pass` may be created;
+- after that checkpoint is created, Beta11 is COMPLETE / FROZEN.
 
 Current engineering branch:
 
 ```text
-feature/v011-beta11-b118-clean-pc-lifecycle-acceptance
+feature/v011-beta11-b119-windows-release-candidate-freeze
 ```
 
 ## Longer-term programs
