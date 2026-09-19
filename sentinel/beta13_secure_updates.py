@@ -14,9 +14,8 @@ provisioning is deliberately external to the source tree so no private signing
 key is ever embedded in the product.
 """
 
-from __future__ import annotations
-
 import base64
+import binascii
 from dataclasses import dataclass
 import hashlib
 import json
@@ -128,7 +127,7 @@ class TrustedUpdateRoot:
             raise ValueError("b132:trusted_root_algorithm_invalid")
         try:
             raw = base64.b64decode(self.public_key_b64, validate=True)
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, binascii.Error) as exc:
             raise ValueError("b132:trusted_root_key_encoding_invalid") from exc
         if len(raw) != 32:
             raise ValueError("b132:trusted_root_key_length_invalid")
@@ -299,7 +298,7 @@ def _validate_manifest_shape(manifest: object) -> list[str]:
     else:
         try:
             raw_signature = base64.b64decode(signature, validate=True)
-        except ValueError:
+        except (ValueError, binascii.Error):
             failures.append("b132:manifest_signature_invalid")
         else:
             if len(raw_signature) != 64:
