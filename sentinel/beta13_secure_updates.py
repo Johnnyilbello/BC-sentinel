@@ -254,10 +254,7 @@ def _validate_manifest_shape(manifest: object) -> list[str]:
     artifact_name = manifest.get("artifact_name")
     if (
         not isinstance(artifact_name, str)
-        or not artifact_name
-        or artifact_name in {".", ".."}
-        or "/" in artifact_name
-        or "\\" in artifact_name
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", artifact_name or "") is None
         or Path(artifact_name).name != artifact_name
     ):
         failures.append("b132:manifest_artifact_name_invalid")
@@ -517,7 +514,22 @@ def stage_verified_payload(
             "sequence": int(manifest["sequence"]),
             "execution_available": False,
         }
-        metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        try:
+            metadata_path.write_text(
+                json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+        except OSError:
+            try:
+                destination.unlink(missing_ok=True)
+                metadata_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return {
+                "passed": False,
+                "failures": ["b132:staging_metadata_write_failed"],
+                "staged_path": None,
+            }
     finally:
         try:
             if tmp.exists():
