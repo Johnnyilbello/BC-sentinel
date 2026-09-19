@@ -12,20 +12,21 @@ Beta8   COMPLETE / FROZEN
 Beta9   COMPLETE / FROZEN
 Beta10  COMPLETE / FROZEN
 Beta11  COMPLETE / FROZEN
-Beta12  IN PROGRESS
+Beta12  COMPLETE / FROZEN
+Beta13  IN PROGRESS
 ```
 
 Current milestone:
 
 ```text
-B12-9 — Windows Active Protection Acceptance & Freeze
+B13-0 — Real Windows Installer Foundation
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b128-pass
-88a7f3df43ba329cb632252ef03928b069cbcc3d
+checkpoint/v012-beta12-b129-pass
+c8e51a2a3fc34c593905896d3b055f9fec252c4b
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -264,7 +265,7 @@ Windows CI run `35336006673` and local Windows acceptance both PASS on exact SHA
 
 ## Beta12 — Active Protection & Detection Expansion
 
-**Status: IN PROGRESS**
+**Status: COMPLETE / FROZEN**
 
 Goal: improve Sentinel as an antivirus before installer/public-release work by expanding evidence-backed Windows detection, correlation, verification and low-noise operation while preserving the accepted Beta11 authority and privacy boundaries.
 
@@ -433,12 +434,43 @@ Windows CI run `35380765055` and local Windows acceptance both PASS on exact SHA
 7. **B12-6 — Local Reputation & Hash Intelligence** — `checkpoint/v012-beta12-b126-pass` / `b1f55ea32564d72cae6056308f90f8b41137dc94` — ACCEPTED / FROZEN.
 8. **B12-7 — Low-Noise Tuning & Performance** — `checkpoint/v012-beta12-b127-pass` / `8e5614c919611a7b072dd0a4f462c56751ba331d` — ACCEPTED / FROZEN.
 9. **B12-8 — Verified Coverage Expansion & Product Integration** — `checkpoint/v012-beta12-b128-pass` / `88a7f3df43ba329cb632252ef03928b069cbcc3d` — ACCEPTED / FROZEN.
-10. **B12-9 — Windows Active Protection Acceptance & Freeze** — 🚧 CURRENT — final checkpoint reconciliation, full regression, fresh low-noise measurement, Trust Center smoke and exact CI/local same-SHA freeze gate.
+10. **B12-9 — Windows Active Protection Acceptance & Freeze** — `checkpoint/v012-beta12-b129-pass` / `c8e51a2a3fc34c593905896d3b055f9fec252c4b` — ACCEPTED / FROZEN.
+
+### B12-9 accepted evidence — FINAL BETA12 FREEZE
+
+Windows CI run `35408596757` and local Windows acceptance both PASS on exact SHA `c8e51a2a3fc34c593905896d3b055f9fec252c4b`.
+
+- CI: `1217 passed, 39 warnings in 127.11s`;
+- local: `1217 passed, 39 warnings in 70.10s`;
+- final freeze contract digest matched exactly: `1128d7d0e10bd086d92da2ef58697e665c4d1747b546f9ce6eafe9dd4771f2d2`;
+- product evidence digest matched exactly: `91d812eb9bd41cd00402c39f03c61e61a11081ba46e21d993bff258b92f60fa0`;
+- freeze evidence digest matched exactly: `19c2d31b9c4494d6c14b201b437d7afdb44dde0a474a5f0a79b1e5d1b2244839`;
+- all nine predecessor Beta12 checkpoints resolved to their immutable accepted SHAs;
+- final coverage is `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- local fresh low-noise replay: p95 wall `1.0674 ms`, p95 CPU `0.0 ms`, max RSS delta `0.046875 MiB`, false positives `0`, outcome drift `0`, user interruptions `0`;
+- Trust Center remained read-only with 11 scenarios, 7 capabilities, 0 action buttons and 0 horizontal overflow at 560/680/960/1440 px;
+- B12-9 did not install, sign or publish artifacts and did not expand coverage, authority, network or cloud requirements.
+
+**Beta12 is COMPLETE / FROZEN.**
+
+## Beta13 — Windows Installer & Distribution
+
+**Status: IN PROGRESS**
+
+Goal: turn the frozen Beta12 source into an installable Windows product without weakening the accepted Beta12 detection, privacy, low-noise or authority boundaries.
+
+### Planned Beta13 line
+
+1. **B13-0 — Real Windows Installer Foundation** — 🚧 CURRENT — build a real Windows installer from the frozen Beta12 artifact contract, bounded to product-owned paths and preserving persistent data by default.
+2. **B13-1 — Code Signing Integration** — add factual Authenticode signing/verification and timestamp evidence without weakening fail-closed release policy.
+3. **B13-2 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real installer lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
+4. **B13-3 — Distribution Package & Release Evidence** — produce the distributable package, hashes, manifest and release provenance bound to one exact source commit.
+5. **B13-4 — Windows Release Candidate Freeze** — exact CI + local/clean-PC acceptance and immutable distribution checkpoint.
 
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b129-windows-active-protection-acceptance-freeze
+feature/v013-windows-distribution-foundation
 ```
 
 ## Longer-term programs
