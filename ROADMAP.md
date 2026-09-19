@@ -19,14 +19,14 @@ Beta13  IN PROGRESS
 Current milestone:
 
 ```text
-B13-6 — Trial / Licensing / Privacy / Support Readiness
+B13-7 — Distribution Package & Release Candidate Freeze
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v013-b135-pass
-cbead4c4e01818f5764ebeb82f85eb69f64e1f67
+checkpoint/v013-b136-pass
+b981afa453e6540e18e5ec1fac7da74ce9344829
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -551,6 +551,23 @@ Windows CI run `35446297278` and local Windows acceptance both PASS on exact SHA
 - engineering signing remains non-Public-Trust and SmartScreen reputation remains unclaimed;
 - canonical detection coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=7` with no authority expansion.
 
+### B13-6 accepted evidence
+
+Windows CI run `35447930415` and local Windows acceptance both PASS on exact SHA `b981afa453e6540e18e5ec1fac7da74ce9344829`.
+
+- CI: `1311 passed, 41 warnings in 128.24s`;
+- local: `1311 passed, 41 warnings in 82.00s`;
+- commercial-readiness contract digest matched exactly: `5b4a2d43aff8c4e085d615cf9d285c3cdcbf35c4e0954d10a0557a1b71f2ff1f`;
+- trial lifecycle PASS with 14-day local trial state;
+- locally verified Ed25519 entitlement verifier PASS without embedding a private activation key;
+- expired trial, invalid entitlement and unavailable activation all preserve accepted core protection;
+- privacy, EULA and support surfaces PASS;
+- explicit support-diagnostics export PASS with raw paths, command lines, usernames, license token/ID and file contents excluded;
+- packaged consumer UI PASS with 9 pages and zero horizontal overflow at 560/680/960/1440 px;
+- readiness advanced to `READY=9 / PARTIAL=0 / BLOCKED=1`;
+- the sole remaining public-release blocker is `CODE_SIGNING`: engineering/self-signed Authenticode is not Public Trust and SmartScreen reputation remains unclaimed;
+- canonical detection coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=7` with no authority, network or cloud expansion.
+
 ### Planned Beta13 line
 
 1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
@@ -559,13 +576,13 @@ Windows CI run `35446297278` and local Windows acceptance both PASS on exact SHA
 4. **B13-3 — Real Windows Installer Foundation** — `checkpoint/v013-b133-pass` / `b6014ef74ffc77814f489532c8f2d09fb92fe17f` — ACCEPTED / FROZEN.
 5. **B13-4 — Code Signing & SmartScreen Readiness** — `checkpoint/v013-b134-pass` / `c2dc1b0df4becc18afa56915bb47b29b533a9a55` — ACCEPTED / FROZEN.
 6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — `checkpoint/v013-b135-pass` / `cbead4c4e01818f5764ebeb82f85eb69f64e1f67` — ACCEPTED / FROZEN.
-7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — 🚧 CURRENT — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
-8. **B13-7 — Distribution Package & Release Candidate Freeze** — produce the distributable package, hashes, manifest, provenance and exact CI/local/clean-PC release checkpoint.
+7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — `checkpoint/v013-b136-pass` / `b981afa453e6540e18e5ec1fac7da74ce9344829` — ACCEPTED / FROZEN.
+8. **B13-7 — Distribution Package & Release Candidate Freeze** — 🚧 CURRENT — produce an engineering release-candidate distribution package, hashes, manifest, provenance and exact CI/local/clean-PC release evidence while keeping Public Trust signing as an explicit blocker.
 
 Current engineering branch:
 
 ```text
-feature/v013-b136-trial-licensing-privacy-support-readiness
+feature/v013-b137-distribution-package-rc-freeze
 ```
 
 ## Longer-term programs
