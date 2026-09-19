@@ -18,14 +18,14 @@ Beta12  IN PROGRESS
 Current milestone:
 
 ```text
-B12-8 — Verified Coverage Expansion & Product Integration
+B12-9 — Windows Active Protection Acceptance & Freeze
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b127-pass
-8e5614c919611a7b072dd0a4f462c56751ba331d
+checkpoint/v012-beta12-b128-pass
+88a7f3df43ba329cb632252ef03928b069cbcc3d
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -408,6 +408,20 @@ Windows CI run `35379621078` and local Windows acceptance both PASS on exact SHA
 - coverage remained correctly `PARTIAL=4 / GAP=0 / VERIFIED=7`;
 - B12-7 earned no new VERIFIED scenario and made no detector-threshold, authority, network or cloud expansion.
 
+### B12-8 accepted evidence
+
+Windows CI run `35380765055` and local Windows acceptance both PASS on exact SHA `88a7f3df43ba329cb632252ef03928b069cbcc3d`.
+
+- CI: `1201 passed, 39 warnings in 130.30s`;
+- local: `1201 passed, 39 warnings in 90.10s`;
+- product integration contract digest matched exactly: `2e3029c2d222ad13488d5cbf10e9224eff8b1b8100fc2062ac1ba8009bf2618d`;
+- product evidence digest matched exactly: `91d812eb9bd41cd00402c39f03c61e61a11081ba46e21d993bff258b92f60fa0`;
+- coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- Trust Center rendered 11 scenarios and 7 Beta12 capabilities;
+- Trust Center exposed 0 action buttons and 0 horizontal overflow at 560/680/960/1440 px;
+- local B12-7 replay: p95 wall `1.2099 ms`, p95 CPU `0.0 ms`, max RSS delta `0.046875 MiB`, false positives `0`, outcome drift `0`, user interruptions `0`;
+- B12-8 earned no new VERIFIED scenario and did not expand response authority, trust mutation, network or cloud requirements.
+
 ### Planned Beta12 line
 
 1. **B12-0 — Active Protection Foundation** — `checkpoint/v012-beta12-b120-pass` / `0015feb80c550b9c67707f24f4042a45412e7af3` — ACCEPTED / FROZEN.
@@ -418,13 +432,13 @@ Windows CI run `35379621078` and local Windows acceptance both PASS on exact SHA
 6. **B12-5 — Ransomware Protection Expansion** — `checkpoint/v012-beta12-b125-pass` / `04dfef15f5cb5583fd49b878efc9de663e74cdcb` — ACCEPTED / FROZEN.
 7. **B12-6 — Local Reputation & Hash Intelligence** — `checkpoint/v012-beta12-b126-pass` / `b1f55ea32564d72cae6056308f90f8b41137dc94` — ACCEPTED / FROZEN.
 8. **B12-7 — Low-Noise Tuning & Performance** — `checkpoint/v012-beta12-b127-pass` / `8e5614c919611a7b072dd0a4f462c56751ba331d` — ACCEPTED / FROZEN.
-9. **B12-8 — Verified Coverage Expansion & Product Integration** — 🚧 CURRENT — reconcile 7 VERIFIED + 4 PARTIAL into read-only product evidence/UI with measured B12-7 impact.
-10. **B12-9 — Windows Active Protection Acceptance & Freeze** — final exact CI + local acceptance and immutable checkpoint.
+9. **B12-8 — Verified Coverage Expansion & Product Integration** — `checkpoint/v012-beta12-b128-pass` / `88a7f3df43ba329cb632252ef03928b069cbcc3d` — ACCEPTED / FROZEN.
+10. **B12-9 — Windows Active Protection Acceptance & Freeze** — 🚧 CURRENT — final checkpoint reconciliation, full regression, fresh low-noise measurement, Trust Center smoke and exact CI/local same-SHA freeze gate.
 
 Current engineering branch:
 
 ```text
-feature/v012-beta12-b128-verified-coverage-product-integration
+feature/v012-beta12-b129-windows-active-protection-acceptance-freeze
 ```
 
 ## Longer-term programs
