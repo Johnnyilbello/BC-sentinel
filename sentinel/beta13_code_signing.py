@@ -102,7 +102,7 @@ def _artifact_record_failures(record: object, *, release: bool) -> list[str]:
     if set(record) != required:
         failures.append("b134:artifact_fields_invalid")
 
-    if record.get("path_role") not in {"APPLICATION_EXE", "INSTALLER_EXE"}:
+    if record.get("path_role") not in {"APPLICATION_EXE", "INSTALLER_EXE", "UNINSTALLER_EXE"}:
         failures.append("b134:artifact_role_invalid")
     for key in ("pre_sign_sha256", "post_sign_sha256"):
         value = record.get(key)
@@ -155,8 +155,8 @@ def build_signing_evidence(
         raise ValueError("b134:publisher_required")
     if not isinstance(timestamp_url, str) or not timestamp_url.lower().startswith(("http://", "https://")):
         raise ValueError("b134:timestamp_url_invalid")
-    if not isinstance(artifacts, list) or len(artifacts) != 2:
-        raise ValueError("b134:two_signed_artifacts_required")
+    if not isinstance(artifacts, list) or len(artifacts) != 3:
+        raise ValueError("b134:three_signed_artifacts_required")
 
     release = trust_level == TRUST_PUBLIC
     failures: list[str] = []
@@ -173,7 +173,7 @@ def build_signing_evidence(
             except ValueError:
                 pass
 
-    if sorted(roles) != ["APPLICATION_EXE", "INSTALLER_EXE"]:
+    if sorted(roles) != ["APPLICATION_EXE", "INSTALLER_EXE", "UNINSTALLER_EXE"]:
         failures.append("b134:required_artifact_roles_missing")
     if len(set(signer_subjects)) != 1:
         failures.append("b134:publisher_identity_drift")
@@ -256,16 +256,16 @@ def validate_signing_evidence(data: object, *, expected_build_commit: str | None
         failures.append("b134:evidence_publisher_invalid")
 
     artifacts = data.get("artifacts")
-    if not isinstance(artifacts, list) or len(artifacts) != 2:
+    if not isinstance(artifacts, list) or len(artifacts) != 3:
         failures.append("b134:evidence_artifacts_invalid")
         artifacts = []
     release = trust_level == TRUST_PUBLIC
     for artifact in artifacts:
         failures.extend(_artifact_record_failures(artifact, release=release))
 
-    if isinstance(artifacts, list) and len(artifacts) == 2:
+    if isinstance(artifacts, list) and len(artifacts) == 3:
         roles = sorted(str(item.get("path_role")) for item in artifacts if isinstance(item, dict))
-        if roles != ["APPLICATION_EXE", "INSTALLER_EXE"]:
+        if roles != ["APPLICATION_EXE", "INSTALLER_EXE", "UNINSTALLER_EXE"]:
             failures.append("b134:evidence_roles_invalid")
         subjects = {str(item.get("signer_subject", "")) for item in artifacts if isinstance(item, dict)}
         if len(subjects) != 1:
