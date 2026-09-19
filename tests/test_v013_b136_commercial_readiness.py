@@ -142,16 +142,12 @@ def test_diagnostic_snapshot_is_privacy_minimal() -> None:
     )
     payload = b136.diagnostic_snapshot(commercial_state=state)
     assert b136.validate_diagnostic_snapshot(payload) == ()
-    serialized = json.dumps(payload, sort_keys=True).lower()
-    for forbidden in (
-        "raw_path",
-        "command_line",
-        "username",
-        "license_token",
-        "license_id",
-        "file_content",
-    ):
-        assert forbidden not in serialized or payload.get(forbidden + "s_included") is False
+    assert payload["raw_paths_included"] is False
+    assert payload["command_lines_included"] is False
+    assert payload["usernames_included"] is False
+    assert payload["license_token_included"] is False
+    assert payload["license_id_included"] is False
+    assert payload["file_contents_included"] is False
 
 
 def test_explicit_diagnostic_export_contains_no_token_or_identifier(tmp_path: Path) -> None:
