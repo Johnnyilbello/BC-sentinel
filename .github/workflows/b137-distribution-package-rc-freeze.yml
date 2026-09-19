@@ -1,0 +1,33 @@
+name: B13-7 Distribution Package RC Freeze
+
+on:
+  push:
+    branches:
+      - feature/v013-b137-distribution-package-rc-freeze
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc-freeze:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: B13-7 full regression distribution package and RC freeze
+        shell: powershell
+        run: ./tools/acceptance/TEST-V013-B137-RC-FREEZE.ps1 -ConfirmReleaseCandidateFreeze
