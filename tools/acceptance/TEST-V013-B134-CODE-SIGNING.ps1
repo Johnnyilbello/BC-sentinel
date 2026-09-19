@@ -138,6 +138,8 @@ try {
         CertificateThumbprint = $thumbprint
         TimestampUrl = 'http://timestamp.acs.microsoft.com'
     }
+    $previousForceBootstrap = $env:BC_SENTINEL_B134_FORCE_SIGTOOL_BOOTSTRAP
+    $env:BC_SENTINEL_B134_FORCE_SIGTOOL_BOOTSTRAP = '1'
     & (Join-Path $repoRoot 'BUILD-V013-B134-SIGNED-INSTALLER.ps1') @buildParams
     if ($LASTEXITCODE -ne 0) { throw 'B13-4 signed engineering build failed.' }
 
@@ -240,6 +242,9 @@ try {
     Write-Host 'BC SENTINEL v0.13.0 B13-4 CODE SIGNING & SMARTSCREEN READINESS PIPELINE - PASS'
 }
 finally {
+    if (Get-Variable -Name previousForceBootstrap -Scope Local -ErrorAction SilentlyContinue) {
+        $env:BC_SENTINEL_B134_FORCE_SIGTOOL_BOOTSTRAP = $previousForceBootstrap
+    }
     if ($installed -and (Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
         try { Start-Process -FilePath $uninstaller -ArgumentList @('/S') -Wait | Out-Null } catch {}
     }
