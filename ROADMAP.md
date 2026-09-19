@@ -471,11 +471,24 @@ Windows CI run `35409542186` and local Windows acceptance both PASS on exact SHA
 - installer work is allowed, but installer alone is explicitly not public-launch readiness;
 - Beta12 coverage and authority remained unchanged.
 
+### B13-1 accepted evidence
+
+Windows CI run `35410136549` and local Windows acceptance both PASS on exact SHA `cfb94fb65f90327504296809270bf3c573f083d0`.
+
+- CI: `1240 passed, 40 warnings in 118.43s`;
+- local: `1240 passed, 40 warnings in 111.21s`;
+- contract digest matched exactly: `9baa16a968d8bc40cd2941074c2dfde490bcbf115e11d8686f500ea255e8f76c`;
+- safe threat response moved to READY with Ask First, explicit-confirmation reversible quarantine and explicit-confirmation restore;
+- background alerts moved to READY with local notification center, unread state, deduplication and tray adapter;
+- response center UI: 8 pages, 3 acceptance alert cards, 0 horizontal overflow at 560/680/960/1440 px;
+- automatic quarantine, automatic repair, process termination and destructive UI action remained disabled;
+- readiness advanced to `READY=5 / PARTIAL=1 / BLOCKED=4` with five release blockers remaining.
+
 ### Planned Beta13 line
 
 1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
-2. **B13-1 — Safe Threat Response & Notification UX** — 🚧 CURRENT — evidence-bound Ask First response, explicit-confirmation reversible quarantine/restore, notification center and tray alert adapter without silent destructive actions.
-3. **B13-2 — Secure Update Channel & Rule Delivery** — signed update manifests, rollback, version pinning and safe rule/application update policy.
+2. **B13-1 — Safe Threat Response & Notification UX** — `checkpoint/v013-b131-pass` / `cfb94fb65f90327504296809270bf3c573f083d0` — ACCEPTED / FROZEN.
+3. **B13-2 — Secure Update Channel & Rule Delivery** — 🚧 CURRENT — Ed25519-signed manifests, pinned public root, SHA-256/size binding, expiry, monotonic anti-replay sequence, source-version pinning, detect-only rule bundles and previous-verified rollback planning.
 4. **B13-3 — Real Windows Installer Foundation** — build a real installer from the frozen Beta12 artifact contract, bounded to product-owned paths and preserving persistent data by default.
 5. **B13-4 — Code Signing & SmartScreen Readiness** — factual Authenticode signing/verification, timestamp evidence and consistent publisher identity.
 6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
@@ -485,7 +498,7 @@ Windows CI run `35409542186` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v013-b131-safe-response-notification-ux
+feature/v013-b132-secure-update-channel-rule-delivery
 ```
 
 ## Longer-term programs
