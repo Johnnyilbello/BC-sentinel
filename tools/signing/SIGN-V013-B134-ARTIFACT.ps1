@@ -32,81 +32,102 @@ function Test-MicrosoftSignedTool([string]$ToolPath, [string]$Label) {
 
 function Install-PinnedSignTool {
     $buildToolsVersion = '10.0.28000.2705'
-    $nugetVersion = '7.9.0'
+    $expectedPackageSha256 = '8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed'
     $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
     if (-not $localAppData) {
         throw 'B13-4 LOCALAPPDATA is unavailable for SignTool bootstrap.'
     }
 
     $cacheRoot = Join-Path $localAppData 'BCSentinel\ToolCache\B134'
-    $packageRoot = Join-Path $cacheRoot 'packages'
-    $nugetRoot = Join-Path $cacheRoot ('nuget-' + $nugetVersion)
-    $nugetExe = Join-Path $nugetRoot 'nuget.exe'
+    $packagePath = Join-Path $cacheRoot ('Microsoft.Windows.SDK.BuildTools.' + $buildToolsVersion + '.nupkg')
+    $extractRoot = Join-Path $cacheRoot ('Microsoft.Windows.SDK.BuildTools.' + $buildToolsVersion)
+    $packageUrl = 'https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/' + $buildToolsVersion
 
-    if (Test-Path -LiteralPath $packageRoot) {
-        $cached = Get-ChildItem -LiteralPath $packageRoot -Recurse -Filter signtool.exe -File -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.FullName -match [regex]::Escape('Microsoft.Windows.SDK.BuildTools.' + $buildToolsVersion) -and
-                $_.FullName -match '\\x64\\signtool\.exe$'
-            } |
+    function Find-PinnedSignTool([string]$Root) {
+        if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $null }
+        return Get-ChildItem -LiteralPath $Root -Recurse -Filter signtool.exe -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
             Sort-Object FullName -Descending |
             Select-Object -First 1
-        if ($cached) {
+    }
+
+    if ((Test-Path -LiteralPath $packagePath -PathType Leaf) -and (Test-Path -LiteralPath $extractRoot -PathType Container)) {
+        $cachedHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $cached = Find-PinnedSignTool $extractRoot
+        if ($cachedHash -eq $expectedPackageSha256 -and $cached) {
             Test-MicrosoftSignedTool $cached.FullName 'cached SignTool'
+            Write-Host ('B13-4 BuildTools package SHA256: ' + $cachedHash)
             Write-Host ('B13-4 SignTool source: PINNED_NUGET_CACHE ' + $cached.FullName)
             return $cached.FullName
         }
+        Write-Host 'B13-4 pinned SignTool cache failed package-integrity validation; rebuilding.' -ForegroundColor DarkYellow
+        if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $extractRoot) { Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    New-Item -ItemType Directory -Path $nugetRoot, $packageRoot -Force | Out-Null
-    if (-not (Test-Path -LiteralPath $nugetExe -PathType Leaf)) {
-        $nugetUrl = 'https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe'
+    New-Item -ItemType Directory -Path $cacheRoot -Force | Out-Null
+    $bootstrapId = [guid]::NewGuid().ToString('N')
+    $tempPackage = Join-Path $cacheRoot ('download-' + $bootstrapId + '.nupkg')
+    $tempExtract = Join-Path $cacheRoot ('extract-' + $bootstrapId)
+
+    try {
         $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
         if ($curl) {
-            & $curl.Source -L --fail --silent --show-error --retry 4 --retry-delay 2 --output $nugetExe $nugetUrl
+            & $curl.Source -L --fail --silent --show-error --retry 4 --retry-delay 2 --output $tempPackage $packageUrl
             if ($LASTEXITCODE -ne 0) {
-                throw ('B13-4 NuGet bootstrap download failed with exit code ' + $LASTEXITCODE)
+                throw ('B13-4 BuildTools package download failed with exit code ' + $LASTEXITCODE)
             }
         }
         else {
-            Invoke-WebRequest -UseBasicParsing -Uri $nugetUrl -OutFile $nugetExe
+            Invoke-WebRequest -UseBasicParsing -Uri $packageUrl -OutFile $tempPackage
+        }
+
+        if (-not (Test-Path -LiteralPath $tempPackage -PathType Leaf)) {
+            throw 'B13-4 BuildTools package download did not produce a file.'
+        }
+
+        $actualPackageSha256 = (Get-FileHash -LiteralPath $tempPackage -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actualPackageSha256 -ne $expectedPackageSha256) {
+            throw ('B13-4 BuildTools package SHA256 mismatch: ' + $actualPackageSha256)
+        }
+
+        New-Item -ItemType Directory -Path $tempExtract -Force | Out-Null
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($tempPackage, $tempExtract)
+
+        $candidate = Find-PinnedSignTool $tempExtract
+        if (-not $candidate) {
+            throw 'B13-4 pinned Windows SDK BuildTools package did not contain x64 SignTool.exe.'
+        }
+        Test-MicrosoftSignedTool $candidate.FullName 'bootstrapped SignTool'
+
+        if (Test-Path -LiteralPath $extractRoot) {
+            Remove-Item -LiteralPath $extractRoot -Recurse -Force
+        }
+        if (Test-Path -LiteralPath $packagePath) {
+            Remove-Item -LiteralPath $packagePath -Force
+        }
+
+        Move-Item -LiteralPath $tempExtract -Destination $extractRoot
+        Move-Item -LiteralPath $tempPackage -Destination $packagePath
+
+        $finalCandidate = Find-PinnedSignTool $extractRoot
+        if (-not $finalCandidate) {
+            throw 'B13-4 cached SignTool missing after atomic BuildTools bootstrap.'
+        }
+        Test-MicrosoftSignedTool $finalCandidate.FullName 'bootstrapped SignTool'
+        Write-Host ('B13-4 BuildTools package SHA256: ' + $expectedPackageSha256)
+        Write-Host ('B13-4 SignTool source: PINNED_NUGET_BOOTSTRAP ' + $finalCandidate.FullName)
+        return $finalCandidate.FullName
+    }
+    finally {
+        if (Test-Path -LiteralPath $tempPackage) {
+            Remove-Item -LiteralPath $tempPackage -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $tempExtract) {
+            Remove-Item -LiteralPath $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
-    Test-MicrosoftSignedTool $nugetExe 'NuGet bootstrap'
-
-    $nugetArgs = @(
-        'install',
-        'Microsoft.Windows.SDK.BuildTools',
-        '-Version', $buildToolsVersion,
-        '-Source', 'https://api.nuget.org/v3/index.json',
-        '-OutputDirectory', $packageRoot,
-        '-DirectDownload',
-        '-NonInteractive',
-        '-NoHttpCache'
-    )
-    $nugetOutput = @(& $nugetExe @nugetArgs 2>&1)
-    $nugetExit = $LASTEXITCODE
-    foreach ($line in $nugetOutput) {
-        Write-Host ([string]$line)
-    }
-    if ($nugetExit -ne 0) {
-        throw ('B13-4 pinned Windows SDK BuildTools acquisition failed with exit code ' + $nugetExit)
-    }
-
-    $candidate = Get-ChildItem -LiteralPath $packageRoot -Recurse -Filter signtool.exe -File -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.FullName -match [regex]::Escape('Microsoft.Windows.SDK.BuildTools.' + $buildToolsVersion) -and
-            $_.FullName -match '\\x64\\signtool\.exe$'
-        } |
-        Sort-Object FullName -Descending |
-        Select-Object -First 1
-    if (-not $candidate) {
-        throw 'B13-4 pinned Windows SDK BuildTools package did not contain x64 SignTool.exe.'
-    }
-
-    Test-MicrosoftSignedTool $candidate.FullName 'bootstrapped SignTool'
-    Write-Host ('B13-4 SignTool source: PINNED_NUGET_BOOTSTRAP ' + $candidate.FullName)
-    return $candidate.FullName
 }
 
 function Resolve-SignTool([string]$ExplicitPath) {
