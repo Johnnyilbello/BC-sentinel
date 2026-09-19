@@ -136,7 +136,15 @@ try {
     $NsisUrl = 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.12/nsis-3.12.zip'
     $ExpectedNsisHash = '56581f90db321581c5381193d796fffcf2d24b2f8fed2160a6c6a3baa67f2c4f'
 
-    Invoke-WebRequest -UseBasicParsing -Uri $NsisUrl -OutFile $NsisZip
+    $Curl = (Get-Command curl.exe -ErrorAction Stop).Source
+    & $Curl -L --fail --silent --show-error --retry 4 --retry-delay 2 --output $NsisZip $NsisUrl
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $NsisZip -PathType Leaf)) {
+        throw 'B13-3 verified NSIS ZIP download failed.'
+    }
+    $NsisSize = (Get-Item -LiteralPath $NsisZip).Length
+    if ($NsisSize -ne 2362938) {
+        throw ('B13-3 NSIS ZIP size mismatch: ' + $NsisSize)
+    }
     $ActualNsisHash = (Get-FileHash -LiteralPath $NsisZip -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($ActualNsisHash -ne $ExpectedNsisHash) {
         throw ('B13-3 NSIS ZIP SHA256 mismatch: ' + $ActualNsisHash)
