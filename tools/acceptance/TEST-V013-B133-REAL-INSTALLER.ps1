@@ -170,7 +170,7 @@ try {
     if ((Get-FileHash -LiteralPath $persistentSentinel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $persistentHashBefore) {
         throw 'B13-3 uninstaller modified external persistent data.'
     }
-    if (Test-Path $existingProductKey -or Test-Path $existingUninstallKey) {
+    if ((Test-Path $existingProductKey) -or (Test-Path $existingUninstallKey)) {
         throw 'B13-3 uninstaller left per-user registry metadata behind.'
     }
     if (Test-Path -LiteralPath $startMenuDir) { throw 'B13-3 uninstaller left Start Menu directory behind.' }
