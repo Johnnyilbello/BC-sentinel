@@ -16,7 +16,13 @@ def _artifact(
     thumbprint: str = "a" * 40,
 ) -> dict:
     return {
-        "name": "BC-Sentinel.exe" if role == "APPLICATION_EXE" else "BC-Sentinel-Setup-v0.13.0-b134.exe",
+        "name": (
+            "BC-Sentinel.exe"
+            if role == "APPLICATION_EXE"
+            else "BC-Sentinel-Setup-v0.13.0-b134.exe"
+            if role == "INSTALLER_EXE"
+            else "Uninstall.exe"
+        ),
         "path_role": role,
         "pre_sign_sha256": "1" * 64 if role == "APPLICATION_EXE" else "2" * 64,
         "post_sign_sha256": "3" * 64 if role == "APPLICATION_EXE" else "4" * 64,
@@ -68,6 +74,7 @@ def test_engineering_signing_evidence_can_be_valid_without_public_trust():
     artifacts = [
         _artifact("APPLICATION_EXE"),
         _artifact("INSTALLER_EXE"),
+        _artifact("UNINSTALLER_EXE"),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="b" * 40,
@@ -88,6 +95,7 @@ def test_public_trust_requires_windows_valid_and_signtool_verification():
     artifacts = [
         _artifact("APPLICATION_EXE", status="Valid", verify=True, subject="CN=BC TECH Studio"),
         _artifact("INSTALLER_EXE", status="Valid", verify=True, subject="CN=BC TECH Studio"),
+        _artifact("UNINSTALLER_EXE", status="Valid", verify=True, subject="CN=BC TECH Studio"),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="c" * 40,
@@ -107,6 +115,7 @@ def test_public_trust_rejects_untrusted_signature_status():
     artifacts = [
         _artifact("APPLICATION_EXE", status="UnknownError", verify=False, subject="CN=BC TECH Studio"),
         _artifact("INSTALLER_EXE", status="UnknownError", verify=False, subject="CN=BC TECH Studio"),
+        _artifact("UNINSTALLER_EXE", status="UnknownError", verify=False, subject="CN=BC TECH Studio"),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="c" * 40,
@@ -126,6 +135,7 @@ def test_publisher_drift_is_rejected():
     artifacts = [
         _artifact("APPLICATION_EXE", subject="CN=BC TECH Studio"),
         _artifact("INSTALLER_EXE", subject="CN=Someone Else"),
+        _artifact("UNINSTALLER_EXE", subject="CN=BC TECH Studio"),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="d" * 40,
@@ -143,6 +153,7 @@ def test_signer_thumbprint_drift_is_rejected():
     artifacts = [
         _artifact("APPLICATION_EXE", thumbprint="a" * 40),
         _artifact("INSTALLER_EXE", thumbprint="b" * 40),
+        _artifact("UNINSTALLER_EXE", thumbprint="a" * 40),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="d" * 40,
@@ -160,6 +171,7 @@ def test_timestamp_is_required_even_for_engineering_pipeline_evidence():
     artifacts = [
         _artifact("APPLICATION_EXE"),
         _artifact("INSTALLER_EXE"),
+        _artifact("UNINSTALLER_EXE"),
     ]
     artifacts[0]["timestamp_present"] = False
     artifacts[0]["timestamp_subject"] = ""
@@ -179,6 +191,7 @@ def test_post_sign_hash_must_change_and_artifact_cannot_be_modified_after_signin
     artifacts = [
         _artifact("APPLICATION_EXE"),
         _artifact("INSTALLER_EXE"),
+        _artifact("UNINSTALLER_EXE"),
     ]
     artifacts[0]["post_sign_sha256"] = artifacts[0]["pre_sign_sha256"]
     artifacts[1]["modified_after_signing"] = True
@@ -199,6 +212,7 @@ def test_evidence_digest_tampering_fails_validation():
     artifacts = [
         _artifact("APPLICATION_EXE"),
         _artifact("INSTALLER_EXE"),
+        _artifact("UNINSTALLER_EXE"),
     ]
     evidence = b134.build_signing_evidence(
         build_commit="a" * 40,
@@ -217,7 +231,7 @@ def test_evidence_digest_tampering_fails_validation():
 
 @pytest.mark.parametrize("provider", ["", "UNKNOWN"])
 def test_invalid_provider_fails_closed(provider):
-    artifacts = [_artifact("APPLICATION_EXE"), _artifact("INSTALLER_EXE")]
+    artifacts = [_artifact("APPLICATION_EXE"), _artifact("INSTALLER_EXE"), _artifact("UNINSTALLER_EXE")]
     with pytest.raises(ValueError, match="provider_invalid"):
         b134.build_signing_evidence(
             build_commit="a" * 40,
