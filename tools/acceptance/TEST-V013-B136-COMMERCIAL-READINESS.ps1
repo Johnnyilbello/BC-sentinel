@@ -191,8 +191,8 @@ try {
     $smoke = Start-Process -FilePath $installedExe -ArgumentList @('--smoke') -Wait -PassThru
     if ($smoke.ExitCode -ne 0) { throw ('B13-6 installed UI smoke failed exit=' + $smoke.ExitCode) }
 
-    & $installedExe --diagnostics-json $diagnosticsPath
-    if ($LASTEXITCODE -ne 0) { throw ('B13-6 installed diagnostics export failed exit=' + $LASTEXITCODE) }
+    $diagnosticsProcess = Start-Process -FilePath $installedExe -ArgumentList @('--diagnostics-json', ('"' + $diagnosticsPath + '"')) -Wait -PassThru
+    if ($diagnosticsProcess.ExitCode -ne 0) { throw ('B13-6 installed diagnostics export failed exit=' + $diagnosticsProcess.ExitCode) }
     if (-not (Test-Path -LiteralPath $diagnosticsPath -PathType Leaf)) {
         throw 'B13-6 installed diagnostics file missing.'
     }
