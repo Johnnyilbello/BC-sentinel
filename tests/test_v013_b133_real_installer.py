@@ -123,7 +123,7 @@ def test_installer_evidence_detects_installer_tampering(tmp_path: Path):
         build_commit="a" * 40,
         nsis_version=b133.NSIS_VERSION,
     )
-    installer.write_bytes(b"tampered")
+    installer.write_bytes(b"tampered-longer")
 
     failures = b133.validate_installer_evidence(
         evidence,
