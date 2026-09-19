@@ -459,10 +459,22 @@ Windows CI run `35408596757` and local Windows acceptance both PASS on exact SHA
 
 Goal: turn the frozen Beta12 source into a consumer-ready Windows security product that can be trusted, installed, updated, supported and monetized without weakening the accepted Beta12 detection, privacy, low-noise or authority boundaries.
 
+### B13-0 accepted evidence
+
+Windows CI run `35409542186` and local Windows acceptance both PASS on exact SHA `6c1a3dedd48d2b26b716c199f74ea45d827ee01a`.
+
+- CI: `1229 passed, 39 warnings in 126.63s`;
+- local: `1229 passed, 39 warnings in 70.82s`;
+- contract digest matched exactly: `f48eb06dc9a9e3e8936eeae5314b0c89b26ba730fe79202405e5ecc74a3d1f75`;
+- readiness baseline: `READY=3 / PARTIAL=2 / BLOCKED=5`;
+- seven public-release blockers were made explicit: safe response, background alerts, secure updates, installer lifecycle, code signing, licensing/trial and privacy/support;
+- installer work is allowed, but installer alone is explicitly not public-launch readiness;
+- Beta12 coverage and authority remained unchanged.
+
 ### Planned Beta13 line
 
-1. **B13-0 — Consumer Product Readiness Foundation** — 🚧 CURRENT — freeze the product-readiness baseline: response, notifications, updates, onboarding/support, licensing and distribution trust must be explicit and testable before installer work.
-2. **B13-1 — Safe Threat Response & Notification UX** — add evidence-bound response modes, high-confidence reversible containment policy, in-app/background alerts and clear recovery paths without silent destructive actions.
+1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
+2. **B13-1 — Safe Threat Response & Notification UX** — 🚧 CURRENT — evidence-bound Ask First response, explicit-confirmation reversible quarantine/restore, notification center and tray alert adapter without silent destructive actions.
 3. **B13-2 — Secure Update Channel & Rule Delivery** — signed update manifests, rollback, version pinning and safe rule/application update policy.
 4. **B13-3 — Real Windows Installer Foundation** — build a real installer from the frozen Beta12 artifact contract, bounded to product-owned paths and preserving persistent data by default.
 5. **B13-4 — Code Signing & SmartScreen Readiness** — factual Authenticode signing/verification, timestamp evidence and consistent publisher identity.
@@ -473,7 +485,7 @@ Goal: turn the frozen Beta12 source into a consumer-ready Windows security produ
 Current engineering branch:
 
 ```text
-feature/v013-b130-consumer-product-readiness
+feature/v013-b131-safe-response-notification-ux
 ```
 
 ## Longer-term programs
