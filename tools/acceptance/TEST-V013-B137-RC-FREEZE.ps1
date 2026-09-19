@@ -274,7 +274,7 @@ try {
     if ($signingEvidence.trust_level -ne 'ENGINEERING_TEST' -or [bool]$signingEvidence.public_trust_signature_verified) {
         throw 'B13-7 signing evidence incorrectly claims Public Trust.'
     }
-    if (@($provenance.remaining_release_blockers) -ne 1 -or $provenance.remaining_release_blockers[0] -ne 'CODE_SIGNING') {
+    if (@($provenance.remaining_release_blockers).Count -ne 1 -or $provenance.remaining_release_blockers[0] -ne 'CODE_SIGNING') {
         throw 'B13-7 provenance release blocker mismatch.'
     }
 
