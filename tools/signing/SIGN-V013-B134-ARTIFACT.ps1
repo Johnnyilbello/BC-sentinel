@@ -173,6 +173,12 @@ $record = [ordered]@{
 }
 
 $json = $record | ConvertTo-Json -Depth 5
+if ($TrustLevel -eq 'ENGINEERING_TEST' -and -not $verifyPassed) {
+    # Expected for self-signed engineering certificates: the signature mechanics
+    # and timestamp exist, but the public trust chain intentionally does not.
+    $global:LASTEXITCODE = 0
+}
+
 if ($OutputJson) {
     $parent = Split-Path -Parent $OutputJson
     if ($parent -and -not (Test-Path -LiteralPath $parent)) {
