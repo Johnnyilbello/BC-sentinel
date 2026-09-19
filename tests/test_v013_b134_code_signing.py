@@ -241,3 +241,17 @@ def test_invalid_provider_fails_closed(provider):
             artifacts=artifacts,
             timestamp_url=b134.DEFAULT_TIMESTAMP_URL,
         )
+
+
+
+def test_signing_script_has_pinned_signtool_bootstrap_fallback():
+    from pathlib import Path
+
+    script = Path("tools/signing/SIGN-V013-B134-ARTIFACT.ps1").read_text(encoding="utf-8")
+    assert "Microsoft.Windows.SDK.BuildTools" in script
+    assert "10.0.28000.2705" in script
+    assert "https://api.nuget.org/v3/index.json" in script
+    assert "https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe" in script
+    assert "BC_SENTINEL_B134_FORCE_SIGTOOL_BOOTSTRAP" in script
+    assert "Test-MicrosoftSignedTool" in script
+    assert "PINNED_NUGET_BOOTSTRAP" in script
