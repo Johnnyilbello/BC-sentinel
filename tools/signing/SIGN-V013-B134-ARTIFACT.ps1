@@ -49,8 +49,19 @@ $ResolvedPath = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).Path
 if (-not (Test-Path -LiteralPath $ResolvedPath -PathType Leaf)) {
     throw 'B13-4 target artifact missing.'
 }
-if ([IO.Path]::GetExtension($ResolvedPath).ToLowerInvariant() -ne '.exe') {
-    throw 'B13-4 only executable artifacts are accepted.'
+$stream = [IO.File]::OpenRead($ResolvedPath)
+try {
+    $first = $stream.ReadByte()
+    $second = $stream.ReadByte()
+}
+finally {
+    $stream.Dispose()
+}
+if ($first -ne 0x4D -or $second -ne 0x5A) {
+    throw 'B13-4 target is not a Windows PE artifact (MZ header missing).'
+}
+if ($PathRole -ne 'UNINSTALLER_EXE' -and [IO.Path]::GetExtension($ResolvedPath).ToLowerInvariant() -ne '.exe') {
+    throw 'B13-4 application and installer artifacts must use the .exe extension.'
 }
 
 if ($Provider -eq 'CERTIFICATE_STORE') {
