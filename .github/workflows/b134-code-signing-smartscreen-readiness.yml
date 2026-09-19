@@ -25,6 +25,16 @@ jobs:
           python-version: '3.12'
           cache: pip
 
+      - name: Resolve pinned BuildTools package SHA256
+        shell: powershell
+        run: |
+          $version = '10.0.28000.2705'
+          $package = Join-Path $env:RUNNER_TEMP ('Microsoft.Windows.SDK.BuildTools.' + $version + '.nupkg')
+          Invoke-WebRequest -UseBasicParsing -Uri ('https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/' + $version) -OutFile $package
+          $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host ('B13-4 BUILDTOOLS_NUPKG_SHA256=' + $hash)
+          throw 'B13-4 hash probe complete; pin this value before full acceptance.'
+
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
