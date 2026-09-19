@@ -82,11 +82,15 @@ function Install-PinnedSignTool {
         '-OutputDirectory', $packageRoot,
         '-DirectDownload',
         '-NonInteractive',
-        '-NoCache'
+        '-NoHttpCache'
     )
-    & $nugetExe @nugetArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw ('B13-4 pinned Windows SDK BuildTools acquisition failed with exit code ' + $LASTEXITCODE)
+    $nugetOutput = @(& $nugetExe @nugetArgs 2>&1)
+    $nugetExit = $LASTEXITCODE
+    foreach ($line in $nugetOutput) {
+        Write-Host ([string]$line)
+    }
+    if ($nugetExit -ne 0) {
+        throw ('B13-4 pinned Windows SDK BuildTools acquisition failed with exit code ' + $nugetExit)
     }
 
     $candidate = Get-ChildItem -LiteralPath $packageRoot -Recurse -Filter signtool.exe -File -ErrorAction SilentlyContinue |
