@@ -91,7 +91,14 @@ def _self_check() -> dict:
     if snapshot["coverage_summary"] != {"PARTIAL": 4, "GAP": 0, "VERIFIED": 7}:
         failures.append("product:coverage_mismatch")
 
-    state = _commercial_state(now=1_800_000_000.0)
+    state = commercial.evaluate_trial(
+        {
+            "schema": commercial.TRIAL_SCHEMA,
+            "started_at": 1_800_000_000.0,
+            "trial_days": commercial.DEFAULT_TRIAL_DAYS,
+        },
+        now=1_800_000_000.0,
+    )
     if state.protection_enabled is not True:
         failures.append("commercial:core_protection_disabled")
 
