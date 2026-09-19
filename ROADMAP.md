@@ -498,13 +498,30 @@ Windows CI run `35435345832` and local Windows acceptance both PASS on exact SHA
 - no private update key was persisted or embedded;
 - readiness advanced to `READY=6 / PARTIAL=1 / BLOCKED=3` with four release blockers remaining.
 
+### B13-3 accepted evidence
+
+Windows CI run `35437329011` and local Windows acceptance both PASS on exact SHA `b6014ef74ffc77814f489532c8f2d09fb92fe17f`.
+
+- full regression: `1269 passed, 40 warnings` in both accepted environments;
+- local regression time: `98.81s`;
+- contract digest: `fc1f0f00b36331121b9dcf9487086781744e01907811f297c6732913ee2c6d0d`;
+- real per-user NSIS installer compiled and executed without administrator requirement;
+- packaged self-check and packaged UI smoke both PASS after real installation;
+- real uninstall PASS;
+- unknown install child and external persistent data preserved;
+- local installer SHA-256: `f683f27665cef095d5034fac9367e2b2ed4b3ab23c1029faaf8d41282c432b42`;
+- local payload tree digest: `be8640e513731cb03bef84b4782bd0094578f22314c2b945b1b972d9f8d008fb`;
+- local installer evidence digest: `15d233c24de14acd77952adb5a3dd009c6f1bbefc93f7b284b123a65d2646f3e`;
+- service, driver and autostart registration remained disabled;
+- readiness advanced to `READY=7 / PARTIAL=1 / BLOCKED=2`; remaining release blockers: code signing, licensing/trial and privacy/support.
+
 ### Planned Beta13 line
 
 1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
 2. **B13-1 — Safe Threat Response & Notification UX** — `checkpoint/v013-b131-pass` / `cfb94fb65f90327504296809270bf3c573f083d0` — ACCEPTED / FROZEN.
 3. **B13-2 — Secure Update Channel & Rule Delivery** — `checkpoint/v013-b132-pass` / `3e64155858d9b8c7efebc28aecc9689795159ae9` — ACCEPTED / FROZEN.
-4. **B13-3 — Real Windows Installer Foundation** — 🚧 CURRENT — build and execute a real per-user Windows installer/uninstaller, preserve external persistent data and unknown install children, and bind the installer to exact payload/build evidence.
-5. **B13-4 — Code Signing & SmartScreen Readiness** — factual Authenticode signing/verification, timestamp evidence and consistent publisher identity.
+4. **B13-3 — Real Windows Installer Foundation** — `checkpoint/v013-b133-pass` / `b6014ef74ffc77814f489532c8f2d09fb92fe17f` — ACCEPTED / FROZEN.
+5. **B13-4 — Code Signing & SmartScreen Readiness** — 🚧 CURRENT — Authenticode SHA-256 signing for application, installer and uninstaller; RFC3161 timestamping; signer consistency; explicit separation between engineering/self-signed proof and real Public Trust release readiness.
 6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
 7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
 8. **B13-7 — Distribution Package & Release Candidate Freeze** — produce the distributable package, hashes, manifest, provenance and exact CI/local/clean-PC release checkpoint.
@@ -512,7 +529,7 @@ Windows CI run `35435345832` and local Windows acceptance both PASS on exact SHA
 Current engineering branch:
 
 ```text
-feature/v013-b133-real-windows-installer-foundation
+feature/v013-b134-code-signing-smartscreen-readiness
 ```
 
 ## Longer-term programs
