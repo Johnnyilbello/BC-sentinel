@@ -19,14 +19,14 @@ Beta13  IN PROGRESS
 Current milestone:
 
 ```text
-B13-0 — Consumer Product Readiness Foundation
+B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v012-beta12-b129-pass
-c8e51a2a3fc34c593905896d3b055f9fec252c4b
+checkpoint/v013-b134-pass
+c2dc1b0df4becc18afa56915bb47b29b533a9a55
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -515,21 +515,38 @@ Windows CI run `35437329011` and local Windows acceptance both PASS on exact SHA
 - service, driver and autostart registration remained disabled;
 - readiness advanced to `READY=7 / PARTIAL=1 / BLOCKED=2`; remaining release blockers: code signing, licensing/trial and privacy/support.
 
+### B13-4 accepted evidence
+
+Windows CI run `35444523093` and local Windows acceptance both PASS on exact SHA `c2dc1b0df4becc18afa56915bb47b29b533a9a55`.
+
+- CI: `1283 passed, 40 warnings in 92.30s`;
+- local: `1283 passed, 40 warnings in 87.04s`;
+- pinned Microsoft package: `Microsoft.Windows.SDK.BuildTools 10.0.28000.2705`;
+- verified package SHA-256: `8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed`;
+- SignTool bootstrap and cache validation PASS without requiring a manually configured Windows SDK;
+- application, installer and uninstaller all received Authenticode SHA-256 signatures with RFC3161 timestamps;
+- signer thumbprint consistency and post-sign artifact integrity PASS;
+- real per-user install, packaged self-check, packaged UI smoke and uninstall all PASS;
+- engineering/self-signed trust is explicitly not Public Trust; `CODE_SIGNING` remains a public-release blocker until a real trusted publisher certificate is used;
+- SmartScreen reputation is not guaranteed and was not claimed;
+- readiness remains `READY=7 / PARTIAL=1 / BLOCKED=2`; release blockers remain code signing, licensing/trial and privacy/support;
+- canonical detection coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=7` with no response-authority expansion.
+
 ### Planned Beta13 line
 
 1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
 2. **B13-1 — Safe Threat Response & Notification UX** — `checkpoint/v013-b131-pass` / `cfb94fb65f90327504296809270bf3c573f083d0` — ACCEPTED / FROZEN.
 3. **B13-2 — Secure Update Channel & Rule Delivery** — `checkpoint/v013-b132-pass` / `3e64155858d9b8c7efebc28aecc9689795159ae9` — ACCEPTED / FROZEN.
 4. **B13-3 — Real Windows Installer Foundation** — `checkpoint/v013-b133-pass` / `b6014ef74ffc77814f489532c8f2d09fb92fe17f` — ACCEPTED / FROZEN.
-5. **B13-4 — Code Signing & SmartScreen Readiness** — 🚧 CURRENT — Authenticode SHA-256 signing for application, installer and uninstaller; RFC3161 timestamping; signer consistency; explicit separation between engineering/self-signed proof and real Public Trust release readiness.
-6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
+5. **B13-4 — Code Signing & SmartScreen Readiness** — `checkpoint/v013-b134-pass` / `c2dc1b0df4becc18afa56915bb47b29b533a9a55` — ACCEPTED / FROZEN.
+6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — 🚧 CURRENT — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
 7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
 8. **B13-7 — Distribution Package & Release Candidate Freeze** — produce the distributable package, hashes, manifest, provenance and exact CI/local/clean-PC release checkpoint.
 
 Current engineering branch:
 
 ```text
-feature/v013-b134-code-signing-smartscreen-readiness
+feature/v013-b135-clean-pc-install-upgrade-uninstall-acceptance
 ```
 
 ## Longer-term programs
