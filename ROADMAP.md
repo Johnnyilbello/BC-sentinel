@@ -19,7 +19,7 @@ Beta13  IN PROGRESS
 Current milestone:
 
 ```text
-B13-0 — Real Windows Installer Foundation
+B13-0 — Consumer Product Readiness Foundation
 ```
 
 Latest accepted engineering checkpoint:
@@ -453,24 +453,27 @@ Windows CI run `35408596757` and local Windows acceptance both PASS on exact SHA
 
 **Beta12 is COMPLETE / FROZEN.**
 
-## Beta13 — Windows Installer & Distribution
+## Beta13 — Consumer Product Readiness & Windows Distribution
 
 **Status: IN PROGRESS**
 
-Goal: turn the frozen Beta12 source into an installable Windows product without weakening the accepted Beta12 detection, privacy, low-noise or authority boundaries.
+Goal: turn the frozen Beta12 source into a consumer-ready Windows security product that can be trusted, installed, updated, supported and monetized without weakening the accepted Beta12 detection, privacy, low-noise or authority boundaries.
 
 ### Planned Beta13 line
 
-1. **B13-0 — Real Windows Installer Foundation** — 🚧 CURRENT — build a real Windows installer from the frozen Beta12 artifact contract, bounded to product-owned paths and preserving persistent data by default.
-2. **B13-1 — Code Signing Integration** — add factual Authenticode signing/verification and timestamp evidence without weakening fail-closed release policy.
-3. **B13-2 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real installer lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
-4. **B13-3 — Distribution Package & Release Evidence** — produce the distributable package, hashes, manifest and release provenance bound to one exact source commit.
-5. **B13-4 — Windows Release Candidate Freeze** — exact CI + local/clean-PC acceptance and immutable distribution checkpoint.
+1. **B13-0 — Consumer Product Readiness Foundation** — 🚧 CURRENT — freeze the product-readiness baseline: response, notifications, updates, onboarding/support, licensing and distribution trust must be explicit and testable before installer work.
+2. **B13-1 — Safe Threat Response & Notification UX** — add evidence-bound response modes, high-confidence reversible containment policy, in-app/background alerts and clear recovery paths without silent destructive actions.
+3. **B13-2 — Secure Update Channel & Rule Delivery** — signed update manifests, rollback, version pinning and safe rule/application update policy.
+4. **B13-3 — Real Windows Installer Foundation** — build a real installer from the frozen Beta12 artifact contract, bounded to product-owned paths and preserving persistent data by default.
+5. **B13-4 — Code Signing & SmartScreen Readiness** — factual Authenticode signing/verification, timestamp evidence and consistent publisher identity.
+6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
+7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
+8. **B13-7 — Distribution Package & Release Candidate Freeze** — produce the distributable package, hashes, manifest, provenance and exact CI/local/clean-PC release checkpoint.
 
 Current engineering branch:
 
 ```text
-feature/v013-windows-distribution-foundation
+feature/v013-b130-consumer-product-readiness
 ```
 
 ## Longer-term programs
