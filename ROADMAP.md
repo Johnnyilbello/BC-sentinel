@@ -19,14 +19,14 @@ Beta13  IN PROGRESS
 Current milestone:
 
 ```text
-B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance
+B13-6 — Trial / Licensing / Privacy / Support Readiness
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v013-b134-pass
-c2dc1b0df4becc18afa56915bb47b29b533a9a55
+checkpoint/v013-b135-pass
+cbead4c4e01818f5764ebeb82f85eb69f64e1f67
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -532,6 +532,25 @@ Windows CI run `35444523093` and local Windows acceptance both PASS on exact SHA
 - readiness remains `READY=7 / PARTIAL=1 / BLOCKED=2`; release blockers remain code signing, licensing/trial and privacy/support;
 - canonical detection coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=7` with no response-authority expansion.
 
+### B13-5 accepted evidence
+
+Windows CI run `35446297278` and local Windows acceptance both PASS on exact SHA `cbead4c4e01818f5764ebeb82f85eb69f64e1f67`.
+
+- CI: `1297 passed, 40 warnings in 128.18s`;
+- local: `1297 passed, 40 warnings in 80.60s`;
+- CI environment classified as `DISPOSABLE_WINDOWS_CI_RUNNER` with authoritative clean-PC evidence;
+- local environment classified as `LOCAL_GUARDED_REHEARSAL` and correctly did not claim clean-PC authority;
+- real B13-3 predecessor install PASS;
+- real upgrade to the B13-4 engineering-signed target PASS;
+- packaged self-check and UI smoke PASS both before and after upgrade;
+- unknown user-owned install child and external persistent data preserved across upgrade and uninstall;
+- uninstall removed product-owned executable, manifest, registry and Start Menu metadata;
+- no administrator requirement, service, driver or autostart registration observed;
+- CI lifecycle evidence digest: `7f94aaaf996944d05fa0d0e49a65f65eb3a0d9628511bcb7e8735259babb7cf8`;
+- local lifecycle evidence digest: `b197747d44b5268b6713fd15873c6a62121d0aed851179007f2cf9b3003be3b9`;
+- engineering signing remains non-Public-Trust and SmartScreen reputation remains unclaimed;
+- canonical detection coverage remains `PARTIAL=4 / GAP=0 / VERIFIED=7` with no authority expansion.
+
 ### Planned Beta13 line
 
 1. **B13-0 — Consumer Product Readiness Foundation** — `checkpoint/v013-b130-pass` / `6c1a3dedd48d2b26b716c199f74ea45d827ee01a` — ACCEPTED / FROZEN.
@@ -539,14 +558,14 @@ Windows CI run `35444523093` and local Windows acceptance both PASS on exact SHA
 3. **B13-2 — Secure Update Channel & Rule Delivery** — `checkpoint/v013-b132-pass` / `3e64155858d9b8c7efebc28aecc9689795159ae9` — ACCEPTED / FROZEN.
 4. **B13-3 — Real Windows Installer Foundation** — `checkpoint/v013-b133-pass` / `b6014ef74ffc77814f489532c8f2d09fb92fe17f` — ACCEPTED / FROZEN.
 5. **B13-4 — Code Signing & SmartScreen Readiness** — `checkpoint/v013-b134-pass` / `c2dc1b0df4becc18afa56915bb47b29b533a9a55` — ACCEPTED / FROZEN.
-6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — 🚧 CURRENT — exercise the real lifecycle on a disposable clean Windows environment and verify ownership/preservation rules.
-7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
+6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — `checkpoint/v013-b135-pass` / `cbead4c4e01818f5764ebeb82f85eb69f64e1f67` — ACCEPTED / FROZEN.
+7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — 🚧 CURRENT — trial and activation contract, privacy/EULA/support surfaces and diagnostic export without weakening protection when licensing is unavailable.
 8. **B13-7 — Distribution Package & Release Candidate Freeze** — produce the distributable package, hashes, manifest, provenance and exact CI/local/clean-PC release checkpoint.
 
 Current engineering branch:
 
 ```text
-feature/v013-b135-clean-pc-install-upgrade-uninstall-acceptance
+feature/v013-b136-trial-licensing-privacy-support-readiness
 ```
 
 ## Longer-term programs
