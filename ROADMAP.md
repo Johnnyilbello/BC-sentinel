@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-3 — Isolated Real-Malware Lab Evidence Importer
+B14-4 — Lab Test Orchestrator T0-T5
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b142-pass
-346f3d2ffb61db09437d82c3762991b3c25c45b7
+checkpoint/v014-b143-pass
+b807797b35e40dc34235c569e4f56b099824bca5
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -649,30 +649,42 @@ Windows CI run `35510351814` and local Windows acceptance both PASS on exact SHA
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
 - B14-2 promoted no coverage and expanded no remediation authority.
 
-### B14-3 target — Isolated Real-Malware Lab Evidence Importer
+### B14-3 accepted evidence — Isolated Real-Malware Lab Evidence Importer
 
-- define a strict evidence schema for authorized isolated-lab runs;
-- bind every imported run to sample hash, exact engine commit/checkpoint, rule version, victim snapshot and pre/post state digests;
-- accept only `NONE`, fake-service or INetSim-style network modes; direct Internet evidence is rejected;
-- require sample authorization and confirmed cleanup/snapshot revert;
-- accept no raw sample bytes, raw paths, command lines, usernames, credentials or file contents;
-- distinguish `BLOCKED / DETECTED / REVIEW_REQUIRED / MISSED / ERROR / CLEAN` without silently converting misses into clean outcomes;
-- allow real-malware evidence only from an isolated disposable lab and static-malware evidence only without execution;
+Windows CI run `35511338557` and local Windows acceptance both PASS on exact SHA `b807797b35e40dc34235c569e4f56b099824bca5`.
+
+- CI: `1382 passed, 41 warnings in 115.57s`; local: `1382 passed, 41 warnings in 86.37s`;
+- contract digest matched exactly: `e921b7a776bb592a96b2c1e92ccb5d534d7651e7214cd987ae2b040545be5c39`;
+- authorized isolated dynamic evidence, authorized static evidence and benign evidence all validated;
+- direct-Internet evidence, missing cleanup/revert evidence, raw sample bytes and sensitive exports were rejected;
 - importer has no sample execution, storage, transfer or unpack capability;
-- preserve canonical coverage at `PARTIAL=4 / GAP=0 / VERIFIED=7`; imported evidence alone does not promote VERIFIED.
+- evidence is sanitized metadata only and bound to an authoritative lab profile;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- B14-3 promoted no coverage and expanded no remediation authority.
+
+### B14-4 target — Lab Test Orchestrator T0-T5
+
+- define one canonical validation campaign covering T0 harmless feature checks through T5 performance/resilience;
+- keep T2 real-sample testing static-only and non-executing;
+- allow T3 dynamic real-sample testing only as an external isolated disposable-lab plan;
+- reject direct Internet, unauthorized real-sample plans and non-isolated dynamic plans;
+- require every tier to return results through the accepted B14-3 evidence importer;
+- keep the orchestrator incapable of executing, downloading, storing, transferring or unpacking samples or opening network connections;
+- keep coverage and response authority unchanged until separate authoritative evidence earns a later promotion.
 
 ### Planned Beta14 line
 
 1. **B14-0 — Verified Protection & Independent-Test Readiness Foundation** — `checkpoint/v014-b140-pass` / `a29de186a95d006b83fcb4e1c17992068b216255` — ACCEPTED / FROZEN.
 2. **B14-1 — Safe Adversary Emulation Matrix** — `checkpoint/v014-b141-pass` / `b2a00aac183905ec7f5988ef558dcf5612761ad5` — ACCEPTED / FROZEN.
 3. **B14-2 — Detector / Emulation Integration** — `checkpoint/v014-b142-pass` / `346f3d2ffb61db09437d82c3762991b3c25c45b7` — ACCEPTED / FROZEN.
-4. **B14-3 — Isolated Real-Malware Lab Evidence Importer** — 🚧 CURRENT — safely ingest authoritative lab evidence without carrying malware into the development repository or host.
-5. **B14-4+ — Lab-Backed Protection Expansion** — PLANNED — close detector gaps and promote only scenarios that earn separate authoritative Windows/lab evidence.
+4. **B14-3 — Isolated Real-Malware Lab Evidence Importer** — `checkpoint/v014-b143-pass` / `b807797b35e40dc34235c569e4f56b099824bca5` — ACCEPTED / FROZEN.
+5. **B14-4 — Lab Test Orchestrator T0-T5** — 🚧 CURRENT — define and validate the complete safe-to-real-lab test campaign without giving the repository sample-handling authority.
+6. **B14-5+ — Lab-Backed Protection Expansion** — PLANNED — connect external authoritative lab evidence to detector improvements and promote only separately earned Windows/lab scenarios.
 
 Current engineering branch:
 
 ```text
-feature/v014-b143-isolated-lab-evidence-importer
+feature/v014-b144-lab-test-orchestrator
 ```
 
 ## Longer-term programs
