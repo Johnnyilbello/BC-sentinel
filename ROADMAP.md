@@ -13,20 +13,21 @@ Beta9   COMPLETE / FROZEN
 Beta10  COMPLETE / FROZEN
 Beta11  COMPLETE / FROZEN
 Beta12  COMPLETE / FROZEN
-Beta13  IN PROGRESS
+Beta13  COMPLETE / FROZEN
+Beta14  IN PROGRESS
 ```
 
 Current milestone:
 
 ```text
-B13-7 — Distribution Package & Release Candidate Freeze
+B14-0 — Verified Protection & Independent-Test Readiness Foundation
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v013-b136-pass
-b981afa453e6540e18e5ec1fac7da74ce9344829
+checkpoint/v013-b137-pass
+01df0a9c58b856cfe841909fb5c39f7ef71decb8
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -455,7 +456,7 @@ Windows CI run `35408596757` and local Windows acceptance both PASS on exact SHA
 
 ## Beta13 — Consumer Product Readiness & Windows Distribution
 
-**Status: IN PROGRESS**
+**Status: COMPLETE / FROZEN**
 
 Goal: turn the frozen Beta12 source into a consumer-ready Windows security product that can be trusted, installed, updated, supported and monetized without weakening the accepted Beta12 detection, privacy, low-noise or authority boundaries.
 
@@ -577,12 +578,50 @@ Windows CI run `35447930415` and local Windows acceptance both PASS on exact SHA
 5. **B13-4 — Code Signing & SmartScreen Readiness** — `checkpoint/v013-b134-pass` / `c2dc1b0df4becc18afa56915bb47b29b533a9a55` — ACCEPTED / FROZEN.
 6. **B13-5 — Clean-PC Install / Upgrade / Uninstall Acceptance** — `checkpoint/v013-b135-pass` / `cbead4c4e01818f5764ebeb82f85eb69f64e1f67` — ACCEPTED / FROZEN.
 7. **B13-6 — Trial / Licensing / Privacy / Support Readiness** — `checkpoint/v013-b136-pass` / `b981afa453e6540e18e5ec1fac7da74ce9344829` — ACCEPTED / FROZEN.
-8. **B13-7 — Distribution Package & Release Candidate Freeze** — 🚧 CURRENT — produce an engineering release-candidate distribution package, hashes, manifest, provenance and exact CI/local/clean-PC release evidence while keeping Public Trust signing as an explicit blocker.
+8. **B13-7 — Distribution Package & Release Candidate Freeze** — `checkpoint/v013-b137-pass` / `01df0a9c58b856cfe841909fb5c39f7ef71decb8` — ACCEPTED / FROZEN.
+
+### B13-7 accepted evidence — FINAL BETA13 ENGINEERING RC FREEZE
+
+Windows CI run `35450484582` and local Windows acceptance both PASS on exact SHA `01df0a9c58b856cfe841909fb5c39f7ef71decb8`.
+
+- CI: `1326 passed, 41 warnings in 146.08s`; local: `1326 passed, 41 warnings in 91.38s`;
+- all seven accepted Beta13 predecessor checkpoints resolved to their immutable SHAs;
+- engineering release candidate build, distribution manifest, SHA-256 inventory and provenance validation PASS;
+- real per-user install, packaged self-check, UI smoke, privacy-safe diagnostics export and uninstall PASS;
+- CI clean-PC authority: `DISPOSABLE_WINDOWS_CI_RUNNER / authoritative=True`;
+- local environment correctly remained `LOCAL_GUARDED_REHEARSAL / authoritative=False`;
+- CI freeze evidence digest: `546143cabf89fba2a85cf00d418906513e346a55185e7485b18264b107bcba48`;
+- local freeze evidence digest: `fdc370bae7c468f6c0a29f76b440fec4709bd6df244b831b5f45486796f30b3e`;
+- service, driver and autostart remained disabled and canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- engineering RC is READY; public/paid release remains blocked only by `CODE_SIGNING` because the accepted engineering certificate is not Public Trust;
+- SmartScreen reputation remains explicitly unclaimed.
+
+**Beta13 is COMPLETE / FROZEN.**
+
+## Beta14 — Verified Protection Expansion & Independent-Test Readiness
+
+**Status: IN PROGRESS**
+
+Goal: move from a productized engineering RC to broader evidence-backed protection quality. Beta14 measures the gaps that matter for independent antivirus evaluation without inflating claims: real-world protection evidence, prevalent-malware coverage, false positives, system-level performance, behavioral detection breadth, offline/online behavior and repeatable evidence.
+
+B14 does **not** make BC Sentinel independently certified and does not promote any detection scenario without accepted Windows evidence. Ordinary CI/local acceptance remains harmless-fixture only; any future work involving authentic malicious samples must occur only in a separately authorized isolated lab with its own safety and evidence contract.
+
+### B14-0 target — Verified Protection & Independent-Test Readiness Foundation
+
+- freeze the exact Beta13 final checkpoint as the source baseline;
+- preserve canonical coverage at `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- define measurable protection / performance / usability evidence gates;
+- distinguish existing low-noise microbench evidence from full system-impact testing;
+- distinguish scenario-specific VERIFIED detections from broad real-world malware protection;
+- keep false-positive, performance and behavioral breadth claims fail-closed until larger evidence exists;
+- keep public-release `CODE_SIGNING` blocker factual and separate from protection quality;
+- no response-authority expansion, no mandatory network/cloud dependency, no silent destructive remediation;
+- no real-malware execution in normal CI/local acceptance.
 
 Current engineering branch:
 
 ```text
-feature/v013-b137-distribution-package-rc-freeze
+feature/v014-b140-verified-protection-test-readiness
 ```
 
 ## Longer-term programs
