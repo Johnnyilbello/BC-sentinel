@@ -28,19 +28,7 @@ function Invoke-SourceSummary(
     [string]$EvidencePath,
     [string]$SummaryPath
 ) {
-    $code = @'
-import importlib
-import json
-import sys
-from pathlib import Path
-
-module = importlib.import_module(sys.argv[1])
-data = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8-sig"))
-result = module.summarize(data)
-print(json.dumps(result, sort_keys=True))
-raise SystemExit(0 if result.get("passed") is True else 1)
-'@
-    $lines = @(& $py -c $code $Module $EvidencePath)
+    $lines = @(& $py -m $Module --evidence $EvidencePath)
     if ($LASTEXITCODE -ne 0) {
         throw ('B14-5 source summary failed: ' + $Module)
     }
