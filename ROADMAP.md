@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-4 — Lab Test Orchestrator T0-T5
+B14-5 — Safe Operational T0/T1 Campaign
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b143-pass
-b807797b35e40dc34235c569e4f56b099824bca5
+checkpoint/v014-b144-pass
+bbaec9bfbe52c43483054185501239351781d29a
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -662,15 +662,28 @@ Windows CI run `35511338557` and local Windows acceptance both PASS on exact SHA
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
 - B14-3 promoted no coverage and expanded no remediation authority.
 
-### B14-4 target — Lab Test Orchestrator T0-T5
+### B14-4 accepted evidence — Lab Test Orchestrator T0-T5
 
-- define one canonical validation campaign covering T0 harmless feature checks through T5 performance/resilience;
-- keep T2 real-sample testing static-only and non-executing;
-- allow T3 dynamic real-sample testing only as an external isolated disposable-lab plan;
-- reject direct Internet, unauthorized real-sample plans and non-isolated dynamic plans;
-- require every tier to return results through the accepted B14-3 evidence importer;
-- keep the orchestrator incapable of executing, downloading, storing, transferring or unpacking samples or opening network connections;
-- keep coverage and response authority unchanged until separate authoritative evidence earns a later promotion.
+Windows CI run `35511979996` and local Windows acceptance both PASS on exact SHA `bbaec9bfbe52c43483054185501239351781d29a`.
+
+- CI: `1396 passed, 41 warnings in 133.62s`; local: `1396 passed, 41 warnings in 108.40s`;
+- contract digest matched exactly: `31041926bb8608a8cfef2401ebb7a32d2153121934224ef4e3111a6b9a659338`;
+- all six T0-T5 campaign tiers and plans validated;
+- T2 remained static-only; T3 remained isolated-dynamic-only;
+- direct Internet, unauthorized real-sample plans and non-isolated dynamic plans were rejected;
+- B14-3 evidence import remained mandatory for every tier;
+- orchestrator had no execution, download, storage, transfer, unpack or network authority;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-5 target — Safe Operational T0/T1 Campaign
+
+- execute accepted harmless Windows controls end-to-end rather than only planning them;
+- run live script-abuse, autostart-like shortcut, process-tree, local-reputation and ransomware-like controls in disposable temporary workspaces;
+- validate every live output through its original accepted detector/module before accepting the campaign;
+- bridge all five results through the accepted B14-3 evidence importer;
+- export no raw paths, command lines, credentials, user files or malware bytes;
+- perform no network activity, real persistence mutation or security-control impairment;
+- keep canonical coverage unchanged; B14-5 validates the operational pipeline but does not create new VERIFIED claims.
 
 ### Planned Beta14 line
 
@@ -678,13 +691,14 @@ Windows CI run `35511338557` and local Windows acceptance both PASS on exact SHA
 2. **B14-1 — Safe Adversary Emulation Matrix** — `checkpoint/v014-b141-pass` / `b2a00aac183905ec7f5988ef558dcf5612761ad5` — ACCEPTED / FROZEN.
 3. **B14-2 — Detector / Emulation Integration** — `checkpoint/v014-b142-pass` / `346f3d2ffb61db09437d82c3762991b3c25c45b7` — ACCEPTED / FROZEN.
 4. **B14-3 — Isolated Real-Malware Lab Evidence Importer** — `checkpoint/v014-b143-pass` / `b807797b35e40dc34235c569e4f56b099824bca5` — ACCEPTED / FROZEN.
-5. **B14-4 — Lab Test Orchestrator T0-T5** — 🚧 CURRENT — define and validate the complete safe-to-real-lab test campaign without giving the repository sample-handling authority.
-6. **B14-5+ — Lab-Backed Protection Expansion** — PLANNED — connect external authoritative lab evidence to detector improvements and promote only separately earned Windows/lab scenarios.
+5. **B14-4 — Lab Test Orchestrator T0-T5** — `checkpoint/v014-b144-pass` / `bbaec9bfbe52c43483054185501239351781d29a` — ACCEPTED / FROZEN.
+6. **B14-5 — Safe Operational T0/T1 Campaign** — 🚧 CURRENT — execute five accepted harmless Windows controls and route their evidence end-to-end through B14-3.
+7. **B14-6+ — Isolated-Lab Readiness & Lab-Backed Protection Expansion** — PLANNED — validate the external T2/T3 environment and use only authoritative lab evidence for future detector improvements.
 
 Current engineering branch:
 
 ```text
-feature/v014-b144-lab-test-orchestrator
+feature/v014-b145-safe-operational-campaign
 ```
 
 ## Longer-term programs
