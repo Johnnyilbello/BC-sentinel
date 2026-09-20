@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-1 — Safe Adversary Emulation Matrix
+B14-2 — Detector / Emulation Integration
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b140-pass
-a29de186a95d006b83fcb4e1c17992068b216255
+checkpoint/v014-b141-pass
+b2a00aac183905ec7f5988ef558dcf5612761ad5
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -621,26 +621,40 @@ Windows CI run `35508082232` and local Windows acceptance both PASS on exact SHA
 - engineering RC is inherited; public release remains blocked only by `CODE_SIGNING`;
 - no response-authority, network or cloud requirement expansion occurred.
 
-### B14-1 target — Safe Adversary Emulation Matrix
+### B14-1 accepted evidence — Safe Adversary Emulation Matrix
 
-- expand safe multi-stage emulation beyond single-signal controls;
-- model script/file chains, process ancestry, persistence-like metadata, ransomware-like workspace activity, reputation edge cases and nested-archive metadata;
-- require positive, administrative/review and benign controls for every family;
-- make every emulation trace inert and reject any trace that claims real execution, network/C2, real persistence mutation, credential access or real-data encryption;
-- keep all normal CI/local exercises metadata-only and disposable-workspace-bound;
-- preserve canonical coverage at `PARTIAL=4 / GAP=0 / VERIFIED=7`;
-- B14-1 emulation evidence alone cannot promote VERIFIED and cannot expand remediation authority.
+Windows CI and local Windows acceptance both PASS on exact SHA `b2a00aac183905ec7f5988ef558dcf5612761ad5`.
+
+- CI: `1353 passed, 41 warnings in 131.07s`; local: `1353 passed, 41 warnings in 84.44s`;
+- contract digest matched exactly: `8d8ee6380043a685f83d169c42d6c2187a6e69762f244705346de391a29e7f5c`;
+- six emulation families and 18 total controls accepted;
+- all six positive controls produced emulation alerts;
+- all six administrative/user-workflow controls were reduced to review;
+- all six benign controls remained non-alerting;
+- every trace remained metadata-only with no malware execution, network/C2, credential access, real persistence mutation or real-data encryption;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- B14-1 promoted no coverage and expanded no remediation authority.
+
+### B14-2 target — Detector / Emulation Integration
+
+- bind each accepted B14-1 emulation family to a real BC Sentinel detector entrypoint where one already exists;
+- fail closed and expose an explicit product gap when no accepted detector exists;
+- preserve the existing detector thresholds and do not invoke attack payloads;
+- keep integration metadata-only and non-destructive;
+- keep canonical coverage unchanged until a later live Windows milestone earns new evidence;
+- preserve all accepted privacy, network and remediation boundaries.
 
 ### Planned Beta14 line
 
 1. **B14-0 — Verified Protection & Independent-Test Readiness Foundation** — `checkpoint/v014-b140-pass` / `a29de186a95d006b83fcb4e1c17992068b216255` — ACCEPTED / FROZEN.
-2. **B14-1 — Safe Adversary Emulation Matrix** — 🚧 CURRENT — six safe multi-stage emulation families with positive, administrative and benign controls; no destructive payload or real attack execution.
-3. **B14-2+ — Evidence-Backed Protection Expansion** — PLANNED — integrate accepted safe emulation with product detectors and promote only scenarios that earn separate Windows evidence.
+2. **B14-1 — Safe Adversary Emulation Matrix** — `checkpoint/v014-b141-pass` / `b2a00aac183905ec7f5988ef558dcf5612761ad5` — ACCEPTED / FROZEN.
+3. **B14-2 — Detector / Emulation Integration** — 🚧 CURRENT — bind safe emulation families to accepted detector entrypoints and expose unsupported families explicitly.
+4. **B14-3+ — Evidence-Backed Protection Expansion** — PLANNED — close explicit detection gaps and promote only scenarios that earn separate Windows evidence.
 
 Current engineering branch:
 
 ```text
-feature/v014-b141-safe-adversary-emulation-matrix
+feature/v014-b142-detector-emulation-integration
 ```
 
 ## Longer-term programs
