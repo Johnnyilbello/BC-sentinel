@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-5 — Safe Operational T0/T1 Campaign
+B14-6 — Isolated Lab Readiness
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b144-pass
-bbaec9bfbe52c43483054185501239351781d29a
+checkpoint/v014-b145-pass
+e8fd49ca12f51e132d497913d01d3edc07f020a3
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -675,15 +675,31 @@ Windows CI run `35511979996` and local Windows acceptance both PASS on exact SHA
 - orchestrator had no execution, download, storage, transfer, unpack or network authority;
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
 
-### B14-5 target — Safe Operational T0/T1 Campaign
+### B14-5 accepted evidence — Safe Operational T0/T1 Campaign
 
-- execute accepted harmless Windows controls end-to-end rather than only planning them;
-- run live script-abuse, autostart-like shortcut, process-tree, local-reputation and ransomware-like controls in disposable temporary workspaces;
-- validate every live output through its original accepted detector/module before accepting the campaign;
-- bridge all five results through the accepted B14-3 evidence importer;
-- export no raw paths, command lines, credentials, user files or malware bytes;
-- perform no network activity, real persistence mutation or security-control impairment;
-- keep canonical coverage unchanged; B14-5 validates the operational pipeline but does not create new VERIFIED claims.
+Windows CI run `35513107322` and local Windows acceptance both PASS on exact SHA `e8fd49ca12f51e132d497913d01d3edc07f020a3`.
+
+- CI: `1408 passed, 41 warnings in 93.11s`; local: `1408 passed, 41 warnings in 95.48s`;
+- deterministic contract digest: `c776dd47f986927a671f8d4be9100c1d4cf743e89938636a2638ab6352212faf`;
+- five live Windows controls executed: script abuse, autostart-like shortcut, process tree, local reputation and ransomware-like file activity;
+- all five original accepted detector/module summaries passed;
+- all five results were accepted and marked authoritative by the B14-3 evidence bridge;
+- no real malware, network activity, credential access, real persistence mutation, security-control impairment or user-file access occurred;
+- live campaign/evidence digests are intentionally run-specific and therefore may differ across CI and local acceptance while the deterministic contract digest remains stable;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-6 target — Isolated Lab Readiness
+
+- define the only external lab profile allowed to produce future T2/T3 evidence;
+- require a dedicated physical lab host that is not the daily-use development machine;
+- require a snapshot-capable hypervisor, a clean Windows guest snapshot and verified revert;
+- allow only `NONE`, `DROP` or `INETSIM` network modes; reject direct Internet, bridged networking and normal NAT to the Internet;
+- require an isolated analysis network and internal-only CAPE result channel;
+- disable shared folders, clipboard, drag/drop, USB passthrough and host-drive mounts;
+- keep real user data and host credentials out of the guest;
+- require sample authorization, one sample per revert cycle and cleanup/revert evidence;
+- export only sanitized B14-3 evidence; raw sample bytes and sensitive exports remain forbidden;
+- B14-6 validates readiness only and has no sample execution/download/transfer or hypervisor/network mutation authority.
 
 ### Planned Beta14 line
 
@@ -692,13 +708,14 @@ Windows CI run `35511979996` and local Windows acceptance both PASS on exact SHA
 3. **B14-2 — Detector / Emulation Integration** — `checkpoint/v014-b142-pass` / `346f3d2ffb61db09437d82c3762991b3c25c45b7` — ACCEPTED / FROZEN.
 4. **B14-3 — Isolated Real-Malware Lab Evidence Importer** — `checkpoint/v014-b143-pass` / `b807797b35e40dc34235c569e4f56b099824bca5` — ACCEPTED / FROZEN.
 5. **B14-4 — Lab Test Orchestrator T0-T5** — `checkpoint/v014-b144-pass` / `bbaec9bfbe52c43483054185501239351781d29a` — ACCEPTED / FROZEN.
-6. **B14-5 — Safe Operational T0/T1 Campaign** — 🚧 CURRENT — execute five accepted harmless Windows controls and route their evidence end-to-end through B14-3.
-7. **B14-6+ — Isolated-Lab Readiness & Lab-Backed Protection Expansion** — PLANNED — validate the external T2/T3 environment and use only authoritative lab evidence for future detector improvements.
+6. **B14-5 — Safe Operational T0/T1 Campaign** — `checkpoint/v014-b145-pass` / `e8fd49ca12f51e132d497913d01d3edc07f020a3` — ACCEPTED / FROZEN.
+7. **B14-6 — Isolated Lab Readiness** — 🚧 CURRENT — freeze the external dedicated-host, snapshot, network-isolation and sanitized-evidence requirements for T2/T3.
+8. **B14-7+ — External T2/T3 Evidence & Lab-Backed Protection Expansion** — PLANNED — accept only separately authorized isolated-lab evidence and use it to drive future detector improvements.
 
 Current engineering branch:
 
 ```text
-feature/v014-b145-safe-operational-campaign
+feature/v014-b146-isolated-lab-readiness
 ```
 
 ## Longer-term programs
