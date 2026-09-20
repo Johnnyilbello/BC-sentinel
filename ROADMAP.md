@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-0 — Verified Protection & Independent-Test Readiness Foundation
+B14-1 — Safe Adversary Emulation Matrix
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v013-b137-pass
-01df0a9c58b856cfe841909fb5c39f7ef71decb8
+checkpoint/v014-b140-pass
+a29de186a95d006b83fcb4e1c17992068b216255
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -606,28 +606,41 @@ Goal: move from a productized engineering RC to broader evidence-backed protecti
 
 B14 does **not** make BC Sentinel independently certified and does not promote any detection scenario without accepted Windows evidence. Ordinary CI/local acceptance remains harmless-fixture only; any future work involving authentic malicious samples must occur only in a separately authorized isolated lab with its own safety and evidence contract.
 
-### B14-0 target — Verified Protection & Independent-Test Readiness Foundation
+### B14-0 accepted evidence — Verified Protection & Independent-Test Readiness Foundation
 
-- freeze the exact Beta13 final checkpoint as the source baseline;
+Windows CI run `35508082232` and local Windows acceptance both PASS on exact SHA `a29de186a95d006b83fcb4e1c17992068b216255`.
+
+- CI: `1339 passed, 41 warnings in 121.46s`; local: `1339 passed, 41 warnings in 81.15s`;
+- contract digest matched exactly: `dd9f1790297a4a0fade350e943f8848db8531a4ddfbc5e40af913394c668be35`;
+- Beta13 final checkpoint identity and source immutability PASS;
+- measurable evidence gates frozen at `READY=2 / PARTIAL=3 / BLOCKED=5`;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`;
+- no synthetic-only evidence may promote VERIFIED;
+- ordinary CI/local acceptance remains harmless-fixture only;
+- independent-test readiness and independent certification remain explicitly false;
+- engineering RC is inherited; public release remains blocked only by `CODE_SIGNING`;
+- no response-authority, network or cloud requirement expansion occurred.
+
+### B14-1 target — Safe Adversary Emulation Matrix
+
+- expand safe multi-stage emulation beyond single-signal controls;
+- model script/file chains, process ancestry, persistence-like metadata, ransomware-like workspace activity, reputation edge cases and nested-archive metadata;
+- require positive, administrative/review and benign controls for every family;
+- make every emulation trace inert and reject any trace that claims real execution, network/C2, real persistence mutation, credential access or real-data encryption;
+- keep all normal CI/local exercises metadata-only and disposable-workspace-bound;
 - preserve canonical coverage at `PARTIAL=4 / GAP=0 / VERIFIED=7`;
-- define measurable protection / performance / usability evidence gates;
-- distinguish existing low-noise microbench evidence from full system-impact testing;
-- distinguish scenario-specific VERIFIED detections from broad real-world malware protection;
-- keep false-positive, performance and behavioral breadth claims fail-closed until larger evidence exists;
-- keep public-release `CODE_SIGNING` blocker factual and separate from protection quality;
-- no response-authority expansion, no mandatory network/cloud dependency, no silent destructive remediation;
-- no real-malware execution in normal CI/local acceptance.
+- B14-1 emulation evidence alone cannot promote VERIFIED and cannot expand remediation authority.
 
 ### Planned Beta14 line
 
-1. **B14-0 — Verified Protection & Independent-Test Readiness Foundation** — 🚧 CURRENT — freeze measurable protection, performance and usability evidence gates without promoting coverage.
-2. **B14-1 — Safe Adversary Emulation Matrix** — PLANNED — expand harmless behavior emulation across script abuse, process chains, persistence-like activity, ransomware-like file churn, archives and reputation edge cases; no destructive payload, propagation, credential theft, defense disabling or real-data encryption.
-3. **B14-2+ — Evidence-Backed Protection Expansion** — PLANNED — promote only scenarios that earn accepted Windows evidence and keep independent-lab readiness factual.
+1. **B14-0 — Verified Protection & Independent-Test Readiness Foundation** — `checkpoint/v014-b140-pass` / `a29de186a95d006b83fcb4e1c17992068b216255` — ACCEPTED / FROZEN.
+2. **B14-1 — Safe Adversary Emulation Matrix** — 🚧 CURRENT — six safe multi-stage emulation families with positive, administrative and benign controls; no destructive payload or real attack execution.
+3. **B14-2+ — Evidence-Backed Protection Expansion** — PLANNED — integrate accepted safe emulation with product detectors and promote only scenarios that earn separate Windows evidence.
 
 Current engineering branch:
 
 ```text
-feature/v014-b140-verified-protection-test-readiness
+feature/v014-b141-safe-adversary-emulation-matrix
 ```
 
 ## Longer-term programs
