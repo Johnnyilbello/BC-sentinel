@@ -618,6 +618,12 @@ B14 does **not** make BC Sentinel independently certified and does not promote a
 - no response-authority expansion, no mandatory network/cloud dependency, no silent destructive remediation;
 - no real-malware execution in normal CI/local acceptance.
 
+### Planned Beta14 line
+
+1. **B14-0 — Verified Protection & Independent-Test Readiness Foundation** — 🚧 CURRENT — freeze measurable protection, performance and usability evidence gates without promoting coverage.
+2. **B14-1 — Safe Adversary Emulation Matrix** — PLANNED — expand harmless behavior emulation across script abuse, process chains, persistence-like activity, ransomware-like file churn, archives and reputation edge cases; no destructive payload, propagation, credential theft, defense disabling or real-data encryption.
+3. **B14-2+ — Evidence-Backed Protection Expansion** — PLANNED — promote only scenarios that earn accepted Windows evidence and keep independent-lab readiness factual.
+
 Current engineering branch:
 
 ```text
