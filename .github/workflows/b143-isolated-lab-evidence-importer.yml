@@ -1,0 +1,33 @@
+name: B14-3 Isolated Lab Evidence Importer
+
+on:
+  push:
+    branches:
+      - feature/v014-b143-isolated-lab-evidence-importer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-lab-evidence-importer:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: B14-3 full regression and isolated lab evidence importer acceptance
+        shell: powershell
+        run: ./tools/acceptance/TEST-V014-B143-LAB-EVIDENCE-IMPORTER.ps1 -ConfirmIsolatedLabEvidenceImporter
