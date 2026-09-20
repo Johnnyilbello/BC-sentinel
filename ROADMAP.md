@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-8 — T3 Isolated Dynamic Evidence
+B14-9 — External Lab Provisioning Evidence
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b147-pass
-4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2
+checkpoint/v014-b148-pass
+8df6218b2db9e7738b2e2f719531fd24912ad0bc
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -716,18 +716,32 @@ Windows CI run `35514107510` and local Windows acceptance both PASS on exact SHA
 - raw sample bytes and sensitive exports remain forbidden;
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
 
-### B14-8 target — T3 Isolated Dynamic Evidence
+### B14-8 accepted evidence — T3 Isolated Dynamic Evidence
 
-- accept only authorized real-sample execution evidence from the separately provisioned B14-6 isolated disposable lab;
-- require one sample per clean snapshot/revert cycle and a confirmed cleanup/revert;
-- allow only `NONE / FAKE_SERVICES / INETSIM` network modes and reject any direct-Internet observation;
-- record only bounded behavior classes such as process tree, script abuse, file mutation, ransomware-like activity, persistence attempts, network attempts, defense-evasion attempts, memory activity and credential-access attempts;
-- classify outcomes explicitly as `BLOCKED / DETECTED / REVIEW_REQUIRED / MISSED / ERROR`;
-- measure dynamic protection rate, detection latency, execution duration, behavior distribution, network-mode distribution and category distribution;
-- reject evidence if propagation escapes the guest, host escape is observed, real user data or host credentials are exposed, credential material is exported, or security-control impairment succeeds;
-- route every accepted record through B14-3 and export no raw sample bytes or sensitive host/sample data;
-- keep this repository incapable of executing/downloading/storing/transferring/unpacking samples or creating lab network routes;
-- preserve canonical coverage until a later milestone separately earns a new VERIFIED scenario.
+Windows CI run `35515335730` and local Windows acceptance both PASS on exact SHA `8df6218b2db9e7738b2e2f719531fd24912ad0bc`.
+
+- CI: `1457 passed, 41 warnings in 76.59s`; local: `1457 passed, 41 warnings in 78.77s`;
+- contract digest matched exactly: `0e244a52b578a884c92c39117daf307c12d0505801d3b40287d695b488324118`;
+- dynamic evidence supports explicit `BLOCKED / DETECTED / REVIEW_REQUIRED / MISSED / ERROR` outcomes;
+- only `NONE / FAKE_SERVICES / INETSIM` network modes are accepted and direct Internet is rejected;
+- host escape, propagation beyond the guest, real-user-data contact, credential export and successful control impairment are rejected;
+- one sample per snapshot/revert cycle and cleanup/revert evidence remain mandatory;
+- B14-3 accepted all five deterministic T3 fixture records as authoritative internal-lab evidence;
+- the self-check `0.666...` dynamic protection rate is a fixture value, not a real-malware protection claim;
+- the repository still cannot execute/download/store/transfer/unpack samples or create lab routes;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-9 target — External Lab Provisioning Evidence
+
+- distinguish `CI_FIXTURE` from `REAL_HOST_OBSERVATION`; CI can validate the schema but can never claim that a physical lab exists;
+- accept a real lab as authoritative only after a dedicated physical host, clean analysis VM, snapshot creation/revert and a full revert drill are observed;
+- require isolated analysis networking, a separate management path, internal-only CAPE result channel and host firewall protection;
+- reject direct Internet, bridged networking, normal NAT-to-Internet and shared host surfaces;
+- keep real user data and development credentials off both host/guest surfaces used by the lab;
+- require sample-authorization workflow, one-sample-per-revert workflow, B14-3 importer readiness and separate T2/T3 operator drills;
+- keep raw sample export and sensitive evidence export disabled;
+- only a valid `REAL_HOST_OBSERVATION` may set `T2_real_campaign_ready=true` or `T3_real_campaign_ready=true`;
+- B14-9 validates provisioning evidence only and cannot create VMs, modify networking, manage a hypervisor or handle malware samples.
 
 ### Planned Beta14 line
 
@@ -739,13 +753,14 @@ Windows CI run `35514107510` and local Windows acceptance both PASS on exact SHA
 6. **B14-5 — Safe Operational T0/T1 Campaign** — `checkpoint/v014-b145-pass` / `e8fd49ca12f51e132d497913d01d3edc07f020a3` — ACCEPTED / FROZEN.
 7. **B14-6 — Isolated Lab Readiness** — `checkpoint/v014-b146-pass` / `98a702e178e8ef07da2c25751efcf5d1a7c2006f` — ACCEPTED / FROZEN.
 8. **B14-7 — T2 Static Real-Sample Evidence** — `checkpoint/v014-b147-pass` / `4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2` — ACCEPTED / FROZEN.
-9. **B14-8 — T3 Isolated Dynamic Evidence** — 🚧 CURRENT — validate dynamic isolated-lab evidence and containment without adding malware execution capability to the repository.
-10. **B14-9+ — Lab-Backed Detector Expansion** — PLANNED — use only separately accepted authoritative T2/T3 evidence to improve detectors and earn future scenario promotions.
+9. **B14-8 — T3 Isolated Dynamic Evidence** — `checkpoint/v014-b148-pass` / `8df6218b2db9e7738b2e2f719531fd24912ad0bc` — ACCEPTED / FROZEN.
+10. **B14-9 — External Lab Provisioning Evidence** — 🚧 CURRENT — prove that the dedicated physical lab really exists before any authentic T2/T3 campaign is treated as authoritative.
+11. **B14-10+ — First Authoritative T2/T3 Campaign & Lab-Backed Detector Expansion** — PLANNED — only after B14-9 has a real-host observation rather than a CI fixture.
 
 Current engineering branch:
 
 ```text
-feature/v014-b148-t3-isolated-dynamic-evidence
+feature/v014-b149-external-lab-provisioning-evidence
 ```
 
 ## Longer-term programs
