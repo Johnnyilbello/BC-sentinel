@@ -116,18 +116,7 @@ try {
         throw 'B14-5 safe live Windows campaign runner failed.'
     }
 
-    $code = @'
-import json
-import sys
-from pathlib import Path
-from sentinel import beta14_safe_operational_campaign as b145
-
-data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
-result = b145.summarize(data)
-print(json.dumps(result, sort_keys=True))
-raise SystemExit(0 if result.get("passed") is True else 1)
-'@
-    $reportJson = @(& $py -c $code $campaignPath) -join [Environment]::NewLine
+    $reportJson = @(& $py -m sentinel.beta14_safe_operational_campaign --evidence $campaignPath) -join [Environment]::NewLine
     if ($LASTEXITCODE -ne 0) {
         throw 'B14-5 safe operational campaign summary failed.'
     }
