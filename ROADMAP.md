@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-7 — T2 Static Real-Sample Evidence
+B14-8 — T3 Isolated Dynamic Evidence
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b146-pass
-98a702e178e8ef07da2c25751efcf5d1a7c2006f
+checkpoint/v014-b147-pass
+4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -702,17 +702,32 @@ Windows CI run `35513590887` and local Windows acceptance both PASS on exact SHA
 - T2 static and T3 isolated-dynamic lab profiles are READY as declarative contracts;
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
 
-### B14-7 target — T2 Static Real-Sample Evidence
+### B14-7 accepted evidence — T2 Static Real-Sample Evidence
 
-- accept only separately authorized real-malware/PUA sample evidence from the B14-6 isolated lab profile;
-- enforce static/on-demand/on-access scan modes only and reject any real sample execution;
-- require `network_mode=NONE` for all T2 evidence;
-- classify every result explicitly as `DETECTED / MISSED / ERROR` without converting misses to clean outcomes;
-- measure static detection rate, latency and category distribution across ransomware, trojan, infostealer, downloader, backdoor, worm, file infector, script/macro and other malware classes;
-- route every accepted record through the frozen B14-3 evidence importer;
-- accept only hashes and sanitized evidence identifiers: no raw sample bytes, raw paths, command lines, usernames, credentials or file contents;
-- keep the repository incapable of downloading, storing, transferring or unpacking samples;
-- preserve canonical coverage until a later milestone separately earns any new VERIFIED scenario.
+Windows CI run `35514107510` and local Windows acceptance both PASS on exact SHA `4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2`.
+
+- CI: `1440 passed, 41 warnings in 135.39s`; local: `1440 passed, 41 warnings in 110.45s`;
+- contract digest matched exactly: `69d5b566f0a510523c20b52a5c65391e02ec68eb476fb779e66987d66887c75b`;
+- T2 evidence is restricted to authorized real-sample metadata with `network_mode=NONE` and no sample execution;
+- `DETECTED / MISSED / ERROR` outcomes are explicit and bridged through B14-3;
+- static detection rate, detection latency and malware-category distribution are measurable;
+- the repository still has no sample download, storage, transfer or unpack capability;
+- the accepted self-check uses four deterministic fixtures only; its `2 detected / 1 missed / 1 error` and `0.666...` rate are test-fixture values, not a real-malware protection claim;
+- raw sample bytes and sensitive exports remain forbidden;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-8 target — T3 Isolated Dynamic Evidence
+
+- accept only authorized real-sample execution evidence from the separately provisioned B14-6 isolated disposable lab;
+- require one sample per clean snapshot/revert cycle and a confirmed cleanup/revert;
+- allow only `NONE / FAKE_SERVICES / INETSIM` network modes and reject any direct-Internet observation;
+- record only bounded behavior classes such as process tree, script abuse, file mutation, ransomware-like activity, persistence attempts, network attempts, defense-evasion attempts, memory activity and credential-access attempts;
+- classify outcomes explicitly as `BLOCKED / DETECTED / REVIEW_REQUIRED / MISSED / ERROR`;
+- measure dynamic protection rate, detection latency, execution duration, behavior distribution, network-mode distribution and category distribution;
+- reject evidence if propagation escapes the guest, host escape is observed, real user data or host credentials are exposed, credential material is exported, or security-control impairment succeeds;
+- route every accepted record through B14-3 and export no raw sample bytes or sensitive host/sample data;
+- keep this repository incapable of executing/downloading/storing/transferring/unpacking samples or creating lab network routes;
+- preserve canonical coverage until a later milestone separately earns a new VERIFIED scenario.
 
 ### Planned Beta14 line
 
@@ -723,13 +738,14 @@ Windows CI run `35513590887` and local Windows acceptance both PASS on exact SHA
 5. **B14-4 — Lab Test Orchestrator T0-T5** — `checkpoint/v014-b144-pass` / `bbaec9bfbe52c43483054185501239351781d29a` — ACCEPTED / FROZEN.
 6. **B14-5 — Safe Operational T0/T1 Campaign** — `checkpoint/v014-b145-pass` / `e8fd49ca12f51e132d497913d01d3edc07f020a3` — ACCEPTED / FROZEN.
 7. **B14-6 — Isolated Lab Readiness** — `checkpoint/v014-b146-pass` / `98a702e178e8ef07da2c25751efcf5d1a7c2006f` — ACCEPTED / FROZEN.
-8. **B14-7 — T2 Static Real-Sample Evidence** — 🚧 CURRENT — validate and measure authorized static real-sample evidence without sample execution or sample handling in the repository.
-9. **B14-8+ — T3 Isolated Dynamic Evidence & Lab-Backed Protection Expansion** — PLANNED — only after the external lab itself is provisioned and independently validated.
+8. **B14-7 — T2 Static Real-Sample Evidence** — `checkpoint/v014-b147-pass` / `4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2` — ACCEPTED / FROZEN.
+9. **B14-8 — T3 Isolated Dynamic Evidence** — 🚧 CURRENT — validate dynamic isolated-lab evidence and containment without adding malware execution capability to the repository.
+10. **B14-9+ — Lab-Backed Detector Expansion** — PLANNED — use only separately accepted authoritative T2/T3 evidence to improve detectors and earn future scenario promotions.
 
 Current engineering branch:
 
 ```text
-feature/v014-b147-t2-static-real-sample-evidence
+feature/v014-b148-t3-isolated-dynamic-evidence
 ```
 
 ## Longer-term programs
