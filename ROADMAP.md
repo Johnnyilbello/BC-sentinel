@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-6 — Isolated Lab Readiness
+B14-7 — T2 Static Real-Sample Evidence
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b145-pass
-e8fd49ca12f51e132d497913d01d3edc07f020a3
+checkpoint/v014-b146-pass
+98a702e178e8ef07da2c25751efcf5d1a7c2006f
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -688,18 +688,31 @@ Windows CI run `35513107322` and local Windows acceptance both PASS on exact SHA
 - live campaign/evidence digests are intentionally run-specific and therefore may differ across CI and local acceptance while the deterministic contract digest remains stable;
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
 
-### B14-6 target — Isolated Lab Readiness
+### B14-6 accepted evidence — Isolated Lab Readiness
 
-- define the only external lab profile allowed to produce future T2/T3 evidence;
-- require a dedicated physical lab host that is not the daily-use development machine;
-- require a snapshot-capable hypervisor, a clean Windows guest snapshot and verified revert;
-- allow only `NONE`, `DROP` or `INETSIM` network modes; reject direct Internet, bridged networking and normal NAT to the Internet;
-- require an isolated analysis network and internal-only CAPE result channel;
-- disable shared folders, clipboard, drag/drop, USB passthrough and host-drive mounts;
-- keep real user data and host credentials out of the guest;
-- require sample authorization, one sample per revert cycle and cleanup/revert evidence;
-- export only sanitized B14-3 evidence; raw sample bytes and sensitive exports remain forbidden;
-- B14-6 validates readiness only and has no sample execution/download/transfer or hypervisor/network mutation authority.
+Windows CI run `35513590887` and local Windows acceptance both PASS on exact SHA `98a702e178e8ef07da2c25751efcf5d1a7c2006f`.
+
+- CI: `1424 passed, 41 warnings in 127.85s`; local: `1424 passed, 41 warnings in 109.70s`;
+- contract digest matched exactly: `fa3b8028482d4102d2ea5e0681ae17a4b06e0cbd340431110971d25f6799c27e`;
+- dedicated-host, snapshot/revert and isolated-network gates all passed;
+- only `NONE / DROP / INETSIM` network modes are allowed;
+- direct Internet, bridged networking and normal NAT-to-Internet are rejected;
+- shared folders, clipboard, drag/drop, USB passthrough and host-drive mounts remain disabled;
+- raw sample export and sensitive evidence export remain forbidden;
+- T2 static and T3 isolated-dynamic lab profiles are READY as declarative contracts;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-7 target — T2 Static Real-Sample Evidence
+
+- accept only separately authorized real-malware/PUA sample evidence from the B14-6 isolated lab profile;
+- enforce static/on-demand/on-access scan modes only and reject any real sample execution;
+- require `network_mode=NONE` for all T2 evidence;
+- classify every result explicitly as `DETECTED / MISSED / ERROR` without converting misses to clean outcomes;
+- measure static detection rate, latency and category distribution across ransomware, trojan, infostealer, downloader, backdoor, worm, file infector, script/macro and other malware classes;
+- route every accepted record through the frozen B14-3 evidence importer;
+- accept only hashes and sanitized evidence identifiers: no raw sample bytes, raw paths, command lines, usernames, credentials or file contents;
+- keep the repository incapable of downloading, storing, transferring or unpacking samples;
+- preserve canonical coverage until a later milestone separately earns any new VERIFIED scenario.
 
 ### Planned Beta14 line
 
@@ -709,13 +722,14 @@ Windows CI run `35513107322` and local Windows acceptance both PASS on exact SHA
 4. **B14-3 — Isolated Real-Malware Lab Evidence Importer** — `checkpoint/v014-b143-pass` / `b807797b35e40dc34235c569e4f56b099824bca5` — ACCEPTED / FROZEN.
 5. **B14-4 — Lab Test Orchestrator T0-T5** — `checkpoint/v014-b144-pass` / `bbaec9bfbe52c43483054185501239351781d29a` — ACCEPTED / FROZEN.
 6. **B14-5 — Safe Operational T0/T1 Campaign** — `checkpoint/v014-b145-pass` / `e8fd49ca12f51e132d497913d01d3edc07f020a3` — ACCEPTED / FROZEN.
-7. **B14-6 — Isolated Lab Readiness** — 🚧 CURRENT — freeze the external dedicated-host, snapshot, network-isolation and sanitized-evidence requirements for T2/T3.
-8. **B14-7+ — External T2/T3 Evidence & Lab-Backed Protection Expansion** — PLANNED — accept only separately authorized isolated-lab evidence and use it to drive future detector improvements.
+7. **B14-6 — Isolated Lab Readiness** — `checkpoint/v014-b146-pass` / `98a702e178e8ef07da2c25751efcf5d1a7c2006f` — ACCEPTED / FROZEN.
+8. **B14-7 — T2 Static Real-Sample Evidence** — 🚧 CURRENT — validate and measure authorized static real-sample evidence without sample execution or sample handling in the repository.
+9. **B14-8+ — T3 Isolated Dynamic Evidence & Lab-Backed Protection Expansion** — PLANNED — only after the external lab itself is provisioned and independently validated.
 
 Current engineering branch:
 
 ```text
-feature/v014-b146-isolated-lab-readiness
+feature/v014-b147-t2-static-real-sample-evidence
 ```
 
 ## Longer-term programs
