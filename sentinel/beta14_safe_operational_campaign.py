@@ -10,9 +10,11 @@ campaign can run end-to-end on Windows and return evidence through the same
 import path that later isolated-lab tiers will use.
 """
 
+import argparse
 import hashlib
 import json
 import re
+from pathlib import Path
 from typing import Any, Final, Iterable, Mapping
 
 from sentinel import beta14_lab_evidence_importer as b143
@@ -374,9 +376,19 @@ def self_check() -> dict[str, Any]:
 
 
 def main() -> int:
-    result = self_check()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--self-check", action="store_true")
+    args = parser.parse_args()
+    if args.evidence is None:
+        result = self_check()
+    else:
+        try:
+            result = summarize(json.loads(args.evidence.read_text(encoding="utf-8-sig")))
+        except (OSError, UnicodeError, ValueError):
+            result = {"passed": False, "failures": ["b145:evidence_unreadable_or_invalid_json"]}
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 0 if result["passed"] else 1
+    return 0 if result.get("passed") else 1
 
 
 if __name__ == "__main__":
