@@ -789,6 +789,18 @@ or remediation authority.
   archive/container, larger benign corpora, crash/recovery, sustained load and
   physical-lab T2/T3 evidence remain future work and earn no coverage claim yet.
 
+**T1-H2 — archive/container metadata preflight**
+
+- adds a read-only ZIP-family central-directory preflight that never extracts or
+  reads member content and never claims that an accepted archive is clean;
+- rejects malformed/unsupported inputs and sends traversal paths, absolute paths,
+  symlinks, encrypted entries, nested containers, excessive depth, oversized
+  entries and suspicious compression ratios to review;
+- enforces archive, entry-count and uncompressed-size budgets before any later
+  scanner may handle the artifact;
+- remaining limits: ZIP-family metadata only; RAR/7z and recursive content
+  inspection remain unsupported, and no archive scenario is promoted to VERIFIED.
+
 Current engineering branch:
 
 ```text
