@@ -115,9 +115,17 @@ function Get-ControlTriplet([object]$Summary) {
     $administrative = $null
     $benign = $null
 
-    if ($null -ne $Summary.control_results) {
-        foreach ($property in $Summary.control_results.PSObject.Properties) {
-            $outcome = [string]$property.Value.outcome
+    $controlResultsProperty = $Summary.PSObject.Properties['control_results']
+    $controlOutcomesProperty = $Summary.PSObject.Properties['control_outcomes']
+
+    if ($null -ne $controlResultsProperty -and $null -ne $controlResultsProperty.Value) {
+        foreach ($property in $controlResultsProperty.Value.PSObject.Properties) {
+            $value = $property.Value
+            $outcomeProperty = $value.PSObject.Properties['outcome']
+            if ($null -eq $outcomeProperty) {
+                continue
+            }
+            $outcome = [string]$outcomeProperty.Value
             if ($outcome -eq 'DETECTED' -and $null -eq $positive) {
                 $positive = $outcome
             }
@@ -129,8 +137,8 @@ function Get-ControlTriplet([object]$Summary) {
             }
         }
     }
-    elseif ($null -ne $Summary.control_outcomes) {
-        foreach ($property in $Summary.control_outcomes.PSObject.Properties) {
+    elseif ($null -ne $controlOutcomesProperty -and $null -ne $controlOutcomesProperty.Value) {
+        foreach ($property in $controlOutcomesProperty.Value.PSObject.Properties) {
             $outcome = [string]$property.Value
             if ($outcome -eq 'DETECTED' -and $null -eq $positive) {
                 $positive = $outcome
