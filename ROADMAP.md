@@ -20,14 +20,14 @@ Beta14  IN PROGRESS
 Current milestone:
 
 ```text
-B14-9 — External Lab Provisioning Evidence
+B14-10 — Real Host Preflight
 ```
 
 Latest accepted engineering checkpoint:
 
 ```text
-checkpoint/v014-b148-pass
-8df6218b2db9e7738b2e2f719531fd24912ad0bc
+checkpoint/v014-b149-pass
+e743af638f97860aaa0cfebbdfdbf8efc484a973
 ```
 
 Latest accepted repository-structure checkpoint:
@@ -731,17 +731,29 @@ Windows CI run `35515335730` and local Windows acceptance both PASS on exact SHA
 - the repository still cannot execute/download/store/transfer/unpack samples or create lab routes;
 - canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
 
-### B14-9 target — External Lab Provisioning Evidence
+### B14-9 accepted evidence — External Lab Provisioning Evidence
 
-- distinguish `CI_FIXTURE` from `REAL_HOST_OBSERVATION`; CI can validate the schema but can never claim that a physical lab exists;
-- accept a real lab as authoritative only after a dedicated physical host, clean analysis VM, snapshot creation/revert and a full revert drill are observed;
-- require isolated analysis networking, a separate management path, internal-only CAPE result channel and host firewall protection;
-- reject direct Internet, bridged networking, normal NAT-to-Internet and shared host surfaces;
-- keep real user data and development credentials off both host/guest surfaces used by the lab;
-- require sample-authorization workflow, one-sample-per-revert workflow, B14-3 importer readiness and separate T2/T3 operator drills;
-- keep raw sample export and sensitive evidence export disabled;
-- only a valid `REAL_HOST_OBSERVATION` may set `T2_real_campaign_ready=true` or `T3_real_campaign_ready=true`;
-- B14-9 validates provisioning evidence only and cannot create VMs, modify networking, manage a hypervisor or handle malware samples.
+Windows CI run `35515972231` and local Windows acceptance both PASS on exact SHA `e743af638f97860aaa0cfebbdfdbf8efc484a973`.
+
+- CI: `1471 passed, 41 warnings in 72.66s`; local: `1471 passed, 41 warnings in 80.67s`;
+- contract digest matched exactly: `0e17a90e574be02802516022f4f74b9498295f3d4559c04717913cceacae0618`;
+- `CI_FIXTURE` is valid only as non-authoritative schema evidence;
+- CI and local development hosts remain `physical_lab=false / T2_real_ready=false / T3_real_ready=false`;
+- only a future `REAL_HOST_OBSERVATION` can make the physical lab authoritative;
+- direct Internet, bridged networking, normal NAT-to-Internet and shared host surfaces remain rejected;
+- the module cannot create VMs, modify networking, manage a hypervisor or handle samples;
+- canonical coverage remained `PARTIAL=4 / GAP=0 / VERIFIED=7`.
+
+### B14-10 target — Real Host Preflight
+
+- provide a read-only collector intended to run on the dedicated GNU/Linux/KVM lab host;
+- verify KVM access, `virsh`, QEMU, `virt-host-validate`, the configured analysis VM and its clean snapshot;
+- verify separate analysis and management interfaces and reject a default route on the analysis interface;
+- inspect the VM definition for shared filesystem devices and USB host passthrough;
+- hash the host machine identifier before export so no raw host identifier leaves the lab;
+- perform no Internet connectivity probe, no network changes, no VM start/stop, no snapshot revert and no sample execution;
+- a passing real-host preflight may set `ready_for_revert_drill=true` only; it still cannot set `physical_lab=true`, `T2_real_ready=true` or `T3_real_ready=true`;
+- after B14-10, perform a separate benign snapshot/revert drill before producing the authoritative B14-9 `REAL_HOST_OBSERVATION`.
 
 ### Planned Beta14 line
 
@@ -754,13 +766,14 @@ Windows CI run `35515335730` and local Windows acceptance both PASS on exact SHA
 7. **B14-6 — Isolated Lab Readiness** — `checkpoint/v014-b146-pass` / `98a702e178e8ef07da2c25751efcf5d1a7c2006f` — ACCEPTED / FROZEN.
 8. **B14-7 — T2 Static Real-Sample Evidence** — `checkpoint/v014-b147-pass` / `4b4bcb4d11ee1ac6847f1dba3a353f6976c959b2` — ACCEPTED / FROZEN.
 9. **B14-8 — T3 Isolated Dynamic Evidence** — `checkpoint/v014-b148-pass` / `8df6218b2db9e7738b2e2f719531fd24912ad0bc` — ACCEPTED / FROZEN.
-10. **B14-9 — External Lab Provisioning Evidence** — 🚧 CURRENT — prove that the dedicated physical lab really exists before any authentic T2/T3 campaign is treated as authoritative.
-11. **B14-10+ — First Authoritative T2/T3 Campaign & Lab-Backed Detector Expansion** — PLANNED — only after B14-9 has a real-host observation rather than a CI fixture.
+10. **B14-9 — External Lab Provisioning Evidence** — `checkpoint/v014-b149-pass` / `e743af638f97860aaa0cfebbdfdbf8efc484a973` — ACCEPTED / FROZEN.
+11. **B14-10 — Real Host Preflight** — 🚧 CURRENT — collect read-only facts from the dedicated Linux/KVM lab host and gate entry into the benign revert drill.
+12. **B14-11+ — Revert Drill, Authoritative REAL_HOST_OBSERVATION and First Real T2 Campaign** — PLANNED — only after B14-10 passes on actual dedicated hardware.
 
 Current engineering branch:
 
 ```text
-feature/v014-b149-external-lab-provisioning-evidence
+feature/v014-b1410-real-host-preflight
 ```
 
 ## Longer-term programs
