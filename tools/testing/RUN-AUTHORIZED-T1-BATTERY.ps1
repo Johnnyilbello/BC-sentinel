@@ -36,9 +36,30 @@ if ($status.Count -gt 0) {
     throw 'Repository has local changes. Run the battery from a clean tree.'
 }
 
-$py = Join-Path $repoRoot '.venv\Scripts\python.exe'
+$venvRoot = Join-Path $repoRoot '.venv'
+$py = Join-Path $venvRoot 'Scripts\python.exe'
+
 if (-not (Test-Path -LiteralPath $py -PathType Leaf)) {
-    $py = (Get-Command python -ErrorAction Stop).Source
+    $bootstrapPython = (Get-Command python -ErrorAction Stop).Source
+    Write-Host 'Local .venv missing: creating a clean BC Sentinel test environment...'
+    & $bootstrapPython -m venv $venvRoot
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $py -PathType Leaf)) {
+        throw 'Unable to create the local .venv.'
+    }
+}
+
+$dependencyProbe = & $py -c "import watchdog; print('watchdog-ok')" 2>$null
+if ($LASTEXITCODE -ne 0 -or ($dependencyProbe -join '') -notmatch 'watchdog-ok') {
+    Write-Host 'BC Sentinel test dependencies missing: installing requirements.txt into .venv...'
+    & $py -m pip install -r (Join-Path $repoRoot 'requirements.txt')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to install BC Sentinel test dependencies into .venv.'
+    }
+}
+
+& $py -c "import watchdog; import psutil; import cryptography; print('T1 dependency preflight: PASS')"
+if ($LASTEXITCODE -ne 0) {
+    throw 'T1 dependency preflight failed after environment bootstrap.'
 }
 
 function Invoke-Summary(
