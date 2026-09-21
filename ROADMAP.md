@@ -801,6 +801,38 @@ or remediation authority.
 - remaining limits: ZIP-family metadata only; RAR/7z and recursive content
   inspection remain unsupported, and no archive scenario is promoted to VERIFIED.
 
+
+**T1-H3 — Windows Qt runtime / sandbox packaging hardening**
+
+- finding: the previously generated Beta13 desktop bundle could fail on a clean
+  Windows/Sandbox consumer while importing `PySide6.QtWidgets` with a DLL
+  "procedure not found" error even though source-level tests were green;
+- fix: installer builds now default to a fresh 64-bit Python 3.12 venv, require
+  `pip check`, verify exact PySide6 / Essentials / Addons / shiboken version
+  consistency, validate the bundled Qt DLL set and prefer packaged DLL/plugin
+  directories at frozen-process startup;
+- packaged-runtime gates now run `--self-check` and `--smoke` with Python,
+  Git, winget and external Qt removed from PATH/environment before the installer
+  is accepted;
+- Windows CI run `35624458457` PASS on exact code SHA
+  `2969cb5e322c23dae61286407d5cc7193dd357d1`: `1500 passed, 41 warnings`;
+  bundled `Qt6Core/Gui/Widgets` all resolved to Qt `6.11.2.0`; clean packaged
+  self-check and Qt smoke PASS;
+- a second fresh Windows consumer runner installed the emitted NSIS package,
+  repeated self-check + Qt smoke with no Python/Git/winget/external Qt on PATH,
+  and uninstalled successfully;
+- installer SHA-256:
+  `cbb9852b36aaef5ef258794fe71b96c97d6f23d4a308a3cdfe58c2a6fe9f7473`;
+  workflow artifact `bc-sentinel-v014-windows-qt-runtime` / ID
+  `10651467121` is retained for 14 days from the accepted CI run;
+- disposable Windows Sandbox T1 execution has a one-command wrapper restricted
+  to the existing inert T1 battery; real malware, credential access, C2/network
+  dependence, real persistence, control impairment and user-file targeting stay
+  forbidden;
+- local/physical Windows Sandbox confirmation is still pending, therefore no
+  immutable T1-H3 checkpoint is created yet and no protection-coverage,
+  remediation-authority or public code-signing claim is promoted.
+
 Current engineering branch:
 
 ```text

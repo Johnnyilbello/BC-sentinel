@@ -1,0 +1,150 @@
+name: v0.14 Windows Qt Runtime Hardening
+
+on:
+  push:
+    branches:
+      - hardening/v014-windows-qt-runtime
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-regression:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Windows Qt runtime hardening acceptance
+        shell: powershell
+        run: >-
+          ./tools/acceptance/TEST-V014-WINDOWS-QT-RUNTIME.ps1
+          -ConfirmWindowsQtRuntime
+          -OutputRoot .\dist\V014-WINDOWS-QT-RUNTIME
+
+      - name: Upload hardened installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-sentinel-v014-windows-qt-runtime
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/V014-WINDOWS-QT-RUNTIME/installer/BC-Sentinel-Setup-v0.13.0-b133.exe
+            dist/V014-WINDOWS-QT-RUNTIME/installer/installer-evidence.json
+
+  clean-consumer:
+    needs: build-and-regression
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Download hardened installer
+        uses: actions/download-artifact@v4
+        with:
+          name: bc-sentinel-v014-windows-qt-runtime
+          path: artifact
+
+      - name: Install and launch without Python Git winget or host Qt on PATH
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:BC_SENTINEL_REDUCED_MOTION = '1'
+
+          $installer = (Get-ChildItem -LiteralPath .\artifact -Recurse -File -Filter 'BC-Sentinel-Setup-v0.13.0-b133.exe' | Select-Object -First 1).FullName
+          if (-not $installer) { throw 'Downloaded installer missing.' }
+
+          $installRoot = Join-Path $env:RUNNER_TEMP ('BCSentinel-clean-consumer-' + [guid]::NewGuid().ToString('N'))
+          $install = Start-Process -FilePath $installer -ArgumentList @('/S', ('/D=' + $installRoot)) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw ('Installer failed exit=' + $install.ExitCode) }
+
+          $exe = Join-Path $installRoot 'BC-Sentinel.exe'
+          $uninstaller = Join-Path $installRoot 'Uninstall.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Installed executable missing.' }
+          if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Installed uninstaller missing.' }
+
+          $qtNames = @('Qt6Core.dll','Qt6Gui.dll','Qt6Widgets.dll')
+          $qtVersions = @()
+          foreach ($name in $qtNames) {
+            $matches = @(Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter $name)
+            if ($matches.Count -ne 1) { throw ('Expected one ' + $name + ', found ' + $matches.Count) }
+            $qtVersions += [string]$matches[0].VersionInfo.FileVersion
+          }
+          if (@($qtVersions | Select-Object -Unique).Count -ne 1) {
+            throw ('Installed Qt DLL versions differ: ' + ($qtVersions -join ', '))
+          }
+
+          $env:PATH = (Join-Path $env:SystemRoot 'System32') + ';' + $env:SystemRoot
+          foreach ($name in @('PYTHONHOME','PYTHONPATH','QT_PLUGIN_PATH','QT_QPA_PLATFORM_PLUGIN_PATH','QML2_IMPORT_PATH')) {
+            Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
+          }
+
+          foreach ($case in @(
+            @{ Name = 'SELF-CHECK'; Args = @('--self-check') },
+            @{ Name = 'QT-SMOKE'; Args = @('--smoke') }
+          )) {
+            $process = Start-Process -FilePath $exe -ArgumentList $case.Args -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw ('Clean consumer ' + $case.Name + ' failed exit=' + $process.ExitCode)
+            }
+            Write-Host ('Clean consumer ' + $case.Name + '=PASS')
+          }
+
+          $t1Report = Join-Path $env:RUNNER_TEMP 'BCSentinel-packaged-t1-result.json'
+          $t1 = Start-Process -FilePath $exe -ArgumentList @(
+            '--authorized-t1-sandbox',
+            '--confirm-authorized-t1',
+            '--allow-ci-disposable-runner',
+            '--t1-report',
+            $t1Report
+          ) -Wait -PassThru
+          if ($t1.ExitCode -ne 0) {
+            if (Test-Path -LiteralPath $t1Report) {
+              Get-Content -LiteralPath $t1Report -Raw | Write-Host
+            }
+            throw ('Clean consumer packaged T1 failed exit=' + $t1.ExitCode)
+          }
+          if (-not (Test-Path -LiteralPath $t1Report -PathType Leaf)) {
+            throw 'Packaged T1 result file missing.'
+          }
+          $t1Result = Get-Content -LiteralPath $t1Report -Raw -Encoding UTF8 | ConvertFrom-Json
+          if (-not [bool]$t1Result.passed -or [int]$t1Result.test_count -ne 4) {
+            throw 'Packaged T1 result did not pass all four controls.'
+          }
+          foreach ($row in @($t1Result.tests)) {
+            if (-not [bool]$row.summary_passed -or
+                [string]$row.positive_outcome -ne 'DETECTED' -or
+                [string]$row.administrative_outcome -ne 'REVIEW_REQUIRED' -or
+                [string]$row.benign_outcome -ne 'NO_MATCH' -or
+                -not [bool]$row.cleanup_confirmed) {
+              throw ('Packaged T1 control failed: ' + [string]$row.test_id)
+            }
+          }
+          if ([bool]$t1Result.safety.real_malware_executed -or
+              [bool]$t1Result.safety.network_io_required -or
+              [bool]$t1Result.safety.credential_access -or
+              [bool]$t1Result.safety.real_persistence_mutation -or
+              [bool]$t1Result.safety.security_control_impairment -or
+              [bool]$t1Result.safety.user_file_access -or
+              [bool]$t1Result.python_or_git_required -or
+              [bool]$t1Result.winget_required -or
+              [bool]$t1Result.network_required) {
+            throw 'Packaged T1 safety contract was violated.'
+          }
+          Write-Host 'Clean consumer PACKAGED-T1=PASS'
+
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw ('Uninstaller failed exit=' + $uninstall.ExitCode) }
+
+          Write-Host 'CLEAN CONSUMER: python_on_path=false git_on_path=false winget_on_path=false external_qt_on_path=false'
+          Write-Host 'BC SENTINEL v0.14 WINDOWS QT RUNTIME CLEAN-CONSUMER - PASS'
