@@ -51,13 +51,25 @@ print(json.dumps({
     "qt_runtime": PySide6.QtCore.qVersion(),
 }, sort_keys=True))
 '@
-    $result = (& $PythonPath -c $probe).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($result)) {
-        throw 'B13-3 Qt build environment preflight failed.'
+    $probePath = Join-Path ([IO.Path]::GetTempPath()) ('BCSentinel-qt-preflight-' + [guid]::NewGuid().ToString('N') + '.py')
+    try {
+        [IO.File]::WriteAllText($probePath, $probe, [Text.UTF8Encoding]::new($false))
+        $lines = @(& $PythonPath $probePath)
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            throw ('B13-3 Qt build environment preflight failed exit=' + $exitCode)
+        }
+        $result = ($lines -join [Environment]::NewLine).Trim()
+        if ([string]::IsNullOrWhiteSpace($result)) {
+            throw 'B13-3 Qt build environment preflight returned no result.'
+        }
+        $parsed = $result | ConvertFrom-Json
+        Write-Host ('B13-3 QT BUILD PREFLIGHT=' + $result)
+        return $parsed
     }
-    $parsed = $result | ConvertFrom-Json
-    Write-Host ('B13-3 QT BUILD PREFLIGHT=' + $result)
-    return $parsed
+    finally {
+        Remove-Item -LiteralPath $probePath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Assert-BundledQtRuntime([string]$Root) {
