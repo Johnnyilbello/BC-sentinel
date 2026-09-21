@@ -770,6 +770,25 @@ Windows CI run `35515972231` and local Windows acceptance both PASS on exact SHA
 11. **B14-10 — Real Host Preflight** — 🚧 CURRENT — collect read-only facts from the dedicated Linux/KVM lab host and gate entry into the benign revert drill.
 12. **B14-11+ — Revert Drill, Authoritative REAL_HOST_OBSERVATION and First Real T2 Campaign** — PLANNED — only after B14-10 passes on actual dedicated hardware.
 
+### Post-B14-10 defensive hardening track
+
+The accepted B14-10 checkpoint remains immutable. Work after it continues on
+`hardening/v014-t1-variants` and does not promote physical-lab, T2/T3, detection,
+or remediation authority.
+
+**T1-H1 — hostile metadata and parser resilience**
+
+- baseline: authorized T1 battery PASS on `e5a7462539f1f78827d4350e12bfe0bf767c6ab7`;
+- finding: unbounded integer metadata and non-finite floating-point values could
+  pass selected evidence validators and later fail during digest/serialization;
+- fix: file-event and mutation counts are bounded, PID metadata is restricted to
+  the Windows 32-bit PID domain, and `NaN`/infinite measurements fail closed;
+- regression: pathological 5,000-digit values and all non-finite variants are
+  covered without echoing input data or throwing from detector summaries;
+- remaining limits: the live T1 battery remains four narrow harmless scenarios;
+  archive/container, larger benign corpora, crash/recovery, sustained load and
+  physical-lab T2/T3 evidence remain future work and earn no coverage claim yet.
+
 Current engineering branch:
 
 ```text

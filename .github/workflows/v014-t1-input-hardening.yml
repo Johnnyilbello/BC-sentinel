@@ -1,0 +1,30 @@
+name: v0.14 T1 input hardening
+
+on:
+  push:
+    branches:
+      - hardening/v014-t1-variants
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run T1 input hardening acceptance
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\acceptance\TEST-V014-T1-INPUT-HARDENING.ps1
+

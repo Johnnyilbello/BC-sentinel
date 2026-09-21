@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 
+import pytest
+
 from sentinel import beta9_ransomware_controls as b93
 
 
@@ -152,6 +154,21 @@ def test_entropy_range_is_bounded() -> None:
     data = _valid()
     data["controls"][0]["entropy_delta"] = 1.1
     assert "control[0]:entropy_delta_invalid" in b93.validate_evidence(data)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_entropy_fails_closed(value: float) -> None:
+    data = _valid()
+    data["controls"][0]["entropy_delta"] = value
+    assert "control[0]:entropy_delta_invalid" in b93.validate_evidence(data)
+
+
+def test_pathological_event_count_fails_without_serialization_crash() -> None:
+    data = _valid()
+    data["controls"][0]["write_event_count"] = 10**5000
+    report = b93.summarize(data)
+    assert report["passed"] is False
+    assert "control[0]:write_event_count_invalid" in report["failures"]
 
 
 def test_reversed_or_unbounded_time_fails() -> None:

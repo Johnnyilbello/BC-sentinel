@@ -206,3 +206,11 @@ def test_deterministic_summary():
 @pytest.mark.parametrize("bad", [None, [], "raw", 1, True, {}])
 def test_malformed_top_level_fails_closed(bad):
     assert b124.summarize(bad)["passed"] is False
+
+
+def test_pathological_pid_fails_without_serialization_crash():
+    data = _evidence()
+    data["controls"][0]["processes"][2]["pid"] = 10**5000
+    report = b124.summarize(data)
+    assert report["passed"] is False
+    assert any("pid_invalid" in failure for failure in report["failures"])

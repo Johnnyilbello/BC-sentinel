@@ -23,6 +23,7 @@ SOURCE: Final[str] = "WINDOWS_PROCESS_TREE_LIVE_CONTROLS"
 SOURCE_CHECKPOINT: Final[str] = "checkpoint/v012-beta12-b123-pass"
 SOURCE_CHECKPOINT_COMMIT: Final[str] = "90776f9b0e3f1a9c034b79a5886b30df0db41e5c"
 TARGET_SCENARIO: Final[str] = "B12-PROCESS-TREE-001"
+MAX_PID: Final[int] = 0xFFFFFFFF
 
 BASELINE_VERIFIED: Final[tuple[str, ...]] = (
     "B7-POWERSHELL-001",
@@ -155,7 +156,11 @@ def _valid_sha256(value: object) -> bool:
 def _valid_pid(value: object, *, allow_none: bool = False) -> bool:
     if value is None:
         return allow_none
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 < value <= MAX_PID
+    )
 
 
 def _valid_signer(state: object, subject_digest: object) -> bool:
