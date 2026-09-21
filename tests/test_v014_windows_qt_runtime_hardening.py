@@ -11,7 +11,7 @@ def test_qt_runtime_hook_prefers_frozen_bundle_without_system_mutation():
 
     assert 'getattr(sys, "frozen", False)' in text
     assert 'getattr(sys, "_MEIPASS", None)' in text
-    assert "os.add_dll_directory" in text
+    assert 'getattr(os, "add_dll_directory", None)' in text
     assert '"QT_PLUGIN_PATH"' in text
     assert '"QT_QPA_PLATFORM_PLUGIN_PATH"' in text
     assert '"QML2_IMPORT_PATH"' in text
