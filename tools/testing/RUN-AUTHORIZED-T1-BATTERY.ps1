@@ -48,8 +48,20 @@ if (-not (Test-Path -LiteralPath $py -PathType Leaf)) {
     }
 }
 
-$dependencyProbe = & $py -c "import watchdog; print('watchdog-ok')" 2>$null
-if ($LASTEXITCODE -ne 0 -or ($dependencyProbe -join '') -notmatch 'watchdog-ok') {
+$previousErrorActionPreference = $ErrorActionPreference
+try {
+    # Windows PowerShell 5 can promote native stderr to NativeCommandError when
+    # ErrorActionPreference=Stop. A missing dependency is expected here, so probe
+    # it with non-terminating native stderr and decide from the process exit code.
+    $ErrorActionPreference = 'Continue'
+    $dependencyProbe = @(& $py -c "import watchdog; print('watchdog-ok')" 2>$null)
+    $dependencyProbeExit = $LASTEXITCODE
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
+
+if ($dependencyProbeExit -ne 0 -or ($dependencyProbe -join '') -notmatch 'watchdog-ok') {
     Write-Host 'BC Sentinel test dependencies missing: installing requirements.txt into .venv...'
     & $py -m pip install -r (Join-Path $repoRoot 'requirements.txt')
     if ($LASTEXITCODE -ne 0) {
