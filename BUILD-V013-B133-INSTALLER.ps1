@@ -97,6 +97,21 @@ function Assert-BundledQtRuntime([string]$Root) {
     }
 }
 
+function Assert-PackagedT1Controls([string]$Root) {
+    $required = @(
+        'RUN-V012-BETA12-B122-SCRIPT-ABUSE.ps1',
+        'RUN-V012-BETA12-B123-AUTOSTART.ps1',
+        'RUN-V012-BETA12-B124-PROCESS-TREE.ps1'
+    )
+    foreach ($name in $required) {
+        $matches = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter $name)
+        if ($matches.Count -ne 1) {
+            throw ('B13-3 packaged T1 control expected exactly one ' + $name + ', found ' + $matches.Count)
+        }
+    }
+    Write-Host 'B13-3 PACKAGED T1 CONTROLS=PASS'
+}
+
 function Invoke-CleanPackagedCheck(
     [string]$Executable,
     [string[]]$Arguments,
@@ -198,8 +213,18 @@ New-Item -ItemType Directory -Path $PayloadRoot, $InstallerRoot -Force | Out-Nul
 
 $Entry = Join-Path $RepoRoot 'packaging\\beta13_desktop_entry.py'
 $RuntimeHook = Join-Path $RepoRoot 'packaging\\windows_qt_runtime_hook.py'
+$T1ControlScripts = @(
+    (Join-Path $RepoRoot 'tools\\acceptance\\RUN-V012-BETA12-B122-SCRIPT-ABUSE.ps1'),
+    (Join-Path $RepoRoot 'tools\\acceptance\\RUN-V012-BETA12-B123-AUTOSTART.ps1'),
+    (Join-Path $RepoRoot 'tools\\acceptance\\RUN-V012-BETA12-B124-PROCESS-TREE.ps1')
+)
 if (-not (Test-Path -LiteralPath $Entry -PathType Leaf)) { throw 'B13-3 desktop entrypoint missing.' }
 if (-not (Test-Path -LiteralPath $RuntimeHook -PathType Leaf)) { throw 'B13-3 Qt runtime hardening hook missing.' }
+foreach ($controlScript in $T1ControlScripts) {
+    if (-not (Test-Path -LiteralPath $controlScript -PathType Leaf)) {
+        throw ('B13-3 packaged T1 control source missing: ' + $controlScript)
+    }
+}
 
 try {
     $OldTemp = $env:TEMP
@@ -230,6 +255,10 @@ try {
             '--hidden-import', 'sentinel.beta13_safe_response',
             '--hidden-import', 'sentinel.beta13_secure_updates',
             '--hidden-import', 'sentinel.beta13_installer',
+            '--hidden-import', 'sentinel.sandbox_t1_runtime',
+            '--add-data', ($T1ControlScripts[0] + ';sandbox_controls'),
+            '--add-data', ($T1ControlScripts[1] + ';sandbox_controls'),
+            '--add-data', ($T1ControlScripts[2] + ';sandbox_controls'),
             $Entry
         )
         & $Py -m PyInstaller @PyInstallerArgs
@@ -244,6 +273,7 @@ try {
     if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw 'B13-3 packaged executable missing.' }
 
     Assert-BundledQtRuntime $ProductRoot
+    Assert-PackagedT1Controls $ProductRoot
     Invoke-CleanPackagedCheck $Exe @('--self-check') 'SELF-CHECK'
     Invoke-CleanPackagedCheck $Exe @('--smoke') 'QT-SMOKE'
 
