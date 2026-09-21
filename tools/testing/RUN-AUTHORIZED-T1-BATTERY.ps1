@@ -63,16 +63,33 @@ finally {
 
 if ($dependencyProbeExit -ne 0 -or ($dependencyProbe -join '') -notmatch 'watchdog-ok') {
     Write-Host 'BC Sentinel test dependencies missing: installing requirements.txt into .venv...'
-    & $py -m pip install -r (Join-Path $repoRoot 'requirements.txt')
-    if ($LASTEXITCODE -ne 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $py -m pip install -r (Join-Path $repoRoot 'requirements.txt')
+        $pipInstallExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($pipInstallExit -ne 0) {
         throw 'Unable to install BC Sentinel test dependencies into .venv.'
     }
 }
 
-& $py -c "import watchdog; import psutil; import cryptography; print('T1 dependency preflight: PASS')"
-if ($LASTEXITCODE -ne 0) {
+$previousErrorActionPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = 'Continue'
+    $dependencyPreflight = @(& $py -c "import watchdog; import psutil; import cryptography; print('T1 dependency preflight: PASS')" 2>$null)
+    $dependencyPreflightExit = $LASTEXITCODE
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
+if ($dependencyPreflightExit -ne 0 -or ($dependencyPreflight -join '') -notmatch 'T1 dependency preflight: PASS') {
     throw 'T1 dependency preflight failed after environment bootstrap.'
 }
+Write-Host 'T1 dependency preflight: PASS'
 
 function Invoke-Summary(
     [string]$Module,
