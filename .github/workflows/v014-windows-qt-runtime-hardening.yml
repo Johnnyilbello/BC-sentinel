@@ -100,6 +100,49 @@ jobs:
             Write-Host ('Clean consumer ' + $case.Name + '=PASS')
           }
 
+          $t1Report = Join-Path $env:RUNNER_TEMP 'BCSentinel-packaged-t1-result.json'
+          $t1 = Start-Process -FilePath $exe -ArgumentList @(
+            '--authorized-t1-sandbox',
+            '--confirm-authorized-t1',
+            '--allow-ci-disposable-runner',
+            '--t1-report',
+            $t1Report
+          ) -Wait -PassThru
+          if ($t1.ExitCode -ne 0) {
+            if (Test-Path -LiteralPath $t1Report) {
+              Get-Content -LiteralPath $t1Report -Raw | Write-Host
+            }
+            throw ('Clean consumer packaged T1 failed exit=' + $t1.ExitCode)
+          }
+          if (-not (Test-Path -LiteralPath $t1Report -PathType Leaf)) {
+            throw 'Packaged T1 result file missing.'
+          }
+          $t1Result = Get-Content -LiteralPath $t1Report -Raw -Encoding UTF8 | ConvertFrom-Json
+          if (-not [bool]$t1Result.passed -or [int]$t1Result.test_count -ne 4) {
+            throw 'Packaged T1 result did not pass all four controls.'
+          }
+          foreach ($row in @($t1Result.tests)) {
+            if (-not [bool]$row.summary_passed -or
+                [string]$row.positive_outcome -ne 'DETECTED' -or
+                [string]$row.administrative_outcome -ne 'REVIEW_REQUIRED' -or
+                [string]$row.benign_outcome -ne 'NO_MATCH' -or
+                -not [bool]$row.cleanup_confirmed) {
+              throw ('Packaged T1 control failed: ' + [string]$row.test_id)
+            }
+          }
+          if ([bool]$t1Result.safety.real_malware_executed -or
+              [bool]$t1Result.safety.network_io_required -or
+              [bool]$t1Result.safety.credential_access -or
+              [bool]$t1Result.safety.real_persistence_mutation -or
+              [bool]$t1Result.safety.security_control_impairment -or
+              [bool]$t1Result.safety.user_file_access -or
+              [bool]$t1Result.python_or_git_required -or
+              [bool]$t1Result.winget_required -or
+              [bool]$t1Result.network_required) {
+            throw 'Packaged T1 safety contract was violated.'
+          }
+          Write-Host 'Clean consumer PACKAGED-T1=PASS'
+
           $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw ('Uninstaller failed exit=' + $uninstall.ExitCode) }
 
