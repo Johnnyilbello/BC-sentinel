@@ -180,6 +180,46 @@ def _interactive_export(state: commercial.CommercialState) -> None:
         )
 
 
+def _run_packaged_t1(
+    *,
+    confirmed: bool,
+    allow_ci_disposable_runner: bool,
+    report_path: str | None,
+) -> int:
+    from sentinel import sandbox_t1_runtime
+
+    target = Path(report_path) if report_path else None
+    try:
+        report = sandbox_t1_runtime.run_authorized_t1(
+            confirmed=confirmed,
+            allow_ci_disposable_runner=allow_ci_disposable_runner,
+            report_path=target,
+        )
+    except (PermissionError, RuntimeError, OSError, ValueError) as exc:
+        if target is not None:
+            failure = {
+                "schema": sandbox_t1_runtime.SCHEMA,
+                "passed": False,
+                "failures": ["packaged_t1:" + type(exc).__name__],
+                "safety": dict(sandbox_t1_runtime.SAFETY),
+                "python_or_git_required": False,
+                "winget_required": False,
+                "network_required": False,
+                "coverage_promoted": False,
+                "remediation_authority_expanded": False,
+            }
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(
+                    json.dumps(failure, sort_keys=True, indent=2),
+                    encoding="utf-8",
+                )
+            except OSError:
+                pass
+        return 2
+    return 0 if report.get("passed") is True else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--identity-json", action="store_true")
@@ -187,7 +227,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--diagnostics-json")
+    parser.add_argument("--authorized-t1-sandbox", action="store_true")
+    parser.add_argument("--confirm-authorized-t1", action="store_true")
+    parser.add_argument("--t1-report")
+    parser.add_argument(
+        "--allow-ci-disposable-runner",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    if args.authorized_t1_sandbox:
+        return _run_packaged_t1(
+            confirmed=args.confirm_authorized_t1,
+            allow_ci_disposable_runner=args.allow_ci_disposable_runner,
+            report_path=args.t1_report,
+        )
 
     if args.identity_json:
         print(json.dumps({
