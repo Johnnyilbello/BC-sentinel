@@ -772,6 +772,16 @@ Windows CI run `35515972231` and local Windows acceptance both PASS on exact SHA
 
 ### Post-B14-10 defensive hardening track
 
+Extended installer verification (2026-09-23): reproduced startup failures from
+invalid UTF-8 trial data and overflowing numeric trial values; added fail-closed
+recovery that preserves the original file. Frozen UI smoke now exercises all
+nine navigation pages. Removed unconditional active-protection claims from
+license and unknown-runtime UI copy. Desktop scanning remains unwired in the
+Beta13 shell, and the historical full scanner runtime is absent; installation
+and detector-harness PASS do not establish an operational endpoint-protection
+product. `tools/verify_packaged_runtime.py` verifies disposable-profile recovery
+and diagnostic export on the actual frozen executable.
+
 Installer repair (2026-09-23): isolated the packaging DLL search from foreign
 PATH entries and added a frozen UI smoke gate. Source
 `a3ca97da1e561434272bd623887917a8a1e990d2` passed local regression (1498 tests)
