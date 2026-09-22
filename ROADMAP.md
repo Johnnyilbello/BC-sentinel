@@ -772,6 +772,12 @@ Windows CI run `35515972231` and local Windows acceptance both PASS on exact SHA
 
 ### Post-B14-10 defensive hardening track
 
+Installer repair (2026-09-23): isolated the packaging DLL search from foreign
+PATH entries and added a frozen UI smoke gate. Source
+`a3ca97da1e561434272bd623887917a8a1e990d2` passed local regression (1498 tests)
+and Windows CI run `35794872653`; local install/UI/diagnostics/uninstall passed.
+See `docs/WINDOWS-INSTALLATION.md` for evidence and installation limits.
+
 The accepted B14-10 checkpoint remains immutable. Work after it continues on
 `hardening/v014-t1-variants` and does not promote physical-lab, T2/T3, detection,
 or remediation authority.

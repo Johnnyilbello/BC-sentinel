@@ -1,5 +1,8 @@
 # BC Sentinel
 
+For installing the compiled Windows test build without Python, Git or winget,
+see [Windows installation and QtWidgets startup repair](docs/WINDOWS-INSTALLATION.md).
+
 BC Sentinel is a Windows endpoint-security, recovery, and incident-intelligence project focused on deterministic validation, conservative security claims, and explicit safety boundaries.
 
 > **Development status:** Beta7 is complete and frozen. Beta8 is active, and **B8-0 — Beta8 Foundation + New Coverage Baseline** is accepted and frozen. BC Sentinel remains a development project and should not replace Microsoft Defender, Windows Firewall, or a production EDR on an everyday workstation.
