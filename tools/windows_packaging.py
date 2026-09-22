@@ -8,8 +8,8 @@ import sys
 
 
 def build_environment(environment: dict[str, str], python: str, base_python: str) -> dict[str, str]:
-    result = dict(environment)
-    windows = Path(environment["SystemRoot"])
+    result = {name.upper(): value for name, value in environment.items()}
+    windows = Path(result["SYSTEMROOT"])
     directories = [Path(python).parent, Path(base_python).parent, windows / "System32", windows]
     result["PATH"] = os.pathsep.join(dict.fromkeys(str(path) for path in directories))
     for name in ("PYTHONPATH", "PYTHONHOME", "QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH"):
