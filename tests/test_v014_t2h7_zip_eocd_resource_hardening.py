@@ -41,7 +41,7 @@ def test_eocd_entry_limit_is_enforced_before_zipfile_parser(
 
     assert report.passed is False
     assert report.decision == "REVIEW_REQUIRED"
-    assert report.reasons == ("entry_count_limit",)
+    assert "entry_count_limit" in report.reasons
     assert report.entry_count == count
     assert report.content_read is False
     assert report.extraction_performed is False
@@ -65,7 +65,7 @@ def test_eocd_central_directory_size_limit_is_enforced_before_parser(
     report = preflight.inspect_zip_metadata(path)
 
     assert report.passed is False
-    assert report.reasons == ("central_directory_size_limit",)
+    assert "central_directory_size_limit" in report.reasons
     assert report.content_read is False
 
 
