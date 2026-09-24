@@ -112,3 +112,19 @@ def test_graph_builder_validates_before_sorting():
     result = rd.detect(_positive())
     with pytest.raises(ValueError, match="type_invalid"):
         rd.build_evidence_graph(({"observed_at": 1.0},), result)
+
+
+@pytest.mark.parametrize(
+    ("field", "bad", "failure"),
+    [
+        ("event_id", [], "event_id_invalid"),
+        ("event_id", {}, "event_id_invalid"),
+        ("evidence_id", [], "evidence_id_invalid"),
+        ("evidence_id", {}, "evidence_id_invalid"),
+    ],
+    ids=["event-list", "event-dict", "evidence-list", "evidence-dict"],
+)
+def test_unhashable_identifiers_fail_closed_before_set_operations(field, bad, failure):
+    item = replace(_positive()[0], **{field: bad})
+    with pytest.raises(ValueError, match=failure):
+        rd.detect((item,))
