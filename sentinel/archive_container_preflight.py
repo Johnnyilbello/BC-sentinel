@@ -168,20 +168,40 @@ def _read_eocd_metadata(path: Path) -> tuple[int, int, tuple[str, ...]]:
     if position < 0 or fields is None:
         return 0, 0, ("malformed_container",)
 
-    disk_number, directory_disk, entries_disk, entries_total, directory_size, _, comment_length = fields
+    disk_number, directory_disk, entries_disk, entries_total, directory_size, directory_offset, comment_length = fields
     reasons: list[str] = []
     comment = tail[position + 22 : position + 22 + comment_length]
     if signature in comment:
         reasons.append("eocd_signature_in_comment")
     if disk_number != 0 or directory_disk != 0 or entries_disk != entries_total:
         reasons.append("multi_disk_container")
-    if entries_total == 0xFFFF or directory_size == 0xFFFFFFFF:
+    if (
+        entries_total == 0xFFFF
+        or entries_disk == 0xFFFF
+        or directory_size == 0xFFFFFFFF
+        or directory_offset == 0xFFFFFFFF
+    ):
         reasons.append("zip64_directory_metadata")
     else:
         if entries_total > MAX_ENTRIES:
             reasons.append("entry_count_limit")
         if directory_size > MAX_CENTRAL_DIRECTORY_BYTES:
             reasons.append("central_directory_size_limit")
+
+        absolute_eocd_offset = size - read_size + position
+        if (
+            directory_offset > absolute_eocd_offset
+            or directory_size > absolute_eocd_offset
+            or directory_offset + directory_size > absolute_eocd_offset
+        ):
+            reasons.append("central_directory_bounds_invalid")
+
+        minimum_directory_size = entries_total * 46
+        if (
+            (entries_total > 0 and directory_size < minimum_directory_size)
+            or (entries_total == 0 and directory_size != 0)
+        ):
+            reasons.append("central_directory_size_inconsistent")
 
     return entries_total, directory_size, tuple(dict.fromkeys(reasons))
 
