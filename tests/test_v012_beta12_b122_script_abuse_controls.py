@@ -183,3 +183,16 @@ def test_pathological_mutation_count_fails_without_serialization_crash():
     report = b122.summarize(data)
     assert report["passed"] is False
     assert any("file_mutation_count_invalid" in failure for failure in report["failures"])
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [10**5000, [], {}, "12", True],
+    ids=["huge-int", "list", "dict", "string", "bool"],
+)
+def test_pathological_duration_types_fail_closed_without_conversion_crash(bad):
+    data = _evidence()
+    data["controls"][0]["duration_seconds"] = bad
+    report = b122.summarize(data)
+    assert report["passed"] is False
+    assert any("duration_invalid" in failure for failure in report["failures"])
