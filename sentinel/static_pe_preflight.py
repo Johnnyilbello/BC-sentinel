@@ -126,6 +126,12 @@ def _entropy(data: bytes) -> float:
 
 
 def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetadataPreflight:
+    if (
+        not isinstance(max_bytes, int)
+        or isinstance(max_bytes, bool)
+        or not (1 <= max_bytes <= MAX_PE_BYTES)
+    ):
+        return _rejected("pe_limit_invalid")
     try:
         resolved = path.resolve(strict=True)
     except (OSError, RuntimeError):
