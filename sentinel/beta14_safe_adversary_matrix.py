@@ -214,18 +214,43 @@ def validate_trace(trace: object) -> tuple[str, ...]:
     if scenario_id not in SCENARIO_BY_ID:
         failures.append("b141:scenario_unknown")
     signals = trace.get("signals")
-    if (
-        not isinstance(signals, list)
-        or not all(isinstance(item, str) and item for item in signals)
-        or signals != sorted(set(signals))
-    ):
+    signals_valid = (
+        isinstance(signals, list)
+        and all(isinstance(item, str) and item for item in signals)
+        and signals == sorted(set(signals))
+    )
+    if not signals_valid:
         failures.append("b141:signals_invalid")
-    if not isinstance(trace.get("known_admin_or_user_workflow"), bool):
+
+    suppressor = trace.get("known_admin_or_user_workflow")
+    suppressor_valid = isinstance(suppressor, bool)
+    if not suppressor_valid:
         failures.append("b141:suppressor_invalid")
-    if trace.get("disposable_workspace") is not True:
+
+    disposable_workspace = trace.get("disposable_workspace")
+    if disposable_workspace is not True:
         failures.append("b141:disposable_workspace_required")
-    if not isinstance(trace.get("trace_id"), str) or not str(trace["trace_id"]).startswith("b141:"):
+
+    trace_id = trace.get("trace_id")
+    if not isinstance(trace_id, str) or not trace_id.startswith("b141:"):
         failures.append("b141:trace_id_invalid")
+
+    if (
+        scenario_id in SCENARIO_BY_ID
+        and signals_valid
+        and suppressor_valid
+        and disposable_workspace is True
+        and isinstance(trace_id, str)
+    ):
+        material = {
+            "scenario_id": scenario_id,
+            "signals": list(signals),
+            "known_admin_or_user_workflow": suppressor,
+            "disposable_workspace": True,
+        }
+        expected_trace_id = "b141:" + _digest(material)[:24]
+        if trace_id != expected_trace_id:
+            failures.append("b141:trace_id_mismatch")
 
     for field in (
         "real_execution",
