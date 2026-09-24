@@ -42,6 +42,17 @@ def _digest(value: Any) -> str:
     return hashlib.sha256(_canonical(value).encode()).hexdigest()
 
 
+def _safe_digest(value: object) -> str:
+    try:
+        return _digest(value)
+    except (TypeError, ValueError, OverflowError):
+        return _digest({"invalid_observation_type": type(value).__name__})
+
+
+def _valid_allowed_string(value: object, allowed: set[str] | frozenset[str]) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
 def validate(observation: object) -> tuple[str, ...]:
     if not isinstance(observation, dict):
         return ("b1410:not_object",)
@@ -56,7 +67,7 @@ def validate(observation: object) -> tuple[str, ...]:
         f.append("b1410:host_fingerprint_invalid")
     if observation.get("host_os") != "LINUX":
         f.append("b1410:linux_host_required")
-    if observation.get("architecture") not in {"x86_64", "amd64"}:
+    if not _valid_allowed_string(observation.get("architecture"), {"x86_64", "amd64"}):
         f.append("b1410:architecture_invalid")
 
     for field in (
@@ -85,8 +96,8 @@ def validate(observation: object) -> tuple[str, ...]:
     return tuple(dict.fromkeys(f))
 
 
-def summarize(observation: Mapping[str, Any]) -> dict[str, Any]:
-    failures = validate(dict(observation))
+def summarize(observation: object) -> dict[str, Any]:
+    failures = validate(observation)
     passed = not failures
     return {
         "passed": passed,
@@ -107,7 +118,7 @@ def summarize(observation: Mapping[str, Any]) -> dict[str, Any]:
         "hypervisor_state_modified": False,
         "coverage_promoted": False,
         "authority_expanded": False,
-        "observation_digest": _digest(dict(observation)),
+        "observation_digest": _safe_digest(observation),
     }
 
 
