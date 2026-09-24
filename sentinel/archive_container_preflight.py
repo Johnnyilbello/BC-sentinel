@@ -168,8 +168,11 @@ def _read_eocd_metadata(path: Path) -> tuple[int, int, tuple[str, ...]]:
     if position < 0 or fields is None:
         return 0, 0, ("malformed_container",)
 
-    disk_number, directory_disk, entries_disk, entries_total, directory_size, _, _ = fields
+    disk_number, directory_disk, entries_disk, entries_total, directory_size, _, comment_length = fields
     reasons: list[str] = []
+    comment = tail[position + 22 : position + 22 + comment_length]
+    if signature in comment:
+        reasons.append("eocd_signature_in_comment")
     if disk_number != 0 or directory_disk != 0 or entries_disk != entries_total:
         reasons.append("multi_disk_container")
     if entries_total == 0xFFFF or directory_size == 0xFFFFFFFF:
