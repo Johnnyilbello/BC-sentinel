@@ -264,12 +264,14 @@ def validate_observations(observations: Iterable[FileActivityObservation]) -> De
             failures.append(f"{prefix}:event_id_invalid")
         elif item.event_id in seen_events:
             failures.append(f"{prefix}:duplicate_event_id")
-        seen_events.add(item.event_id)
+        else:
+            seen_events.add(item.event_id)
         if not _nonempty(item.evidence_id):
             failures.append(f"{prefix}:evidence_id_invalid")
         elif item.evidence_id in seen_evidence:
             failures.append(f"{prefix}:duplicate_evidence_id")
-        seen_evidence.add(item.evidence_id)
+        else:
+            seen_evidence.add(item.evidence_id)
         if not _nonempty(item.logical_path):
             failures.append(f"{prefix}:logical_path_invalid")
         if not _valid_number(item.observed_at) or item.observed_at < 0:
