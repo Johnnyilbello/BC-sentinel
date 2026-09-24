@@ -192,6 +192,10 @@ def _valid_commit(value: object) -> bool:
     return isinstance(value, str) and bool(_COMMIT_RE.fullmatch(value.lower()))
 
 
+def _valid_allowed_string(value: object, allowed: set[str] | frozenset[str]) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
 def _valid_nonnegative_number(value: object) -> bool:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return False
@@ -229,18 +233,18 @@ def validate_record(record: object) -> tuple[str, ...]:
     if not isinstance(record.get("engine_checkpoint"), str) or not record["engine_checkpoint"].startswith("checkpoint/"):
         failures.append("b148:engine_checkpoint_invalid")
 
-    if record.get("malware_category") not in ALLOWED_CATEGORIES:
+    if not _valid_allowed_string(record.get("malware_category"), ALLOWED_CATEGORIES):
         failures.append("b148:malware_category_invalid")
-    if record.get("authorization_class") not in {
-        b143.AUTH_APPROVED_RESEARCH,
-        b143.AUTH_VENDOR_TEST,
-    }:
+    if not _valid_allowed_string(
+        record.get("authorization_class"),
+        {b143.AUTH_APPROVED_RESEARCH, b143.AUTH_VENDOR_TEST},
+    ):
         failures.append("b148:authorization_class_invalid")
     if record.get("sample_authorized") is not True:
         failures.append("b148:sample_authorization_required")
     if record.get("environment_classification") != b143.ENVIRONMENT_ISOLATED:
         failures.append("b148:isolated_environment_required")
-    if record.get("network_mode") not in ALLOWED_NETWORK_MODES:
+    if not _valid_allowed_string(record.get("network_mode"), ALLOWED_NETWORK_MODES):
         failures.append("b148:network_mode_invalid")
     if record.get("direct_internet_observed") is not False:
         failures.append("b148:direct_internet_forbidden")
@@ -253,28 +257,37 @@ def validate_record(record: object) -> tuple[str, ...]:
     if record.get("real_sample_executed") is not True:
         failures.append("b148:real_sample_execution_required")
 
-    if record.get("result") not in ALLOWED_RESULTS:
+    if not _valid_allowed_string(record.get("result"), ALLOWED_RESULTS):
         failures.append("b148:result_invalid")
-    if record.get("primary_detection_layer") not in ALLOWED_PRIMARY_LAYERS:
+    if not _valid_allowed_string(
+        record.get("primary_detection_layer"), ALLOWED_PRIMARY_LAYERS
+    ):
         failures.append("b148:primary_detection_layer_invalid")
 
     supporting = record.get("supporting_detection_layers")
-    if (
-        not isinstance(supporting, list)
-        or len(supporting) > 16
-        or len(supporting) != len(set(supporting))
-        or not all(item in ALLOWED_PRIMARY_LAYERS - {"NONE"} for item in supporting)
-    ):
+    supporting_valid = (
+        isinstance(supporting, list)
+        and len(supporting) <= 16
+        and all(
+            _valid_allowed_string(item, ALLOWED_PRIMARY_LAYERS - {"NONE"})
+            for item in supporting
+        )
+    )
+    if supporting_valid:
+        supporting_valid = len(supporting) == len(set(supporting))
+    if not supporting_valid:
         failures.append("b148:supporting_detection_layers_invalid")
 
     behaviors = record.get("observed_behaviors")
-    if (
-        not isinstance(behaviors, list)
-        or not behaviors
-        or len(behaviors) > 32
-        or len(behaviors) != len(set(behaviors))
-        or not all(item in ALLOWED_BEHAVIORS for item in behaviors)
-    ):
+    behaviors_valid = (
+        isinstance(behaviors, list)
+        and bool(behaviors)
+        and len(behaviors) <= 32
+        and all(_valid_allowed_string(item, ALLOWED_BEHAVIORS) for item in behaviors)
+    )
+    if behaviors_valid:
+        behaviors_valid = len(behaviors) == len(set(behaviors))
+    if not behaviors_valid:
         failures.append("b148:observed_behaviors_invalid")
 
     if not _valid_nonnegative_number(record.get("detection_latency_ms")):
@@ -283,16 +296,18 @@ def validate_record(record: object) -> tuple[str, ...]:
         failures.append("b148:execution_duration_invalid")
 
     evidence_ids = record.get("evidence_ids")
-    if (
-        not isinstance(evidence_ids, list)
-        or not evidence_ids
-        or len(evidence_ids) > 128
-        or len(evidence_ids) != len(set(evidence_ids))
-        or not all(_valid_id(item) for item in evidence_ids)
-    ):
+    evidence_ids_valid = (
+        isinstance(evidence_ids, list)
+        and bool(evidence_ids)
+        and len(evidence_ids) <= 128
+        and all(_valid_id(item) for item in evidence_ids)
+    )
+    if evidence_ids_valid:
+        evidence_ids_valid = len(evidence_ids) == len(set(evidence_ids))
+    if not evidence_ids_valid:
         failures.append("b148:evidence_ids_invalid")
 
-    if record.get("quarantine_state") not in b143.QUARANTINE_STATES:
+    if not _valid_allowed_string(record.get("quarantine_state"), b143.QUARANTINE_STATES):
         failures.append("b148:quarantine_state_invalid")
 
     forbidden_true = (
