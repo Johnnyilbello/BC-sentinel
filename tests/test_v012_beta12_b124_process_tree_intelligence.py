@@ -214,3 +214,48 @@ def test_pathological_pid_fails_without_serialization_crash():
     report = b124.summarize(data)
     assert report["passed"] is False
     assert any("pid_invalid" in failure for failure in report["failures"])
+
+
+@pytest.mark.parametrize(
+    ("field", "bad"),
+    [
+        ("role", []),
+        ("role", {}),
+        ("image_kind", []),
+        ("image_kind", {}),
+        ("signer_state", []),
+        ("signer_state", {}),
+    ],
+    ids=[
+        "role-list",
+        "role-dict",
+        "kind-list",
+        "kind-dict",
+        "signer-list",
+        "signer-dict",
+    ],
+)
+def test_unhashable_process_enum_fields_fail_closed(field, bad):
+    data = _evidence()
+    data["controls"][0]["processes"][1][field] = bad
+    report = b124.summarize(data)
+    assert report["passed"] is False
+    assert any("invalid" in failure for failure in report["failures"])
+
+
+@pytest.mark.parametrize(
+    ("field", "bad"),
+    [
+        ("pid", []),
+        ("pid", {}),
+        ("parent_pid", []),
+        ("parent_pid", {}),
+    ],
+    ids=["pid-list", "pid-dict", "parent-list", "parent-dict"],
+)
+def test_malformed_pid_fields_do_not_reach_chain_hashing(field, bad):
+    data = _evidence()
+    data["controls"][0]["processes"][1][field] = bad
+    report = b124.summarize(data)
+    assert report["passed"] is False
+    assert any("pid_invalid" in failure for failure in report["failures"])
