@@ -75,6 +75,7 @@ class OfflineFinding:
     pe_metadata_reasons: tuple[str, ...] = field(default_factory=tuple)
     pe_sha256_matches: bool | None = None
     pe_clean_claimed: bool = False
+    final_sha256_matches: bool | None = None
     automatic_action: bool = False
 
     def to_record(self) -> dict:
@@ -427,6 +428,7 @@ def scan_offline_windows(
     findings: list[OfflineFinding] = []
     hashed = skipped = errors = ioc_hits = yara_hits = heuristic_hits = 0
     pe_parsed = pe_review_items = pe_rejected_items = pe_unstable_items = 0
+    static_snapshot_unstable_items = 0
     try:
         for category, path in _iter_candidate_files(root, max_files=limits.max_files):
             rel = str(path.relative_to(root)).replace("\\", "/")
@@ -450,6 +452,8 @@ def scan_offline_windows(
                 pe_reasons: tuple[str, ...] = ()
                 pe_sha256_matches: bool | None = None
                 pe_clean_claimed = False
+                final_sha256_matches: bool | None = None
+                artifact_unstable = False
                 if path.suffix.casefold() in static_pe_preflight.SUPPORTED_PE_SUFFIXES:
                     pe_report = static_pe_preflight.inspect_pe_metadata(
                         path,
@@ -469,6 +473,7 @@ def scan_offline_windows(
                     reasons.extend(f"pe_metadata:{reason}" for reason in pe_report.reasons)
                     if pe_sha256_matches is False:
                         reasons.append("artifact_changed_during_static_scan")
+                        artifact_unstable = True
                         pe_unstable_items += 1
 
                 ioc = catalog.get(digest.casefold())
@@ -483,15 +488,30 @@ def scan_offline_windows(
                     yara_hits += 1
                 if yara_error:
                     reasons.append(yara_error[0])
+
+                try:
+                    final_digest = _sha256_file(path)
+                except OSError:
+                    reasons.append("artifact_unavailable_after_static_scan")
+                    artifact_unstable = True
+                    final_sha256_matches = False
+                else:
+                    final_sha256_matches = final_digest == digest
+                    if final_sha256_matches is False:
+                        reasons.append("artifact_changed_during_static_scan")
+                        artifact_unstable = True
+
+                if artifact_unstable:
+                    static_snapshot_unstable_items += 1
+
                 if any(reason in reasons for reason in (
                     "startup_location_artifact", "startup_script", "executable_or_script_in_user_temp",
                     "lolbin_name_outside_windows_system_directory", "double_extension_lure",
                 )):
                     heuristic_hits += 1
-                unstable_artifact = "artifact_changed_during_static_scan" in reasons
                 verdict = (
                     "review"
-                    if unstable_artifact
+                    if artifact_unstable
                     else "deterministic_ioc"
                     if ioc
                     else "yara_match"
@@ -515,6 +535,7 @@ def scan_offline_windows(
                         pe_metadata_reasons=pe_reasons,
                         pe_sha256_matches=pe_sha256_matches,
                         pe_clean_claimed=pe_clean_claimed,
+                        final_sha256_matches=final_sha256_matches,
                         automatic_action=False,
                     )
                 )
@@ -537,6 +558,7 @@ def scan_offline_windows(
             "pe_review_items": pe_review_items,
             "pe_rejected_items": pe_rejected_items,
             "pe_unstable_items": pe_unstable_items,
+            "static_snapshot_unstable_items": static_snapshot_unstable_items,
             "registry_hives": len(hives),
             "truncated_by_max_files": len(findings) >= limits.max_files,
         }
