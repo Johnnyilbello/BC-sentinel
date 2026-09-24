@@ -459,13 +459,15 @@ def scan_offline_windows(
                     pe_decision = pe_report.decision
                     pe_reasons = pe_report.reasons
                     pe_clean_claimed = pe_report.clean_claimed
-                    pe_sha256_matches = bool(pe_report.sha256 and pe_report.sha256 == digest)
+                    pe_sha256_matches = (
+                        pe_report.sha256 == digest if pe_report.sha256 else None
+                    )
                     if pe_report.decision == "REVIEW_REQUIRED":
                         pe_review_items += 1
                     elif pe_report.decision == "REJECTED":
                         pe_rejected_items += 1
                     reasons.extend(f"pe_metadata:{reason}" for reason in pe_report.reasons)
-                    if not pe_sha256_matches:
+                    if pe_sha256_matches is False:
                         reasons.append("artifact_changed_during_static_scan")
                         pe_unstable_items += 1
 
