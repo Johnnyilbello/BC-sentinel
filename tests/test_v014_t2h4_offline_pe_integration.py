@@ -198,3 +198,44 @@ def test_script_candidates_do_not_fake_pe_metadata(tmp_path: Path):
     assert finding["pe_metadata_reasons"] == []
     assert finding["pe_sha256_matches"] is None
     assert finding["pe_clean_claimed"] is False
+
+
+def test_unscanned_pe_hash_is_not_misreported_as_artifact_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    root = _offline_root(tmp_path)
+    sample = root / "Windows" / "System32" / "drivers" / "bounded.sys"
+    sample.parent.mkdir(parents=True)
+    sample.write_bytes(_minimal_pe())
+
+    real_inspect = pecheck.inspect_pe_metadata
+
+    def bounded_reject(path: Path, *, max_bytes: int = pecheck.MAX_PE_BYTES):
+        if path.name == "bounded.sys":
+            return pecheck.PEMetadataPreflight(
+                passed=False,
+                decision="REJECTED",
+                reasons=("pe_size_limit",),
+                file_size=path.stat().st_size,
+                sha256="",
+                machine=0,
+                section_count=0,
+                entrypoint_rva=0,
+                image_base=0,
+                timestamp=0,
+                executable_sections=(),
+                writable_executable_sections=(),
+                high_entropy_sections=(),
+            )
+        return real_inspect(path, max_bytes=max_bytes)
+
+    monkeypatch.setattr(rr3.static_pe_preflight, "inspect_pe_metadata", bounded_reject)
+
+    report = _scan(root, tmp_path / "out")
+    finding = next(item for item in report["findings"] if item["relative_path"].endswith("bounded.sys"))
+
+    assert finding["pe_metadata_decision"] == "REJECTED"
+    assert finding["pe_sha256_matches"] is None
+    assert "artifact_changed_during_static_scan" not in finding["reasons"]
+    assert report["summary"]["pe_unstable_items"] == 0
