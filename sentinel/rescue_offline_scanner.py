@@ -158,7 +158,9 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
         raise ValueError("RR3 intel catalog entry limit exceeded")
     out: dict[str, dict] = {}
     for item in entries:
-        if not isinstance(item, dict) or set(item) != {"value", "name", "source"}:
+        if not isinstance(item, dict):
+            raise ValueError("RR3 intel catalog entry must be an object")
+        if "value" not in item or not set(item).issubset({"value", "name", "source"}):
             raise ValueError("RR3 intel catalog entry fields invalid")
         value_raw = item.get("value")
         if not isinstance(value_raw, str):
@@ -168,13 +170,15 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
             raise ValueError("RR3 intel catalog contains invalid SHA-256")
         if value in out:
             raise ValueError("RR3 intel catalog contains duplicate SHA-256")
-        if not _valid_intel_text(item.get("name")):
+        name = item.get("name", "approved_hash_ioc")
+        source = item.get("source", "local_approved_catalog")
+        if not _valid_intel_text(name):
             raise ValueError("RR3 intel catalog name invalid")
-        if not _valid_intel_text(item.get("source")):
+        if not _valid_intel_text(source):
             raise ValueError("RR3 intel catalog source invalid")
         out[value] = {
-            "name": item["name"].strip(),
-            "source": item["source"].strip(),
+            "name": name.strip(),
+            "source": source.strip(),
         }
     return out
 
