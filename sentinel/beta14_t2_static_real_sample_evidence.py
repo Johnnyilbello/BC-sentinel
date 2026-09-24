@@ -240,7 +240,13 @@ def validate_record(record: object) -> tuple[str, ...]:
 
 
 def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    failures = validate_record(dict(record))
+    if not isinstance(record, Mapping):
+        raise ValueError("b147:invalid_record:b147:not_object")
+    try:
+        material = dict(record)
+    except (TypeError, ValueError):
+        raise ValueError("b147:invalid_record:b147:not_object")
+    failures = validate_record(material)
     if failures:
         raise ValueError("b147:invalid_record:" + ",".join(failures))
 
@@ -249,6 +255,7 @@ def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
         RESULT_MISSED: b143.RESULT_MISSED,
         RESULT_ERROR: b143.RESULT_ERROR,
     }
+    record = material
     detection_layer = str(record["detection_layer"])
     mapped_layer = detection_layer if detection_layer in b143.DETECTION_LAYERS else "STATIC"
 
@@ -298,10 +305,10 @@ def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
 
 def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     failures: list[str] = []
-    items: list[dict[str, Any]] = []
+    parsed_items: list[tuple[int, dict[str, Any]]] = []
     try:
         raw_items = list(records)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RuntimeError):
         raw_items = []
         failures.append("b147:batch_iterable_invalid")
 
@@ -310,7 +317,7 @@ def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             failures.append(f"record[{index}]:b147:not_object")
             continue
         try:
-            items.append(dict(item))
+            parsed_items.append((index, dict(item)))
         except (TypeError, ValueError):
             failures.append(f"record[{index}]:b147:not_object")
     accepted: list[dict[str, Any]] = []
@@ -320,7 +327,7 @@ def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     if not raw_items:
         failures.append("b147:batch_empty")
 
-    for index, record in enumerate(items):
+    for index, record in parsed_items:
         record_failures = validate_record(record)
         if record_failures:
             failures.extend(f"record[{index}]:{item}" for item in record_failures)
@@ -382,7 +389,7 @@ def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         "source_checkpoint": SOURCE_CHECKPOINT,
         "source_checkpoint_commit": SOURCE_CHECKPOINT_COMMIT,
         "source_coverage": dict(SOURCE_COVERAGE),
-        "sample_count": len(items),
+        "sample_count": len(raw_items),
         "accepted_count": len(accepted),
         "unique_sample_count": len(seen_hashes),
         "result_counts": counts,
