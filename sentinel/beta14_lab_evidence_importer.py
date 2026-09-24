@@ -20,6 +20,7 @@ B14-3 does not promote canonical detection coverage by itself.
 
 import hashlib
 import json
+import math
 import re
 from typing import Any, Final, Iterable, Mapping
 
@@ -176,12 +177,18 @@ def _valid_commit(value: object) -> bool:
     return isinstance(value, str) and bool(_COMMIT_RE.fullmatch(value.lower()))
 
 
+def _valid_allowed_string(value: object, allowed: set[str] | frozenset[str]) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
 def _valid_nonnegative_number(value: object) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and float(value) >= 0.0
-    )
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric) and numeric >= 0.0
 
 
 def validate_record(record: object) -> tuple[str, ...]:
@@ -209,33 +216,39 @@ def validate_record(record: object) -> tuple[str, ...]:
 
     if not isinstance(record.get("engine_checkpoint"), str) or not record["engine_checkpoint"].startswith("checkpoint/"):
         failures.append("b143:engine_checkpoint_invalid")
-    if record.get("sample_kind") not in ALLOWED_SAMPLE_KINDS:
+    if not _valid_allowed_string(record.get("sample_kind"), ALLOWED_SAMPLE_KINDS):
         failures.append("b143:sample_kind_invalid")
-    if record.get("authorization_class") not in ALLOWED_AUTHORIZATION_CLASSES:
+    if not _valid_allowed_string(
+        record.get("authorization_class"), ALLOWED_AUTHORIZATION_CLASSES
+    ):
         failures.append("b143:authorization_class_invalid")
-    if record.get("environment_classification") not in ALLOWED_ENVIRONMENTS:
+    if not _valid_allowed_string(
+        record.get("environment_classification"), ALLOWED_ENVIRONMENTS
+    ):
         failures.append("b143:environment_invalid")
-    if record.get("network_mode") not in ALLOWED_NETWORK_MODES:
+    if not _valid_allowed_string(record.get("network_mode"), ALLOWED_NETWORK_MODES):
         failures.append("b143:network_mode_invalid")
-    if record.get("result") not in ALLOWED_RESULTS:
+    if not _valid_allowed_string(record.get("result"), ALLOWED_RESULTS):
         failures.append("b143:result_invalid")
-    if record.get("detection_layer") not in DETECTION_LAYERS:
+    if not _valid_allowed_string(record.get("detection_layer"), DETECTION_LAYERS):
         failures.append("b143:detection_layer_invalid")
-    if record.get("quarantine_state") not in QUARANTINE_STATES:
+    if not _valid_allowed_string(record.get("quarantine_state"), QUARANTINE_STATES):
         failures.append("b143:quarantine_state_invalid")
-    if record.get("restore_state") not in RESTORE_STATES:
+    if not _valid_allowed_string(record.get("restore_state"), RESTORE_STATES):
         failures.append("b143:restore_state_invalid")
     if not _valid_nonnegative_number(record.get("detection_latency_ms")):
         failures.append("b143:detection_latency_invalid")
 
     evidence_ids = record.get("evidence_ids")
-    if (
-        not isinstance(evidence_ids, list)
-        or not evidence_ids
-        or len(evidence_ids) > 128
-        or not all(_valid_id(item) for item in evidence_ids)
-        or len(evidence_ids) != len(set(evidence_ids))
-    ):
+    evidence_ids_valid = (
+        isinstance(evidence_ids, list)
+        and bool(evidence_ids)
+        and len(evidence_ids) <= 128
+        and all(_valid_id(item) for item in evidence_ids)
+    )
+    if evidence_ids_valid:
+        evidence_ids_valid = len(evidence_ids) == len(set(evidence_ids))
+    if not evidence_ids_valid:
         failures.append("b143:evidence_ids_invalid")
 
     if record.get("sample_authorized") is not True:
@@ -255,35 +268,47 @@ def validate_record(record: object) -> tuple[str, ...]:
         if record.get(field) is not False:
             failures.append(f"b143:{field}_forbidden")
 
-    real_sample = bool(record.get("real_sample_executed"))
+    raw_real_sample = record.get("real_sample_executed")
+    real_sample_valid = isinstance(raw_real_sample, bool)
+    if not real_sample_valid:
+        failures.append("b143:real_sample_executed_invalid")
+    real_sample = raw_real_sample is True
     sample_kind = record.get("sample_kind")
     environment = record.get("environment_classification")
 
     if real_sample:
-        if sample_kind not in {SAMPLE_MALWARE, SAMPLE_PUA}:
+        if not _valid_allowed_string(sample_kind, {SAMPLE_MALWARE, SAMPLE_PUA}):
             failures.append("b143:real_sample_kind_invalid")
         if environment != ENVIRONMENT_ISOLATED:
             failures.append("b143:real_sample_requires_isolated_lab")
-        if record.get("authorization_class") not in {
-            AUTH_APPROVED_RESEARCH,
-            AUTH_VENDOR_TEST,
-        }:
+        if not _valid_allowed_string(
+            record.get("authorization_class"),
+            {AUTH_APPROVED_RESEARCH, AUTH_VENDOR_TEST},
+        ):
             failures.append("b143:real_sample_authorization_class_invalid")
     elif environment == ENVIRONMENT_STATIC and record.get("result") == RESULT_CLEAN and sample_kind == SAMPLE_MALWARE:
         # Static analysis may legitimately miss a malicious sample, but CLEAN is
         # too ambiguous for the importer. Require MISSED instead.
         failures.append("b143:malware_static_clean_must_be_missed")
 
-    if record.get("result") in {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW} and record.get("detection_layer") == "NONE":
+    result = record.get("result")
+    if (
+        _valid_allowed_string(result, {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW})
+        and record.get("detection_layer") == "NONE"
+    ):
         failures.append("b143:detection_layer_required")
-    if record.get("result") in {RESULT_MISSED, RESULT_CLEAN} and record.get("detection_layer") != "NONE":
+    if (
+        _valid_allowed_string(result, {RESULT_MISSED, RESULT_CLEAN})
+        and record.get("detection_layer") != "NONE"
+    ):
         failures.append("b143:non_detection_layer_must_be_none")
 
-    if record.get("quarantine_state") == "SUCCEEDED" and record.get("result") not in {
-        RESULT_BLOCKED,
-        RESULT_DETECTED,
-        RESULT_REVIEW,
-    }:
+    if (
+        record.get("quarantine_state") == "SUCCEEDED"
+        and not _valid_allowed_string(
+            result, {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW}
+        )
+    ):
         failures.append("b143:quarantine_without_detection")
 
     return tuple(dict.fromkeys(failures))
