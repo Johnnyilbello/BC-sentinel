@@ -191,6 +191,17 @@ def _valid_nonnegative_number(value: object) -> bool:
     return math.isfinite(numeric) and numeric >= 0.0
 
 
+def _valid_checkpoint(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and value.startswith("checkpoint/")
+        and 1 <= len(value) <= 200
+        and "\x00" not in value
+        and "\r" not in value
+        and "\n" not in value
+    )
+
+
 def validate_record(record: object) -> tuple[str, ...]:
     if not isinstance(record, dict):
         return ("b143:not_object",)
@@ -214,7 +225,7 @@ def validate_record(record: object) -> tuple[str, ...]:
     if not _valid_commit(record.get("engine_commit")):
         failures.append("b143:engine_commit_invalid")
 
-    if not isinstance(record.get("engine_checkpoint"), str) or not record["engine_checkpoint"].startswith("checkpoint/"):
+    if not _valid_checkpoint(record.get("engine_checkpoint")):
         failures.append("b143:engine_checkpoint_invalid")
     if not _valid_allowed_string(record.get("sample_kind"), ALLOWED_SAMPLE_KINDS):
         failures.append("b143:sample_kind_invalid")
@@ -370,15 +381,30 @@ def sanitized_summary(record: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def import_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
-    items = [dict(item) for item in records]
     failures: list[str] = []
     summaries: list[dict[str, Any]] = []
     seen_run_ids: set[str] = set()
+    parsed_items: list[tuple[int, dict[str, Any]]] = []
 
-    if not items:
+    try:
+        raw_items = list(records)
+    except (TypeError, ValueError, RuntimeError):
+        raw_items = []
+        failures.append("b143:batch_iterable_invalid")
+
+    if not raw_items:
         failures.append("b143:batch_empty")
 
-    for index, record in enumerate(items):
+    for index, item in enumerate(raw_items):
+        if not isinstance(item, Mapping):
+            failures.append(f"record[{index}]:b143:not_object")
+            continue
+        try:
+            parsed_items.append((index, dict(item)))
+        except (TypeError, ValueError):
+            failures.append(f"record[{index}]:b143:not_object")
+
+    for index, record in parsed_items:
         record_failures = validate_record(record)
         if record_failures:
             failures.extend(f"record[{index}]:{item}" for item in record_failures)
@@ -403,7 +429,7 @@ def import_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         "profile": PROFILE,
         "passed": not failures,
         "failures": list(dict.fromkeys(failures)),
-        "record_count": len(items),
+        "record_count": len(raw_items),
         "accepted_count": len(summaries),
         "authoritative_count": sum(
             1 for item in summaries if item["authoritative_internal_lab_evidence"]
