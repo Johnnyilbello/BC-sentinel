@@ -47,3 +47,18 @@ def test_b141_evaluate_fails_closed_on_tampered_trace_identity() -> None:
     result = b141.evaluate_trace(trace)
     assert result["passed"] is False
     assert "b141:trace_id_mismatch" in result["failures"]
+
+
+def test_b141_rejects_unhashable_scenario_id_without_crashing() -> None:
+    trace = _trace()
+    trace["scenario_id"] = ["B14-EMU-SCRIPT-CHAIN-001"]
+    failures = b141.validate_trace(trace)
+    assert "b141:scenario_unknown" in failures
+
+
+def test_b141_evaluate_fails_closed_on_unhashable_scenario_id() -> None:
+    trace = _trace()
+    trace["scenario_id"] = {"unexpected": "object"}
+    result = b141.evaluate_trace(trace)
+    assert result["passed"] is False
+    assert "b141:scenario_unknown" in result["failures"]

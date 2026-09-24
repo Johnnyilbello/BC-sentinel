@@ -211,7 +211,8 @@ def validate_trace(trace: object) -> tuple[str, ...]:
     if trace.get("schema") != "bc-sentinel-beta14-inert-trace-v1":
         failures.append("b141:trace_schema_invalid")
     scenario_id = trace.get("scenario_id")
-    if scenario_id not in SCENARIO_BY_ID:
+    scenario_valid = isinstance(scenario_id, str) and scenario_id in SCENARIO_BY_ID
+    if not scenario_valid:
         failures.append("b141:scenario_unknown")
     signals = trace.get("signals")
     signals_valid = (
@@ -236,7 +237,7 @@ def validate_trace(trace: object) -> tuple[str, ...]:
         failures.append("b141:trace_id_invalid")
 
     if (
-        scenario_id in SCENARIO_BY_ID
+        scenario_valid
         and signals_valid
         and suppressor_valid
         and disposable_workspace is True
