@@ -16,6 +16,9 @@ MAX_FILES_HARD: Final[int] = 50_000
 MAX_FILE_BYTES_HARD: Final[int] = 256 * 1024 * 1024
 DEFAULT_MAX_FILES: Final[int] = 10_000
 DEFAULT_MAX_FILE_BYTES: Final[int] = 64 * 1024 * 1024
+MAX_INTEL_ENTRIES: Final[int] = 50_000
+MAX_INTEL_TEXT_CHARS: Final[int] = 160
+MAX_YARA_RULE_BYTES: Final[int] = 1024 * 1024
 EXECUTABLE_OR_SCRIPT_EXTENSIONS: Final[frozenset[str]] = frozenset(
     {
         ".exe", ".dll", ".sys", ".scr", ".com", ".cpl", ".drv", ".ocx",
@@ -41,9 +44,17 @@ class OfflineScanLimits:
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
 
     def validate(self) -> None:
-        if not (1 <= int(self.max_files) <= MAX_FILES_HARD):
+        if (
+            not isinstance(self.max_files, int)
+            or isinstance(self.max_files, bool)
+            or not (1 <= self.max_files <= MAX_FILES_HARD)
+        ):
             raise ValueError("RR3 max_files outside bounded limit")
-        if not (1 <= int(self.max_file_bytes) <= MAX_FILE_BYTES_HARD):
+        if (
+            not isinstance(self.max_file_bytes, int)
+            or isinstance(self.max_file_bytes, bool)
+            or not (1 <= self.max_file_bytes <= MAX_FILE_BYTES_HARD)
+        ):
             raise ValueError("RR3 max_file_bytes outside bounded limit")
 
 
@@ -95,12 +106,15 @@ def _is_inside(child: Path, parent: Path) -> bool:
     try:
         child.resolve().relative_to(parent.resolve())
         return True
-    except ValueError:
+    except (OSError, RuntimeError, ValueError):
         return False
 
 
 def validate_offline_windows_root(root: Path) -> Path:
-    resolved = root.resolve(strict=True)
+    try:
+        resolved = root.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ValueError("RR3 offline root is unavailable") from exc
     if not resolved.is_dir():
         raise ValueError("RR3 offline root must be an existing directory")
     if _is_reparse_or_symlink(resolved):
@@ -115,10 +129,24 @@ def validate_offline_windows_root(root: Path) -> Path:
     return resolved
 
 
+def _valid_intel_text(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value.strip())
+        and len(value) <= MAX_INTEL_TEXT_CHARS
+        and all(ord(ch) >= 32 and ch not in "\r\n" for ch in value)
+    )
+
+
 def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
     if path is None:
         return {}
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("RR3 intel catalog unreadable or invalid JSON") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("RR3 intel catalog must be an object")
     if raw.get("schema") != "bc-sentinel-offline-intel-v1":
         raise ValueError("RR3 intel catalog schema mismatch")
     if raw.get("approved") is not True:
@@ -126,16 +154,27 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
     entries = raw.get("sha256", [])
     if not isinstance(entries, list):
         raise ValueError("RR3 intel catalog sha256 must be a list")
+    if len(entries) > MAX_INTEL_ENTRIES:
+        raise ValueError("RR3 intel catalog entry limit exceeded")
     out: dict[str, dict] = {}
     for item in entries:
-        if not isinstance(item, dict):
-            raise ValueError("RR3 intel catalog entry must be an object")
-        value = str(item.get("value") or "").strip().casefold()
+        if not isinstance(item, dict) or set(item) != {"value", "name", "source"}:
+            raise ValueError("RR3 intel catalog entry fields invalid")
+        value_raw = item.get("value")
+        if not isinstance(value_raw, str):
+            raise ValueError("RR3 intel catalog contains invalid SHA-256")
+        value = value_raw.strip().casefold()
         if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
             raise ValueError("RR3 intel catalog contains invalid SHA-256")
+        if value in out:
+            raise ValueError("RR3 intel catalog contains duplicate SHA-256")
+        if not _valid_intel_text(item.get("name")):
+            raise ValueError("RR3 intel catalog name invalid")
+        if not _valid_intel_text(item.get("source")):
+            raise ValueError("RR3 intel catalog source invalid")
         out[value] = {
-            "name": str(item.get("name") or "approved_hash_ioc"),
-            "source": str(item.get("source") or "local_approved_catalog"),
+            "name": item["name"].strip(),
+            "source": item["source"].strip(),
         }
     return out
 
@@ -143,6 +182,15 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
 def _compile_yara(rule_path: Path | None):
     if rule_path is None:
         return None, "not_requested"
+    try:
+        if (
+            not rule_path.is_file()
+            or _is_reparse_or_symlink(rule_path)
+            or rule_path.stat().st_size > MAX_YARA_RULE_BYTES
+        ):
+            raise ValueError("RR3 YARA rule file invalid or outside bounded size")
+    except OSError as exc:
+        raise ValueError("RR3 YARA rule file unreadable") from exc
     try:
         import yara  # type: ignore
     except Exception as exc:
