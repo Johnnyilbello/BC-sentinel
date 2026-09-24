@@ -330,16 +330,23 @@ def validate_record(record: object) -> tuple[str, ...]:
 
     result = record.get("result")
     layer = record.get("primary_detection_layer")
-    if result in {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW} and layer == "NONE":
+    if (
+        _valid_allowed_string(result, {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW})
+        and layer == "NONE"
+    ):
         failures.append("b148:detection_layer_required")
-    if result in {RESULT_MISSED, RESULT_ERROR} and layer != "NONE":
+    if (
+        _valid_allowed_string(result, {RESULT_MISSED, RESULT_ERROR})
+        and layer != "NONE"
+    ):
         failures.append("b148:non_detection_layer_must_be_none")
 
-    if record.get("quarantine_state") == "SUCCEEDED" and result not in {
-        RESULT_BLOCKED,
-        RESULT_DETECTED,
-        RESULT_REVIEW,
-    }:
+    if (
+        record.get("quarantine_state") == "SUCCEEDED"
+        and not _valid_allowed_string(
+            result, {RESULT_BLOCKED, RESULT_DETECTED, RESULT_REVIEW}
+        )
+    ):
         failures.append("b148:quarantine_without_detection")
 
     return tuple(dict.fromkeys(failures))
