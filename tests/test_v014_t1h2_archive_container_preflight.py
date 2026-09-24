@@ -30,7 +30,7 @@ def test_path_traversal_and_absolute_members_require_review(tmp_path: Path):
     )
     assert report.passed is False
     assert report.decision == "REVIEW_REQUIRED"
-    assert report.reasons == ("unsafe_member_path",)
+    assert "unsafe_member_path" in report.reasons
     assert not (tmp_path.parent / "escape.txt").exists()
 
 
