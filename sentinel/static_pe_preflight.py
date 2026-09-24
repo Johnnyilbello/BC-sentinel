@@ -214,6 +214,11 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
         seen_section_names: set[str] = set()
         for index, section in enumerate(sections[: MAX_PE_SECTIONS + 1]):
             name = _section_name(section, index)
+            raw_name = getattr(section, "Name", b"")
+            if isinstance(raw_name, bytes):
+                visible_raw_name = raw_name.rstrip(b"\x00")
+                if any(value < 32 or value >= 127 for value in visible_raw_name):
+                    reasons.append("section_name_non_printable")
             characteristics = int(getattr(section, "Characteristics", 0) or 0)
             normalized_name = name.casefold()
             if normalized_name in seen_section_names:
