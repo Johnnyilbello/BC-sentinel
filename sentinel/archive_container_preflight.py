@@ -8,6 +8,7 @@ separate scanner.  A PASS is not a malware-clean verdict.
 """
 
 from dataclasses import asdict, dataclass
+import hashlib
 from pathlib import Path, PurePosixPath
 import stat
 import struct
@@ -61,6 +62,9 @@ class ArchivePreflight:
     content_read: bool = False
     extraction_performed: bool = False
     clean_claimed: bool = False
+    archive_sha256: str = ""
+    snapshot_stable: bool | None = None
+    raw_archive_hashed: bool = False
 
     def to_dict(self) -> dict[str, object]:
         result = asdict(self)
@@ -116,6 +120,14 @@ def _windows_collision_key(name: str) -> str:
 def _is_symlink(info: zipfile.ZipInfo) -> bool:
     mode = (info.external_attr >> 16) & 0xFFFF
     return stat.S_ISLNK(mode)
+
+
+def _sha256_archive(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _is_reparse_or_symlink(path: Path) -> bool:
@@ -219,6 +231,11 @@ def inspect_zip_metadata(path: Path) -> ArchivePreflight:
     if size > MAX_ARCHIVE_BYTES:
         return ArchivePreflight(False, "REJECTED", ("archive_size_limit",), 0, 0, 0)
 
+    try:
+        initial_sha256 = _sha256_archive(path)
+    except OSError:
+        return ArchivePreflight(False, "REJECTED", ("archive_unreadable",), 0, 0, 0)
+
     eocd_entries, _, eocd_reasons = _read_eocd_metadata(path)
     if eocd_reasons:
         decision = "REJECTED" if eocd_reasons == ("malformed_container",) else "REVIEW_REQUIRED"
@@ -229,6 +246,8 @@ def inspect_zip_metadata(path: Path) -> ArchivePreflight:
             eocd_entries,
             0,
             0,
+            archive_sha256=initial_sha256,
+            raw_archive_hashed=True,
         )
 
     try:
@@ -281,6 +300,17 @@ def inspect_zip_metadata(path: Path) -> ArchivePreflight:
     if uncompressed > MAX_TOTAL_UNCOMPRESSED_BYTES:
         reasons.append("total_uncompressed_limit")
 
+    snapshot_stable: bool | None
+    try:
+        final_sha256 = _sha256_archive(path)
+    except OSError:
+        snapshot_stable = False
+        reasons.append("archive_unavailable_after_metadata_scan")
+    else:
+        snapshot_stable = final_sha256 == initial_sha256
+        if not snapshot_stable:
+            reasons.append("archive_changed_during_metadata_scan")
+
     unique = tuple(dict.fromkeys(reasons))
     return ArchivePreflight(
         passed=not unique,
@@ -289,5 +319,8 @@ def inspect_zip_metadata(path: Path) -> ArchivePreflight:
         entry_count=len(entries),
         total_compressed_bytes=compressed,
         total_uncompressed_bytes=uncompressed,
+        archive_sha256=initial_sha256,
+        snapshot_stable=snapshot_stable,
+        raw_archive_hashed=True,
     )
 
