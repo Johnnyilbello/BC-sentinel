@@ -22,6 +22,7 @@ VERIFIED coverage or claim independent certification.
 
 import hashlib
 import json
+import math
 import re
 from typing import Any, Final, Iterable, Mapping
 
@@ -192,11 +193,13 @@ def _valid_commit(value: object) -> bool:
 
 
 def _valid_nonnegative_number(value: object) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and float(value) >= 0.0
-    )
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric) and numeric >= 0.0
 
 
 def validate_record(record: object) -> tuple[str, ...]:
