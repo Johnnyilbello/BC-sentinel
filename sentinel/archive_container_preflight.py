@@ -10,6 +10,7 @@ separate scanner.  A PASS is not a malware-clean verdict.
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 import stat
+import struct
 import zipfile
 
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
@@ -19,6 +20,8 @@ MAX_ENTRY_UNCOMPRESSED_BYTES = 128 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 250.0
 MAX_PATH_DEPTH = 24
 MAX_MEMBER_COMPONENT_CHARS = 255
+MAX_CENTRAL_DIRECTORY_BYTES = 16 * 1024 * 1024
+MAX_EOCD_TAIL_BYTES = 65_535 + 22
 ARCHIVE_SUFFIXES = {".zip", ".jar", ".docx", ".xlsx", ".pptx"}
 SUPPORTED_COMPRESSION_TYPES = {
     zipfile.ZIP_STORED,
@@ -115,6 +118,71 @@ def _is_symlink(info: zipfile.ZipInfo) -> bool:
     return stat.S_ISLNK(mode)
 
 
+def _is_reparse_or_symlink(path: Path) -> bool:
+    try:
+        if path.is_symlink():
+            return True
+        st = path.stat(follow_symlinks=False)
+        attrs = int(getattr(st, "st_file_attributes", 0) or 0)
+        reparse_flag = int(getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+        return bool(attrs & reparse_flag)
+    except OSError:
+        return True
+
+
+def _read_eocd_metadata(path: Path) -> tuple[int, int, tuple[str, ...]]:
+    try:
+        size = int(path.stat().st_size)
+        read_size = min(size, MAX_EOCD_TAIL_BYTES)
+        with path.open("rb") as handle:
+            handle.seek(size - read_size)
+            tail = handle.read(read_size)
+    except OSError:
+        return 0, 0, ("archive_unreadable",)
+
+    signature = b"PK\x05\x06"
+    search_end = len(tail)
+    position = -1
+    fields: tuple[int, int, int, int, int, int, int] | None = None
+    while True:
+        candidate = tail.rfind(signature, 0, search_end)
+        if candidate < 0:
+            break
+        if candidate + 22 <= len(tail):
+            unpacked = struct.unpack_from("<4sHHHHIIH", tail, candidate)
+            comment_length = int(unpacked[7])
+            if candidate + 22 + comment_length == len(tail):
+                position = candidate
+                fields = (
+                    int(unpacked[1]),
+                    int(unpacked[2]),
+                    int(unpacked[3]),
+                    int(unpacked[4]),
+                    int(unpacked[5]),
+                    int(unpacked[6]),
+                    comment_length,
+                )
+                break
+        search_end = candidate
+
+    if position < 0 or fields is None:
+        return 0, 0, ("malformed_container",)
+
+    disk_number, directory_disk, entries_disk, entries_total, directory_size, _, _ = fields
+    reasons: list[str] = []
+    if disk_number != 0 or directory_disk != 0 or entries_disk != entries_total:
+        reasons.append("multi_disk_container")
+    if entries_total == 0xFFFF or directory_size == 0xFFFFFFFF:
+        reasons.append("zip64_directory_metadata")
+    else:
+        if entries_total > MAX_ENTRIES:
+            reasons.append("entry_count_limit")
+        if directory_size > MAX_CENTRAL_DIRECTORY_BYTES:
+            reasons.append("central_directory_size_limit")
+
+    return entries_total, directory_size, tuple(dict.fromkeys(reasons))
+
+
 def inspect_zip_metadata(path: Path) -> ArchivePreflight:
     reasons: list[str] = []
     try:
@@ -123,15 +191,31 @@ def inspect_zip_metadata(path: Path) -> ArchivePreflight:
         return ArchivePreflight(False, "REJECTED", ("archive_unreadable",), 0, 0, 0)
     if not path.is_file() or path.suffix.casefold() not in ARCHIVE_SUFFIXES:
         return ArchivePreflight(False, "REJECTED", ("unsupported_or_non_file",), 0, 0, 0)
+    if _is_reparse_or_symlink(path):
+        return ArchivePreflight(False, "REJECTED", ("archive_symlink_or_reparse",), 0, 0, 0)
     if size > MAX_ARCHIVE_BYTES:
         return ArchivePreflight(False, "REJECTED", ("archive_size_limit",), 0, 0, 0)
 
+    eocd_entries, _, eocd_reasons = _read_eocd_metadata(path)
+    if eocd_reasons:
+        decision = "REJECTED" if eocd_reasons == ("malformed_container",) else "REVIEW_REQUIRED"
+        return ArchivePreflight(
+            False,
+            decision,
+            eocd_reasons,
+            eocd_entries,
+            0,
+            0,
+        )
+
     try:
-        with zipfile.ZipFile(path, mode="r", allowZip64=True) as archive:
+        with zipfile.ZipFile(path, mode="r", allowZip64=False) as archive:
             entries = archive.infolist()
     except (OSError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile):
         return ArchivePreflight(False, "REJECTED", ("malformed_container",), 0, 0, 0)
 
+    if len(entries) != eocd_entries:
+        reasons.append("entry_count_mismatch")
     if len(entries) > MAX_ENTRIES:
         reasons.append("entry_count_limit")
     compressed = 0
