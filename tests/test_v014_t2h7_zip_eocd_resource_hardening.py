@@ -114,13 +114,24 @@ def test_multi_disk_metadata_is_reviewed_before_parser(
     assert report.reasons == ("multi_disk_container",)
 
 
-def test_eocd_search_ignores_signature_bytes_inside_comment(tmp_path: Path):
+def test_eocd_signature_inside_comment_is_reviewed_before_zipfile_parser(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
     comment = b"safe-comment-prefix-PK\x05\x06-not-an-eocd"
     path = _zip(tmp_path / "comment-signature.zip", comment=comment)
+
+    def forbidden_parser(*args, **kwargs):
+        raise AssertionError("ambiguous EOCD comment must not reach zipfile parser")
+
+    monkeypatch.setattr(preflight.zipfile, "ZipFile", forbidden_parser)
     report = preflight.inspect_zip_metadata(path)
 
-    assert report.passed is True
+    assert report.passed is False
+    assert report.decision == "REVIEW_REQUIRED"
+    assert report.reasons == ("eocd_signature_in_comment",)
     assert report.entry_count == 1
+    assert report.content_read is False
     assert report.clean_claimed is False
 
 
