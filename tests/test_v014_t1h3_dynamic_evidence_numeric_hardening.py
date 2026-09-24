@@ -22,6 +22,7 @@ def _record() -> dict:
         10**10000,
         True,
     ],
+    ids=["pos-inf", "neg-inf", "nan", "huge-int", "bool"],
 )
 def test_b148_rejects_pathological_detection_latency(value: object) -> None:
     record = _record()
@@ -39,6 +40,7 @@ def test_b148_rejects_pathological_detection_latency(value: object) -> None:
         10**10000,
         True,
     ],
+    ids=["pos-inf", "neg-inf", "nan", "huge-int", "bool"],
 )
 def test_b148_rejects_pathological_execution_duration(value: object) -> None:
     record = _record()
