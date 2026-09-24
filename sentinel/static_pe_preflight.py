@@ -24,6 +24,8 @@ SUPPORTED_PE_SUFFIXES: Final[frozenset[str]] = frozenset(
 
 IMAGE_SCN_MEM_EXECUTE: Final[int] = 0x20000000
 IMAGE_SCN_MEM_WRITE: Final[int] = 0x80000000
+KNOWN_MACHINE_TYPES: Final[frozenset[int]] = frozenset({0x014C, 0x8664, 0xAA64})
+KNOWN_OPTIONAL_MAGICS: Final[frozenset[int]] = frozenset({0x010B, 0x020B})
 
 
 @dataclass(frozen=True)
@@ -103,9 +105,10 @@ def _bounded_read(path: Path, *, max_bytes: int) -> bytes:
 def _section_name(section: object, index: int) -> str:
     raw = getattr(section, "Name", b"")
     if isinstance(raw, bytes):
-        name = raw.rstrip(b"\x00").decode("ascii", errors="replace").strip()
+        decoded = raw.rstrip(b"\x00").decode("ascii", errors="replace")
     else:
-        name = str(raw or "").strip()
+        decoded = str(raw or "")
+    name = "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in decoded).strip()
     return name or f"section-{index}"
 
 
@@ -178,8 +181,26 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
         machine = int(pe.FILE_HEADER.Machine)
         section_count = int(pe.FILE_HEADER.NumberOfSections)
         timestamp = int(pe.FILE_HEADER.TimeDateStamp)
+        optional_magic = int(pe.OPTIONAL_HEADER.Magic)
         entrypoint = int(pe.OPTIONAL_HEADER.AddressOfEntryPoint)
         image_base = int(pe.OPTIONAL_HEADER.ImageBase)
+        size_of_headers = int(pe.OPTIONAL_HEADER.SizeOfHeaders)
+        size_of_image = int(pe.OPTIONAL_HEADER.SizeOfImage)
+        file_alignment = int(pe.OPTIONAL_HEADER.FileAlignment)
+        section_alignment = int(pe.OPTIONAL_HEADER.SectionAlignment)
+
+        if machine not in KNOWN_MACHINE_TYPES:
+            reasons.append("unknown_machine_type")
+        if optional_magic not in KNOWN_OPTIONAL_MAGICS:
+            reasons.append("unknown_optional_header_magic")
+        if size_of_headers <= 0 or size_of_headers > len(data):
+            reasons.append("size_of_headers_invalid")
+        if size_of_image <= 0:
+            reasons.append("size_of_image_invalid")
+        if file_alignment <= 0 or section_alignment <= 0:
+            reasons.append("alignment_invalid")
+        elif section_alignment < file_alignment:
+            reasons.append("section_alignment_smaller_than_file_alignment")
 
         sections = list(pe.sections)
         if section_count != len(sections):
@@ -188,9 +209,16 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
             reasons.append("section_count_limit")
 
         entrypoint_mapped = entrypoint == 0
+        entrypoint_executable = entrypoint == 0
+        virtual_ranges: list[tuple[int, int, str]] = []
+        seen_section_names: set[str] = set()
         for index, section in enumerate(sections[: MAX_PE_SECTIONS + 1]):
             name = _section_name(section, index)
             characteristics = int(getattr(section, "Characteristics", 0) or 0)
+            normalized_name = name.casefold()
+            if normalized_name in seen_section_names:
+                reasons.append("duplicate_section_name")
+            seen_section_names.add(normalized_name)
             raw_offset = int(getattr(section, "PointerToRawData", 0) or 0)
             raw_size = int(getattr(section, "SizeOfRawData", 0) or 0)
             virtual_address = int(getattr(section, "VirtualAddress", 0) or 0)
@@ -209,26 +237,42 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
                 section_bytes = data[raw_offset : raw_offset + raw_size]
                 if raw_size:
                     ranges.append((raw_offset, raw_offset + raw_size, name))
+                    if size_of_headers > 0 and raw_offset < size_of_headers:
+                        reasons.append("section_raw_overlaps_headers")
 
             if section_bytes and _entropy(section_bytes) >= HIGH_ENTROPY_THRESHOLD:
                 high_entropy.append(name)
                 reasons.append("high_entropy_section")
 
             mapped_size = max(virtual_size, raw_size)
+            if mapped_size > 0:
+                virtual_ranges.append(
+                    (virtual_address, virtual_address + mapped_size, name)
+                )
             if (
                 entrypoint
                 and mapped_size > 0
                 and virtual_address <= entrypoint < virtual_address + mapped_size
             ):
                 entrypoint_mapped = True
+                if characteristics & IMAGE_SCN_MEM_EXECUTE:
+                    entrypoint_executable = True
 
         if not entrypoint_mapped:
             reasons.append("entrypoint_outside_sections")
+        elif not entrypoint_executable:
+            reasons.append("entrypoint_in_non_executable_section")
 
         ranges.sort()
         for previous, current in zip(ranges, ranges[1:]):
             if current[0] < previous[1]:
                 reasons.append("overlapping_raw_sections")
+                break
+
+        virtual_ranges.sort()
+        for previous, current in zip(virtual_ranges, virtual_ranges[1:]):
+            if current[0] < previous[1]:
+                reasons.append("overlapping_virtual_sections")
                 break
     except (AttributeError, OverflowError, TypeError, ValueError):
         return _rejected("malformed_pe_metadata", file_size=len(data), sha256=digest)
