@@ -11,6 +11,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Final, Iterable
 
+from sentinel import static_pe_preflight
+
 PROFILE: Final[str] = "v0.11.0-beta.3-rr3"
 MAX_FILES_HARD: Final[int] = 50_000
 MAX_FILE_BYTES_HARD: Final[int] = 256 * 1024 * 1024
@@ -69,12 +71,17 @@ class OfflineFinding:
     reasons: tuple[str, ...] = field(default_factory=tuple)
     ioc_name: str = ""
     yara_matches: tuple[str, ...] = field(default_factory=tuple)
+    pe_metadata_decision: str = ""
+    pe_metadata_reasons: tuple[str, ...] = field(default_factory=tuple)
+    pe_sha256_matches: bool | None = None
+    pe_clean_claimed: bool = False
     automatic_action: bool = False
 
     def to_record(self) -> dict:
         record = asdict(self)
         record["reasons"] = list(self.reasons)
         record["yara_matches"] = list(self.yara_matches)
+        record["pe_metadata_reasons"] = list(self.pe_metadata_reasons)
         return record
 
 
@@ -419,6 +426,7 @@ def scan_offline_windows(
     audit("scan_start", "ok", "validated_offline_windows_root", yara_status=yara_status, intel_entries=len(catalog))
     findings: list[OfflineFinding] = []
     hashed = skipped = errors = ioc_hits = yara_hits = heuristic_hits = 0
+    pe_parsed = pe_review_items = pe_rejected_items = pe_unstable_items = 0
     try:
         for category, path in _iter_candidate_files(root, max_files=limits.max_files):
             rel = str(path.relative_to(root)).replace("\\", "/")
@@ -437,6 +445,30 @@ def scan_offline_windows(
                 digest = _sha256_file(path)
                 hashed += 1
                 reasons = _heuristic_reasons(path, category, root)
+
+                pe_decision = ""
+                pe_reasons: tuple[str, ...] = ()
+                pe_sha256_matches: bool | None = None
+                pe_clean_claimed = False
+                if path.suffix.casefold() in static_pe_preflight.SUPPORTED_PE_SUFFIXES:
+                    pe_report = static_pe_preflight.inspect_pe_metadata(
+                        path,
+                        max_bytes=min(limits.max_file_bytes, static_pe_preflight.MAX_PE_BYTES),
+                    )
+                    pe_parsed += 1
+                    pe_decision = pe_report.decision
+                    pe_reasons = pe_report.reasons
+                    pe_clean_claimed = pe_report.clean_claimed
+                    pe_sha256_matches = bool(pe_report.sha256 and pe_report.sha256 == digest)
+                    if pe_report.decision == "REVIEW_REQUIRED":
+                        pe_review_items += 1
+                    elif pe_report.decision == "REJECTED":
+                        pe_rejected_items += 1
+                    reasons.extend(f"pe_metadata:{reason}" for reason in pe_report.reasons)
+                    if not pe_sha256_matches:
+                        reasons.append("artifact_changed_during_static_scan")
+                        pe_unstable_items += 1
+
                 ioc = catalog.get(digest.casefold())
                 ymatches = _yara_matches(rules, path)
                 yara_real = tuple(item for item in ymatches if not item.startswith("__YARA_ERROR__:"))
@@ -454,7 +486,18 @@ def scan_offline_windows(
                     "lolbin_name_outside_windows_system_directory", "double_extension_lure",
                 )):
                     heuristic_hits += 1
-                verdict = "deterministic_ioc" if ioc else "yara_match" if yara_real else "review" if reasons else "observed"
+                unstable_artifact = "artifact_changed_during_static_scan" in reasons
+                verdict = (
+                    "review"
+                    if unstable_artifact
+                    else "deterministic_ioc"
+                    if ioc
+                    else "yara_match"
+                    if yara_real
+                    else "review"
+                    if reasons
+                    else "observed"
+                )
                 findings.append(
                     OfflineFinding(
                         relative_path=rel,
@@ -466,6 +509,10 @@ def scan_offline_windows(
                         reasons=tuple(sorted(set(reasons))),
                         ioc_name=str(ioc.get("name") if ioc else ""),
                         yara_matches=yara_real,
+                        pe_metadata_decision=pe_decision,
+                        pe_metadata_reasons=pe_reasons,
+                        pe_sha256_matches=pe_sha256_matches,
+                        pe_clean_claimed=pe_clean_claimed,
                         automatic_action=False,
                     )
                 )
@@ -484,6 +531,10 @@ def scan_offline_windows(
             "ioc_hits": ioc_hits,
             "yara_hits": yara_hits,
             "heuristic_review_items": heuristic_hits,
+            "pe_parsed_items": pe_parsed,
+            "pe_review_items": pe_review_items,
+            "pe_rejected_items": pe_rejected_items,
+            "pe_unstable_items": pe_unstable_items,
             "registry_hives": len(hives),
             "truncated_by_max_files": len(findings) >= limits.max_files,
         }
