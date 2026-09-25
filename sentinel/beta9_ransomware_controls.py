@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from sentinel import incident_correlation, ransomware_detector, security_graph
 SCHEMA = "bc-sentinel-beta9-ransomware-live-controls-v1"
 SOURCE = "LOCAL_TEMP_FILE_ACTIVITY_LIVE_CONTROLS"
 TARGET_SCENARIO = "B7-RANSOMWARE-001"
+MAX_EVENT_COUNT = 1_000_000
 CONTROL_IDS = (
     "positive-ransomware-like",
     "administrative-backup-like",
@@ -96,13 +98,18 @@ def _parse_utc(value: object) -> datetime | None:
 
 
 def _valid_int(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= MAX_EVENT_COUNT
+    )
 
 
 def _valid_float(value: object) -> bool:
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
+        and math.isfinite(float(value))
         and 0.0 <= float(value) <= 1.0
     )
 

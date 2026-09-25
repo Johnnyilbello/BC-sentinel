@@ -16,6 +16,7 @@ coverage by itself and does not claim independent certification.
 
 import hashlib
 import json
+import math
 import re
 from typing import Any, Final, Iterable, Mapping
 
@@ -128,10 +129,27 @@ def _valid_commit(value: object) -> bool:
 
 
 def _valid_nonnegative_number(value: object) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric) and numeric >= 0.0
+
+
+def _valid_allowed_string(value: object, allowed: set[str]) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
+def _valid_checkpoint(value: object) -> bool:
     return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and float(value) >= 0.0
+        isinstance(value, str)
+        and value.startswith("checkpoint/")
+        and 1 <= len(value) <= 200
+        and "\x00" not in value
+        and "\r" not in value
+        and "\n" not in value
     )
 
 
@@ -153,15 +171,15 @@ def validate_record(record: object) -> tuple[str, ...]:
         failures.append("b147:sample_sha256_invalid")
     if not _valid_commit(record.get("engine_commit")):
         failures.append("b147:engine_commit_invalid")
-    if not isinstance(record.get("engine_checkpoint"), str) or not record["engine_checkpoint"].startswith("checkpoint/"):
+    if not _valid_checkpoint(record.get("engine_checkpoint")):
         failures.append("b147:engine_checkpoint_invalid")
 
-    if record.get("malware_category") not in ALLOWED_CATEGORIES:
+    if not _valid_allowed_string(record.get("malware_category"), ALLOWED_CATEGORIES):
         failures.append("b147:malware_category_invalid")
-    if record.get("authorization_class") not in {
-        b143.AUTH_APPROVED_RESEARCH,
-        b143.AUTH_VENDOR_TEST,
-    }:
+    if not _valid_allowed_string(
+        record.get("authorization_class"),
+        {b143.AUTH_APPROVED_RESEARCH, b143.AUTH_VENDOR_TEST},
+    ):
         failures.append("b147:authorization_class_invalid")
     if record.get("sample_authorized") is not True:
         failures.append("b147:sample_authorization_required")
@@ -169,16 +187,14 @@ def validate_record(record: object) -> tuple[str, ...]:
         failures.append("b147:static_environment_required")
     if record.get("network_mode") != b143.NETWORK_NONE:
         failures.append("b147:network_must_be_none")
-    if record.get("scan_mode") not in ALLOWED_SCAN_MODES:
+    if not _valid_allowed_string(record.get("scan_mode"), ALLOWED_SCAN_MODES):
         failures.append("b147:scan_mode_invalid")
-    if record.get("result") not in ALLOWED_RESULTS:
+    if not _valid_allowed_string(record.get("result"), ALLOWED_RESULTS):
         failures.append("b147:result_invalid")
-    if record.get("detection_layer") not in {
-        "STATIC",
-        "ON_DEMAND",
-        "ON_ACCESS",
-        "NONE",
-    }:
+    if not _valid_allowed_string(
+        record.get("detection_layer"),
+        {"STATIC", "ON_DEMAND", "ON_ACCESS", "NONE"},
+    ):
         failures.append("b147:detection_layer_invalid")
     if not _valid_nonnegative_number(record.get("detection_latency_ms")):
         failures.append("b147:detection_latency_invalid")
@@ -209,16 +225,28 @@ def validate_record(record: object) -> tuple[str, ...]:
         if record.get(field) is not False:
             failures.append(f"b147:{field}_forbidden")
 
-    if record.get("result") == RESULT_DETECTED and record.get("detection_layer") == "NONE":
+    result = record.get("result")
+    detection_layer = record.get("detection_layer")
+    if result == RESULT_DETECTED and detection_layer == "NONE":
         failures.append("b147:detection_layer_required")
-    if record.get("result") in {RESULT_MISSED, RESULT_ERROR} and record.get("detection_layer") != "NONE":
+    if (
+        isinstance(result, str)
+        and result in {RESULT_MISSED, RESULT_ERROR}
+        and detection_layer != "NONE"
+    ):
         failures.append("b147:non_detection_layer_must_be_none")
 
     return tuple(dict.fromkeys(failures))
 
 
 def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    failures = validate_record(dict(record))
+    if not isinstance(record, Mapping):
+        raise ValueError("b147:invalid_record:b147:not_object")
+    try:
+        material = dict(record)
+    except (TypeError, ValueError):
+        raise ValueError("b147:invalid_record:b147:not_object")
+    failures = validate_record(material)
     if failures:
         raise ValueError("b147:invalid_record:" + ",".join(failures))
 
@@ -227,6 +255,7 @@ def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
         RESULT_MISSED: b143.RESULT_MISSED,
         RESULT_ERROR: b143.RESULT_ERROR,
     }
+    record = material
     detection_layer = str(record["detection_layer"])
     mapped_layer = detection_layer if detection_layer in b143.DETECTION_LAYERS else "STATIC"
 
@@ -275,16 +304,30 @@ def to_b143_record(record: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
-    items = [dict(item) for item in records]
     failures: list[str] = []
+    parsed_items: list[tuple[int, dict[str, Any]]] = []
+    try:
+        raw_items = list(records)
+    except (TypeError, ValueError, RuntimeError):
+        raw_items = []
+        failures.append("b147:batch_iterable_invalid")
+
+    for index, item in enumerate(raw_items):
+        if not isinstance(item, Mapping):
+            failures.append(f"record[{index}]:b147:not_object")
+            continue
+        try:
+            parsed_items.append((index, dict(item)))
+        except (TypeError, ValueError):
+            failures.append(f"record[{index}]:b147:not_object")
     accepted: list[dict[str, Any]] = []
     seen_hashes: set[str] = set()
     seen_run_ids: set[str] = set()
 
-    if not items:
+    if not raw_items:
         failures.append("b147:batch_empty")
 
-    for index, record in enumerate(items):
+    for index, record in parsed_items:
         record_failures = validate_record(record)
         if record_failures:
             failures.extend(f"record[{index}]:{item}" for item in record_failures)
@@ -346,7 +389,7 @@ def summarize_batch(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         "source_checkpoint": SOURCE_CHECKPOINT,
         "source_checkpoint_commit": SOURCE_CHECKPOINT_COMMIT,
         "source_coverage": dict(SOURCE_COVERAGE),
-        "sample_count": len(items),
+        "sample_count": len(raw_items),
         "accepted_count": len(accepted),
         "unique_sample_count": len(seen_hashes),
         "result_counts": counts,

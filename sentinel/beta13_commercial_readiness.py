@@ -190,9 +190,15 @@ def evaluate_trial(
             reason="trial_schema_invalid",
         )
     try:
+        if isinstance(data["started_at"], bool) or not isinstance(data["started_at"], (int, float)):
+            raise ValueError("invalid timestamp type")
+        if isinstance(data["trial_days"], bool) or not isinstance(data["trial_days"], int):
+            raise ValueError("invalid trial day type")
         started_at = float(data["started_at"])
         trial_days = int(data["trial_days"])
-    except (TypeError, ValueError):
+        if not math.isfinite(started_at) or not math.isfinite(float(now)):
+            raise ValueError("nonfinite trial timestamp")
+    except (TypeError, ValueError, OverflowError):
         return CommercialState(
             status=UNAVAILABLE,
             mode="TRIAL",
@@ -266,7 +272,7 @@ def load_trial(
 
     try:
         data = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return CommercialState(
             status=UNAVAILABLE,
             mode="TRIAL",

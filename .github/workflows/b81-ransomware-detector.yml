@@ -15,6 +15,7 @@ on:
 
 jobs:
   b81-ransomware-detector:
+    if: ${{ github.event_name != 'pull_request' || github.head_ref == 'feature/v011-beta8-b81-ransomware-detector' }}
     runs-on: windows-latest
     timeout-minutes: 30
     env:

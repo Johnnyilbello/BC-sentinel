@@ -127,7 +127,7 @@ def _display_posture(posture: str) -> tuple[str, str, str]:
     return (
         "Verifica necessaria",
         "Stato di protezione da verificare",
-        "I motori sono disponibili, ma manca una prova runtime aggiornata. "
+        "Disponibilità dei motori e protezione attiva richiedono una verifica. "
         "BC Sentinel non mostrerà il PC come protetto senza evidenza corrente.",
     )
 

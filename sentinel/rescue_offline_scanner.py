@@ -11,11 +11,16 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Final, Iterable
 
+from sentinel import static_pe_preflight
+
 PROFILE: Final[str] = "v0.11.0-beta.3-rr3"
 MAX_FILES_HARD: Final[int] = 50_000
 MAX_FILE_BYTES_HARD: Final[int] = 256 * 1024 * 1024
 DEFAULT_MAX_FILES: Final[int] = 10_000
 DEFAULT_MAX_FILE_BYTES: Final[int] = 64 * 1024 * 1024
+MAX_INTEL_ENTRIES: Final[int] = 50_000
+MAX_INTEL_TEXT_CHARS: Final[int] = 160
+MAX_YARA_RULE_BYTES: Final[int] = 1024 * 1024
 EXECUTABLE_OR_SCRIPT_EXTENSIONS: Final[frozenset[str]] = frozenset(
     {
         ".exe", ".dll", ".sys", ".scr", ".com", ".cpl", ".drv", ".ocx",
@@ -41,9 +46,17 @@ class OfflineScanLimits:
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
 
     def validate(self) -> None:
-        if not (1 <= int(self.max_files) <= MAX_FILES_HARD):
+        if (
+            not isinstance(self.max_files, int)
+            or isinstance(self.max_files, bool)
+            or not (1 <= self.max_files <= MAX_FILES_HARD)
+        ):
             raise ValueError("RR3 max_files outside bounded limit")
-        if not (1 <= int(self.max_file_bytes) <= MAX_FILE_BYTES_HARD):
+        if (
+            not isinstance(self.max_file_bytes, int)
+            or isinstance(self.max_file_bytes, bool)
+            or not (1 <= self.max_file_bytes <= MAX_FILE_BYTES_HARD)
+        ):
             raise ValueError("RR3 max_file_bytes outside bounded limit")
 
 
@@ -58,12 +71,18 @@ class OfflineFinding:
     reasons: tuple[str, ...] = field(default_factory=tuple)
     ioc_name: str = ""
     yara_matches: tuple[str, ...] = field(default_factory=tuple)
+    pe_metadata_decision: str = ""
+    pe_metadata_reasons: tuple[str, ...] = field(default_factory=tuple)
+    pe_sha256_matches: bool | None = None
+    pe_clean_claimed: bool = False
+    final_sha256_matches: bool | None = None
     automatic_action: bool = False
 
     def to_record(self) -> dict:
         record = asdict(self)
         record["reasons"] = list(self.reasons)
         record["yara_matches"] = list(self.yara_matches)
+        record["pe_metadata_reasons"] = list(self.pe_metadata_reasons)
         return record
 
 
@@ -95,12 +114,15 @@ def _is_inside(child: Path, parent: Path) -> bool:
     try:
         child.resolve().relative_to(parent.resolve())
         return True
-    except ValueError:
+    except (OSError, RuntimeError, ValueError):
         return False
 
 
 def validate_offline_windows_root(root: Path) -> Path:
-    resolved = root.resolve(strict=True)
+    try:
+        resolved = root.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ValueError("RR3 offline root is unavailable") from exc
     if not resolved.is_dir():
         raise ValueError("RR3 offline root must be an existing directory")
     if _is_reparse_or_symlink(resolved):
@@ -115,10 +137,24 @@ def validate_offline_windows_root(root: Path) -> Path:
     return resolved
 
 
+def _valid_intel_text(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value.strip())
+        and len(value) <= MAX_INTEL_TEXT_CHARS
+        and all(ord(ch) >= 32 and ch not in "\r\n" for ch in value)
+    )
+
+
 def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
     if path is None:
         return {}
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("RR3 intel catalog unreadable or invalid JSON") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("RR3 intel catalog must be an object")
     if raw.get("schema") != "bc-sentinel-offline-intel-v1":
         raise ValueError("RR3 intel catalog schema mismatch")
     if raw.get("approved") is not True:
@@ -126,16 +162,31 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
     entries = raw.get("sha256", [])
     if not isinstance(entries, list):
         raise ValueError("RR3 intel catalog sha256 must be a list")
+    if len(entries) > MAX_INTEL_ENTRIES:
+        raise ValueError("RR3 intel catalog entry limit exceeded")
     out: dict[str, dict] = {}
     for item in entries:
         if not isinstance(item, dict):
             raise ValueError("RR3 intel catalog entry must be an object")
-        value = str(item.get("value") or "").strip().casefold()
+        if "value" not in item or not set(item).issubset({"value", "name", "source"}):
+            raise ValueError("RR3 intel catalog entry fields invalid")
+        value_raw = item.get("value")
+        if not isinstance(value_raw, str):
+            raise ValueError("RR3 intel catalog contains invalid SHA-256")
+        value = value_raw.strip().casefold()
         if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
             raise ValueError("RR3 intel catalog contains invalid SHA-256")
+        if value in out:
+            raise ValueError("RR3 intel catalog contains duplicate SHA-256")
+        name = item.get("name", "approved_hash_ioc")
+        source = item.get("source", "local_approved_catalog")
+        if not _valid_intel_text(name):
+            raise ValueError("RR3 intel catalog name invalid")
+        if not _valid_intel_text(source):
+            raise ValueError("RR3 intel catalog source invalid")
         out[value] = {
-            "name": str(item.get("name") or "approved_hash_ioc"),
-            "source": str(item.get("source") or "local_approved_catalog"),
+            "name": name.strip(),
+            "source": source.strip(),
         }
     return out
 
@@ -143,6 +194,15 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
 def _compile_yara(rule_path: Path | None):
     if rule_path is None:
         return None, "not_requested"
+    try:
+        if (
+            not rule_path.is_file()
+            or _is_reparse_or_symlink(rule_path)
+            or rule_path.stat().st_size > MAX_YARA_RULE_BYTES
+        ):
+            raise ValueError("RR3 YARA rule file invalid or outside bounded size")
+    except OSError as exc:
+        raise ValueError("RR3 YARA rule file unreadable") from exc
     try:
         import yara  # type: ignore
     except Exception as exc:
@@ -367,6 +427,8 @@ def scan_offline_windows(
     audit("scan_start", "ok", "validated_offline_windows_root", yara_status=yara_status, intel_entries=len(catalog))
     findings: list[OfflineFinding] = []
     hashed = skipped = errors = ioc_hits = yara_hits = heuristic_hits = 0
+    pe_parsed = pe_review_items = pe_rejected_items = pe_unstable_items = 0
+    static_snapshot_unstable_items = 0
     try:
         for category, path in _iter_candidate_files(root, max_files=limits.max_files):
             rel = str(path.relative_to(root)).replace("\\", "/")
@@ -385,6 +447,35 @@ def scan_offline_windows(
                 digest = _sha256_file(path)
                 hashed += 1
                 reasons = _heuristic_reasons(path, category, root)
+
+                pe_decision = ""
+                pe_reasons: tuple[str, ...] = ()
+                pe_sha256_matches: bool | None = None
+                pe_clean_claimed = False
+                final_sha256_matches: bool | None = None
+                artifact_unstable = False
+                if path.suffix.casefold() in static_pe_preflight.SUPPORTED_PE_SUFFIXES:
+                    pe_report = static_pe_preflight.inspect_pe_metadata(
+                        path,
+                        max_bytes=min(limits.max_file_bytes, static_pe_preflight.MAX_PE_BYTES),
+                    )
+                    pe_parsed += 1
+                    pe_decision = pe_report.decision
+                    pe_reasons = pe_report.reasons
+                    pe_clean_claimed = pe_report.clean_claimed
+                    pe_sha256_matches = (
+                        pe_report.sha256 == digest if pe_report.sha256 else None
+                    )
+                    if pe_report.decision == "REVIEW_REQUIRED":
+                        pe_review_items += 1
+                    elif pe_report.decision == "REJECTED":
+                        pe_rejected_items += 1
+                    reasons.extend(f"pe_metadata:{reason}" for reason in pe_report.reasons)
+                    if pe_sha256_matches is False:
+                        reasons.append("artifact_changed_during_static_scan")
+                        artifact_unstable = True
+                        pe_unstable_items += 1
+
                 ioc = catalog.get(digest.casefold())
                 ymatches = _yara_matches(rules, path)
                 yara_real = tuple(item for item in ymatches if not item.startswith("__YARA_ERROR__:"))
@@ -397,12 +488,38 @@ def scan_offline_windows(
                     yara_hits += 1
                 if yara_error:
                     reasons.append(yara_error[0])
+
+                try:
+                    final_digest = _sha256_file(path)
+                except OSError:
+                    reasons.append("artifact_unavailable_after_static_scan")
+                    artifact_unstable = True
+                    final_sha256_matches = False
+                else:
+                    final_sha256_matches = final_digest == digest
+                    if final_sha256_matches is False:
+                        reasons.append("artifact_changed_during_static_scan")
+                        artifact_unstable = True
+
+                if artifact_unstable:
+                    static_snapshot_unstable_items += 1
+
                 if any(reason in reasons for reason in (
                     "startup_location_artifact", "startup_script", "executable_or_script_in_user_temp",
                     "lolbin_name_outside_windows_system_directory", "double_extension_lure",
                 )):
                     heuristic_hits += 1
-                verdict = "deterministic_ioc" if ioc else "yara_match" if yara_real else "review" if reasons else "observed"
+                verdict = (
+                    "review"
+                    if artifact_unstable
+                    else "deterministic_ioc"
+                    if ioc
+                    else "yara_match"
+                    if yara_real
+                    else "review"
+                    if reasons
+                    else "observed"
+                )
                 findings.append(
                     OfflineFinding(
                         relative_path=rel,
@@ -414,6 +531,11 @@ def scan_offline_windows(
                         reasons=tuple(sorted(set(reasons))),
                         ioc_name=str(ioc.get("name") if ioc else ""),
                         yara_matches=yara_real,
+                        pe_metadata_decision=pe_decision,
+                        pe_metadata_reasons=pe_reasons,
+                        pe_sha256_matches=pe_sha256_matches,
+                        pe_clean_claimed=pe_clean_claimed,
+                        final_sha256_matches=final_sha256_matches,
                         automatic_action=False,
                     )
                 )
@@ -432,6 +554,11 @@ def scan_offline_windows(
             "ioc_hits": ioc_hits,
             "yara_hits": yara_hits,
             "heuristic_review_items": heuristic_hits,
+            "pe_parsed_items": pe_parsed,
+            "pe_review_items": pe_review_items,
+            "pe_rejected_items": pe_rejected_items,
+            "pe_unstable_items": pe_unstable_items,
+            "static_snapshot_unstable_items": static_snapshot_unstable_items,
             "registry_hives": len(hives),
             "truncated_by_max_files": len(findings) >= limits.max_files,
         }

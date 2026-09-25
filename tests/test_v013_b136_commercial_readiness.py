@@ -176,6 +176,8 @@ def test_commercial_ui_is_responsive_and_non_destructive() -> None:
     assert report["passed"] is True
     assert report["page_count"] == 9
     assert report["commercial_selected"] is True
+    assert len(report["navigation"]) == 9
+    assert all(report["navigation"].values())
     assert report["policy_card_count"] == 3
     assert report["diagnostic_export_button_enabled"] is True
     assert report["diagnostic_export_callback_count"] == 1

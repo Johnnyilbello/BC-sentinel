@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import argparse
 import hashlib
 import json
+import math
 from typing import Any, Final, Iterable
 
 from sentinel import beta8_coverage_baseline, incident_correlation, security_graph
@@ -83,7 +84,13 @@ def _nonempty(value: Any) -> bool:
 
 
 def _valid_number(value: Any) -> bool:
-    return not isinstance(value, bool) and isinstance(value, (int, float))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric)
 
 
 def _validate_provenance(value: Any, prefix: str) -> list[str]:
@@ -257,12 +264,14 @@ def validate_observations(observations: Iterable[FileActivityObservation]) -> De
             failures.append(f"{prefix}:event_id_invalid")
         elif item.event_id in seen_events:
             failures.append(f"{prefix}:duplicate_event_id")
-        seen_events.add(item.event_id)
+        else:
+            seen_events.add(item.event_id)
         if not _nonempty(item.evidence_id):
             failures.append(f"{prefix}:evidence_id_invalid")
         elif item.evidence_id in seen_evidence:
             failures.append(f"{prefix}:duplicate_evidence_id")
-        seen_evidence.add(item.evidence_id)
+        else:
+            seen_evidence.add(item.evidence_id)
         if not _nonempty(item.logical_path):
             failures.append(f"{prefix}:logical_path_invalid")
         if not _valid_number(item.observed_at) or item.observed_at < 0:
@@ -273,10 +282,28 @@ def validate_observations(observations: Iterable[FileActivityObservation]) -> De
             failures.append(f"{prefix}:rename_count_invalid")
         if not _valid_number(item.entropy_delta) or item.entropy_delta < 0:
             failures.append(f"{prefix}:entropy_delta_invalid")
+        for field_name in (
+            "extension_changed",
+            "canary_touched",
+            "known_backup_workflow",
+            "user_initiated_bulk_operation",
+        ):
+            if not isinstance(getattr(item, field_name), bool):
+                failures.append(f"{prefix}:{field_name}_invalid")
         failures.extend(_validate_provenance(item.provenance, prefix))
-        if item.correlation_key and not item.correlation_key.strip():
+        if not isinstance(item.correlation_key, str):
             failures.append(f"{prefix}:correlation_key_invalid")
-    return DetectorValidation(not failures, tuple(failures))
+        elif item.correlation_key and not item.correlation_key.strip():
+            failures.append(f"{prefix}:correlation_key_invalid")
+
+    valid_items = tuple(item for item in items if isinstance(item, FileActivityObservation))
+    if len(valid_items) > 1:
+        keys = tuple(item.correlation_key for item in valid_items)
+        if any(not isinstance(key, str) or not key.strip() for key in keys):
+            failures.append("observations:correlation_key_required_for_batch")
+        elif len(set(keys)) != 1:
+            failures.append("observations:mixed_correlation_keys")
+    return DetectorValidation(not failures, tuple(dict.fromkeys(failures)))
 
 
 def _signals(observation: FileActivityObservation) -> set[str]:
@@ -306,10 +333,11 @@ def _score(signals: set[str]) -> int:
 
 
 def detect(observations: Iterable[FileActivityObservation]) -> DetectionResult:
-    items = tuple(sorted(observations, key=lambda item: (item.observed_at, item.event_id)))
+    items = tuple(observations)
     validation = validate_observations(items)
     if not validation.passed:
         raise ValueError("ransomware_detector_invalid_input:" + ",".join(validation.failures))
+    items = tuple(sorted(items, key=lambda item: (item.observed_at, item.event_id)))
 
     all_signals: set[str] = set()
     evidence_ids: set[str] = set()
@@ -368,13 +396,16 @@ def validate_result(payload: dict[str, Any] | Any) -> DetectorValidation:
     for field_name, expected in exact.items():
         if payload.get(field_name) != expected:
             failures.append(f"result:{field_name}_mismatch")
-    if payload.get("outcome") not in ALLOWED_OUTCOMES:
+    outcome = payload.get("outcome")
+    if not isinstance(outcome, str) or outcome not in ALLOWED_OUTCOMES:
         failures.append("result:outcome_invalid")
     score = payload.get("score")
     if isinstance(score, bool) or not isinstance(score, int) or score < 0:
         failures.append("result:score_invalid")
     signals = payload.get("matched_signals")
-    if not isinstance(signals, list) or any(item not in ALLOWED_SIGNALS for item in signals):
+    if not isinstance(signals, list) or any(
+        not isinstance(item, str) or item not in ALLOWED_SIGNALS for item in signals
+    ):
         failures.append("result:signals_invalid")
     for field_name in ("evidence_ids", "event_ids", "suppressor_reasons"):
         value = payload.get(field_name)
@@ -404,10 +435,11 @@ def build_evidence_graph(
     observations: Iterable[FileActivityObservation],
     result: DetectionResult,
 ) -> security_graph.SecurityGraph:
-    items = tuple(sorted(observations, key=lambda item: (item.observed_at, item.event_id)))
+    items = tuple(observations)
     validation = validate_observations(items)
     if not validation.passed:
         raise ValueError("ransomware_detector_invalid_graph_input:" + ",".join(validation.failures))
+    items = tuple(sorted(items, key=lambda item: (item.observed_at, item.event_id)))
     result_validation = validate_result(result.to_dict())
     if not result_validation.passed:
         raise ValueError("ransomware_detector_invalid_result:" + ",".join(result_validation.failures))

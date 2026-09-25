@@ -17,6 +17,7 @@ on:
 
 jobs:
   beta8-foundation:
+    if: ${{ github.event_name != 'pull_request' || github.head_ref == 'feature/v011-beta8-b80-foundation' }}
     runs-on: windows-latest
     timeout-minutes: 30
     env:

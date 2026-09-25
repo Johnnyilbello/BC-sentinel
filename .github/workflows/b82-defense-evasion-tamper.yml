@@ -15,6 +15,7 @@ on:
 
 jobs:
   b82-defense-evasion-tamper:
+    if: ${{ github.event_name != 'pull_request' || github.head_ref == 'feature/v011-beta8-b82-defense-evasion-tamper' }}
     runs-on: windows-latest
     timeout-minutes: 30
     env:

@@ -37,12 +37,12 @@ def _status_copy(state: commercial.CommercialState) -> tuple[str, str]:
             if state.trial_remaining_days is not None
             else ""
         )
-        return "Periodo di prova attivo", "Protezione disponibile" + remaining
+        return "Periodo di prova attivo", "Stato commerciale" + remaining
     if state.status == commercial.TRIAL_EXPIRED:
-        return "Periodo di prova terminato", "La protezione di base resta disponibile."
+        return "Periodo di prova terminato", "La licenza non disabilita le funzioni di sicurezza."
     if state.status == commercial.INVALID:
-        return "Licenza non valida", "La protezione di base resta disponibile."
-    return "Stato licenza non disponibile", "La protezione di base resta disponibile."
+        return "Licenza non valida", "La licenza non disabilita le funzioni di sicurezza."
+    return "Stato licenza non disponibile", "La licenza non disabilita le funzioni di sicurezza."
 
 
 class B136CommercialPage(QWidget):
@@ -104,7 +104,7 @@ class B136CommercialPage(QWidget):
         status_text = QLabel(status_detail)
         status_text.setObjectName("CardSummary")
         status_text.setWordWrap(True)
-        protection = QLabel("Core protection: ATTIVA")
+        protection = QLabel("La licenza non certifica la protezione attiva. Verifica lo stato nella Dashboard.")
         protection.setObjectName("SectionHint")
         protection.setWordWrap(True)
 
@@ -288,9 +288,14 @@ def smoke_test_window(
     )
     widths = (1440, 960, 680, 560)
     overflow: dict[str, int] = {}
+    navigation: dict[str, bool] = {}
     try:
         window.show()
         app.processEvents()
+        for page_name, button in window.nav_buttons.items():
+            button.click()
+            app.processEvents()
+            navigation[page_name] = window._current_page == page_name and window.stack.currentWidget().isVisible()
         window._navigate(COMMERCIAL_PAGE_NAME)
         for width in widths:
             window.resize(width, 840)
@@ -314,6 +319,8 @@ def smoke_test_window(
             and len(export_calls) == 1
             and state.protection_enabled is True
             and all(value == 0 for value in overflow.values())
+            and len(navigation) == 9
+            and all(navigation.values())
         )
         return {
             "passed": passed,
@@ -324,6 +331,7 @@ def smoke_test_window(
             "diagnostic_export_callback_count": len(export_calls),
             "core_protection_enabled": state.protection_enabled,
             "horizontal_overflow": overflow,
+            "navigation": navigation,
             "automatic_quarantine": False,
             "licensing_may_disable_core_protection": False,
             "destructive_ui_action": False,

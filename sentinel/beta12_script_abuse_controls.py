@@ -13,6 +13,7 @@ remediation or privileged mutation is collected or authorized.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any, Final
 
@@ -42,6 +43,7 @@ OUTCOME_NO_MATCH: Final[str] = "NO_MATCH"
 
 MIN_MUTATIONS: Final[int] = 6
 MAX_DURATION_SECONDS: Final[float] = 12.0
+MAX_MUTATION_COUNT: Final[int] = 1_000_000
 
 CONTROL_FIELDS: Final[set[str]] = {
     "control_id",
@@ -139,11 +141,21 @@ def _valid_sha256(value: object) -> bool:
 
 
 def _valid_nonnegative_number(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and float(value) >= 0.0
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric) and numeric >= 0.0
 
 
 def _valid_nonnegative_int(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= MAX_MUTATION_COUNT
+    )
 
 
 def validate_evidence(data: object) -> tuple[str, ...]:

@@ -166,3 +166,33 @@ def test_deterministic_summary_for_same_evidence():
 @pytest.mark.parametrize("bad", [None, [], "raw", 7, True, {}])
 def test_malformed_top_level_fails_closed(bad):
     assert b122.summarize(bad)["passed"] is False
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_duration_fails_closed(value):
+    data = _evidence()
+    data["controls"][0]["duration_seconds"] = value
+    report = b122.summarize(data)
+    assert report["passed"] is False
+    assert any("duration_invalid" in failure for failure in report["failures"])
+
+
+def test_pathological_mutation_count_fails_without_serialization_crash():
+    data = _evidence()
+    data["controls"][0]["file_mutation_count"] = 10**5000
+    report = b122.summarize(data)
+    assert report["passed"] is False
+    assert any("file_mutation_count_invalid" in failure for failure in report["failures"])
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [10**5000, [], {}, "12", True],
+    ids=["huge-int", "list", "dict", "string", "bool"],
+)
+def test_pathological_duration_types_fail_closed_without_conversion_crash(bad):
+    data = _evidence()
+    data["controls"][0]["duration_seconds"] = bad
+    report = b122.summarize(data)
+    assert report["passed"] is False
+    assert any("duration_invalid" in failure for failure in report["failures"])
