@@ -13,6 +13,7 @@ import hashlib
 import math
 from pathlib import Path
 import stat
+import struct
 from typing import Final
 
 MAX_PE_BYTES: Final[int] = 64 * 1024 * 1024
@@ -135,6 +136,10 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
         or not (1 <= max_bytes <= MAX_PE_BYTES)
     ):
         return _rejected("pe_limit_invalid")
+    # Check the supplied path before resolve() erases link/junction provenance.
+    # This is a static path check, not an atomic defense against concurrent swaps.
+    if any(_is_reparse_or_symlink(candidate) for candidate in (path, *path.absolute().parents)):
+        return _rejected("unsupported_or_non_file")
     try:
         resolved = path.resolve(strict=True)
     except (OSError, RuntimeError):
@@ -160,6 +165,29 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
         return _rejected("pe_size_or_read_limit", file_size=max(0, size))
 
     digest = hashlib.sha256(data).hexdigest()
+
+    # pefile deliberately tolerates some truncated headers and may materialize
+    # sections before we can inspect them. Enforce budgets on raw bytes first.
+    if len(data) < 64 or data[:2] != b"MZ":
+        return _rejected("malformed_pe", file_size=len(data), sha256=digest)
+    pe_offset = struct.unpack_from("<I", data, 0x3C)[0]
+    if pe_offset < 64 or pe_offset + 24 > len(data) or data[pe_offset:pe_offset + 4] != b"PE\0\0":
+        return _rejected("malformed_pe", file_size=len(data), sha256=digest)
+    declared_sections = struct.unpack_from("<H", data, pe_offset + 6)[0]
+    optional_size = struct.unpack_from("<H", data, pe_offset + 20)[0]
+    optional_offset = pe_offset + 24
+    section_table_end = optional_offset + optional_size + 40 * declared_sections
+    if not 1 <= declared_sections <= MAX_PE_SECTIONS:
+        return _rejected("section_count_limit", file_size=len(data), sha256=digest)
+    if optional_size < 2 or section_table_end > len(data):
+        return _rejected("pe_header_bounds_invalid", file_size=len(data), sha256=digest)
+    raw_magic = struct.unpack_from("<H", data, optional_offset)[0]
+    minimum_optional_size = {0x10B: 96, 0x20B: 112}.get(raw_magic)
+    if minimum_optional_size is None:
+        return _rejected("unknown_optional_header_magic", file_size=len(data), sha256=digest)
+    if optional_size < minimum_optional_size:
+        return _rejected("pe_header_bounds_invalid", file_size=len(data), sha256=digest)
+    directory_count = struct.unpack_from("<I", data, optional_offset + minimum_optional_size - 4)[0]
 
     try:
         import pefile  # type: ignore
@@ -193,14 +221,37 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
             reasons.append("unknown_machine_type")
         if optional_magic not in KNOWN_OPTIONAL_MAGICS:
             reasons.append("unknown_optional_header_magic")
+        if (machine == 0x14C and optional_magic != 0x10B) or (
+            machine in {0x8664, 0xAA64} and optional_magic != 0x20B
+        ):
+            reasons.append("machine_optional_header_mismatch")
+        if directory_count > 16 or minimum_optional_size + 8 * directory_count > optional_size:
+            reasons.append("data_directory_count_invalid")
         if size_of_headers <= 0 or size_of_headers > len(data):
             reasons.append("size_of_headers_invalid")
+        if size_of_headers < section_table_end:
+            reasons.append("headers_do_not_cover_section_table")
         if size_of_image <= 0:
             reasons.append("size_of_image_invalid")
-        if file_alignment <= 0 or section_alignment <= 0:
+        if size_of_headers > size_of_image:
+            reasons.append("headers_outside_image")
+        if entrypoint and entrypoint >= size_of_image:
+            reasons.append("entrypoint_outside_image")
+        if (
+            file_alignment <= 0 or section_alignment <= 0
+            or file_alignment & (file_alignment - 1)
+            or section_alignment & (section_alignment - 1)
+            or file_alignment > 0x10000
+            or (section_alignment >= 0x1000 and file_alignment < 0x200)
+            or (section_alignment < 0x1000 and file_alignment != section_alignment)
+        ):
             reasons.append("alignment_invalid")
-        elif section_alignment < file_alignment:
+        if section_alignment < file_alignment:
             reasons.append("section_alignment_smaller_than_file_alignment")
+        if file_alignment > 0 and size_of_headers % file_alignment:
+            reasons.append("size_of_headers_misaligned")
+        if section_alignment > 0 and size_of_image % section_alignment:
+            reasons.append("size_of_image_misaligned")
 
         sections = list(pe.sections)
         if section_count != len(sections):
@@ -210,6 +261,7 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
 
         entrypoint_mapped = entrypoint == 0
         entrypoint_executable = entrypoint == 0
+        entrypoint_file_backed = entrypoint == 0
         virtual_ranges: list[tuple[int, int, str]] = []
         seen_section_names: set[str] = set()
         for index, section in enumerate(sections[: MAX_PE_SECTIONS + 1]):
@@ -228,6 +280,13 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
             raw_size = int(getattr(section, "SizeOfRawData", 0) or 0)
             virtual_address = int(getattr(section, "VirtualAddress", 0) or 0)
             virtual_size = int(getattr(section, "Misc_VirtualSize", 0) or 0)
+            if raw_size and file_alignment > 0:
+                if raw_offset % file_alignment:
+                    reasons.append("section_raw_offset_misaligned")
+                if raw_size % file_alignment:
+                    reasons.append("section_raw_size_misaligned")
+            if section_alignment > 0 and virtual_address % section_alignment:
+                reasons.append("section_virtual_address_misaligned")
 
             if characteristics & IMAGE_SCN_MEM_EXECUTE:
                 executable.append(name)
@@ -251,6 +310,10 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
 
             mapped_size = max(virtual_size, raw_size)
             if mapped_size > 0:
+                if virtual_address + mapped_size > min(size_of_image, 0x100000000):
+                    reasons.append("section_virtual_bounds_invalid")
+                if virtual_address < size_of_headers:
+                    reasons.append("section_virtual_overlaps_headers")
                 virtual_ranges.append(
                     (virtual_address, virtual_address + mapped_size, name)
                 )
@@ -262,11 +325,19 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
                 entrypoint_mapped = True
                 if characteristics & IMAGE_SCN_MEM_EXECUTE:
                     entrypoint_executable = True
+                if (
+                    entrypoint - virtual_address < raw_size
+                    and raw_offset >= size_of_headers
+                    and raw_offset + raw_size <= len(data)
+                ):
+                    entrypoint_file_backed = True
 
         if not entrypoint_mapped:
             reasons.append("entrypoint_outside_sections")
         elif not entrypoint_executable:
             reasons.append("entrypoint_in_non_executable_section")
+        if entrypoint_mapped and not entrypoint_file_backed:
+            reasons.append("entrypoint_not_file_backed")
 
         ranges.sort()
         for previous, current in zip(ranges, ranges[1:]):

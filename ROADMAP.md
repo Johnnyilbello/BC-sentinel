@@ -817,10 +817,38 @@ or remediation authority.
 - remaining limits: ZIP-family metadata only; RAR/7z and recursive content
   inspection remain unsupported, and no archive scenario is promoted to VERIFIED.
 
+**T2-H6 extended — PE structural budgets and geometry (2026-09-25)**
+
+- Continues from `checkpoint/v014-t2h5-pass` through the existing H6–H9 and
+  T3-H1 fixes on `hardening/v014-t1-variants`; existing checkpoints remain immutable.
+- Reproduced 23 failing assertions on the pre-change head, grouped into raw
+  header budgets, image/section geometry, architecture/header consistency,
+  entrypoint backing and link/junction provenance. These are static parser
+  acceptance gaps, not evidence of successful malware execution.
+- Bounds section count and header tables before invoking pefile; reviews
+  inconsistent alignment, image bounds, directory counts and unbacked entrypoints.
+- Checks the supplied path and its parents before resolving filesystem links.
+  This static check does not claim atomic protection from concurrent path swaps.
+- Adds 46 regression cases, including 512 seeded byte mutations, benign PE32,
+  PE32+ x64/ARM64 controls, real YARA + SHA-256 detection of an innocuous marker,
+  negative controls, parser unavailability and YARA timeout propagation.
+- Windows Beta5–Beta14 acceptance: **1854 passed, 41 existing warnings**.
+  The complementary historical suite reports **344 passed, 12 failed, 9
+  collection errors** from scripts/runtime modules absent on the starting head.
+  The full repository suite is therefore not PASS. The checkpoint
+  `checkpoint/v014-t2h6-extended-pass` certifies the static hardening acceptance
+  scope only; it is not a stable product release.
+- Scanned fixtures remain byte-identical. No sample execution, image loading,
+  import resolution, network access, quarantine or remediation is authorized.
+- Production readiness is unchanged: the Beta13 desktop scan wiring, full
+  historical runtime, representative real-sample/benign-corpus evaluation and
+  equivalent-condition competitor benchmarks are still incomplete. No claim of
+  product superiority or production certification follows from this milestone.
+
 Current engineering branch:
 
 ```text
-feature/v014-b1410-real-host-preflight
+hardening/v014-t1-variants
 ```
 
 ## Longer-term programs
