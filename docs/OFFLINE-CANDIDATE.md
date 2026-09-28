@@ -1,8 +1,10 @@
 # Internal offline Windows candidate — implementation in validation
 
-This is not a stable release. Public stable remains unchanged. Clean Windows VM
-installation/uninstallation, a frozen scan across two real volumes, and dedicated
-lab evidence are outstanding. No superiority claim is authorized.
+Public stable remains unchanged. Internal qualification requires exact-commit
+Windows regression and separate fresh-VM package lifecycle evidence. Consult the
+CI artifacts for the tested commit; source code and a successful build alone do
+not establish stability. Dedicated real-sample lab evidence is still unavailable.
+No superiority claim is authorized.
 
 ## Operator workflow
 
@@ -49,7 +51,14 @@ uses installed dependencies without downloading them, requires committed source,
 builds a portable onedir ZIP, and records commit and artifact hashes. Frozen startup,
 UI smoke and same-volume refusal are exercised with disposable app data. These are
 local package checks, not clean-VM installation/uninstallation evidence. The package
-is unsigned and is for internal evaluation only.
+is unsigned and is for internal evaluation only. CI transfers that exact archive
+to a separate fresh GitHub-hosted Windows VM, removes Python from the application
+environment, and verifies portable installation, startup, cross-volume harmless
+IOC/YARA scanning, target hashes, same-volume rejection and portable uninstallation.
+The VM evidence identifies its image version and binds the executable/archive SHA-256.
+This is an ephemeral hosted Windows image, not a claim of coverage of all consumer
+Windows installations. Build-time manifest flags remain immutable; later VM
+attestations are separate artifacts bound to the same hashes.
 
 ## Historical tests
 
