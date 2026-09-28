@@ -7,15 +7,19 @@ import os
 import stat
 import tempfile
 import time
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Callable, Final, Iterable
 
 from sentinel import static_pe_preflight
 
 PROFILE: Final[str] = "v0.11.0-beta.3-rr3"
 MAX_FILES_HARD: Final[int] = 50_000
 MAX_FILE_BYTES_HARD: Final[int] = 256 * 1024 * 1024
+MAX_TOTAL_BYTES_HARD: Final[int] = 16 * 1024 * 1024 * 1024
+MAX_SECONDS_HARD: Final[int] = 24 * 60 * 60
+MAX_RSS_BYTES_HARD: Final[int] = 16 * 1024 * 1024 * 1024
 DEFAULT_MAX_FILES: Final[int] = 10_000
 DEFAULT_MAX_FILE_BYTES: Final[int] = 64 * 1024 * 1024
 MAX_INTEL_ENTRIES: Final[int] = 50_000
@@ -44,6 +48,9 @@ LOLBIN_NAMES: Final[frozenset[str]] = frozenset(
 class OfflineScanLimits:
     max_files: int = DEFAULT_MAX_FILES
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
+    max_total_bytes: int = 1024 * 1024 * 1024
+    max_seconds: int = 600
+    max_rss_bytes: int = 1024 * 1024 * 1024
 
     def validate(self) -> None:
         if (
@@ -58,6 +65,13 @@ class OfflineScanLimits:
             or not (1 <= self.max_file_bytes <= MAX_FILE_BYTES_HARD)
         ):
             raise ValueError("RR3 max_file_bytes outside bounded limit")
+        for value, ceiling, name in (
+            (self.max_total_bytes, MAX_TOTAL_BYTES_HARD, "max_total_bytes"),
+            (self.max_seconds, MAX_SECONDS_HARD, "max_seconds"),
+            (self.max_rss_bytes, MAX_RSS_BYTES_HARD, "max_rss_bytes"),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= ceiling:
+                raise ValueError(f"RR3 {name} outside bounded limit")
 
 
 @dataclass(frozen=True)
@@ -90,10 +104,31 @@ def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+_READ_GUARD: ContextVar[Callable[[], None] | None] = ContextVar("offline_read_guard", default=None)
+_TRAVERSAL_ISSUES: ContextVar[list[str] | None] = ContextVar("offline_traversal_issues", default=None)
+_READ_LIMIT: ContextVar[int] = ContextVar("offline_read_limit", default=MAX_FILE_BYTES_HARD)
+
+
+def _check_read() -> None:
+    guard = _READ_GUARD.get()
+    if guard is not None:
+        guard()
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
+    remaining = _READ_LIMIT.get()
+    _check_read()
+    _validate_local_path(path)
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        while True:
+            _check_read()
+            chunk = handle.read(min(1024 * 1024, remaining + 1))
+            if len(chunk) > remaining:
+                raise OSError("file grew beyond bounded read limit")
+            if not chunk:
+                break
+            remaining -= len(chunk)
             digest.update(chunk)
     return digest.hexdigest()
 
@@ -118,7 +153,30 @@ def _is_inside(child: Path, parent: Path) -> bool:
         return False
 
 
+def _validate_local_path(path: Path) -> None:
+    # Inspect the original path, before resolve can erase junction provenance.
+    absolute = Path(os.path.abspath(path))
+    if str(absolute).startswith(("\\\\", "//")):
+        raise ValueError("RR3 network/device paths are not permitted")
+    if os.name == "nt":
+        import ctypes
+        if ctypes.windll.kernel32.GetDriveTypeW(str(absolute.anchor)) == 4:
+            raise ValueError("RR3 network drives are not permitted")
+    for part in (absolute, *absolute.parents):
+        if part.is_symlink() or (part.exists() and _is_reparse_or_symlink(part)):
+            raise ValueError("RR3 path may not contain a symlink/reparse point")
+
+
+def validate_report_volume(root: Path, output: Path) -> None:
+    existing = output
+    while not existing.exists():
+        existing = existing.parent
+    if root.stat().st_dev == existing.stat().st_dev:
+        raise ValueError("RR3 reports must be outside the examined volume")
+
+
 def validate_offline_windows_root(root: Path) -> Path:
+    _validate_local_path(root)
     try:
         resolved = root.resolve(strict=True)
     except (OSError, RuntimeError) as exc:
@@ -127,10 +185,15 @@ def validate_offline_windows_root(root: Path) -> Path:
         raise ValueError("RR3 offline root must be an existing directory")
     if _is_reparse_or_symlink(resolved):
         raise ValueError("RR3 offline root may not be a symlink/reparse point")
+    live_windows = os.environ.get("SystemRoot")
+    if live_windows and resolved == Path(live_windows).resolve().parent:
+        raise ValueError("RR3 running Windows installation is not offline")
     required = (
         resolved / "Windows" / "System32" / "config" / "SYSTEM",
         resolved / "Windows" / "System32" / "ntoskrnl.exe",
     )
+    for marker in required:
+        _validate_local_path(marker)
     missing = [str(path.relative_to(resolved)) for path in required if not path.is_file()]
     if missing:
         raise ValueError("RR3 offline root markers missing: " + ", ".join(missing))
@@ -150,7 +213,12 @@ def load_approved_intel_catalog(path: Path | None) -> dict[str, dict]:
     if path is None:
         return {}
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        _validate_local_path(path)
+        with path.open("rb") as handle:
+            data = handle.read(32 * 1024 * 1024 + 1)
+        if len(data) > 32 * 1024 * 1024:
+            raise ValueError("RR3 intel catalog exceeds byte limit")
+        raw = json.loads(data.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError("RR3 intel catalog unreadable or invalid JSON") from exc
     if not isinstance(raw, dict):
@@ -208,9 +276,20 @@ def _compile_yara(rule_path: Path | None):
     except Exception as exc:
         return None, f"unavailable:{type(exc).__name__}"
     try:
-        return yara.compile(filepath=str(rule_path)), "available"
+        _validate_local_path(rule_path)
+        with rule_path.open("rb") as handle:
+            source = handle.read(MAX_YARA_RULE_BYTES + 1)
+        if len(source) > MAX_YARA_RULE_BYTES:
+            raise ValueError("YARA source exceeds byte limit")
+        return yara.compile(source=source.decode("utf-8"), includes=False), "available"
     except Exception as exc:
         raise ValueError(f"RR3 YARA compile failed: {type(exc).__name__}: {exc}") from exc
+
+
+def _traversal_issue(reason: str) -> None:
+    issues = _TRAVERSAL_ISSUES.get()
+    if issues is not None and reason not in issues:
+        issues.append(reason)
 
 
 def _candidate_roots(root: Path) -> list[tuple[str, Path]]:
@@ -224,7 +303,10 @@ def _candidate_roots(root: Path) -> list[tuple[str, Path]]:
     if users.is_dir() and not _is_reparse_or_symlink(users):
         try:
             with os.scandir(users) as entries:
-                for entry in entries:
+                for index, entry in enumerate(entries):
+                    _check_read()
+                    if index >= MAX_FILES_HARD:
+                        raise OSError("directory entry limit")
                     try:
                         if not entry.is_dir(follow_symlinks=False) or entry.is_symlink():
                             continue
@@ -240,12 +322,13 @@ def _candidate_roots(root: Path) -> list[tuple[str, Path]]:
                     except OSError:
                         continue
         except OSError:
-            pass
+            _traversal_issue("directory_unreadable_or_interrupted")
     return roots
 
 
 def _iter_candidate_files(root: Path, *, max_files: int) -> Iterable[tuple[str, Path]]:
     emitted = 0
+    visited = 0
     seen: set[str] = set()
     for category, scan_root in _candidate_roots(root):
         if emitted >= max_files:
@@ -260,9 +343,15 @@ def _iter_candidate_files(root: Path, *, max_files: int) -> Iterable[tuple[str, 
                     dirs: list[Path] = []
                     files: list[Path] = []
                     for entry in entries:
+                        _check_read()
+                        visited += 1
+                        if visited > MAX_FILES_HARD * 2:
+                            _traversal_issue("directory_entry_limit")
+                            return
                         p = Path(entry.path)
                         try:
                             if entry.is_symlink() or _is_reparse_or_symlink(p):
+                                _traversal_issue("reparse_or_unreadable_entry_skipped")
                                 continue
                             if entry.is_dir(follow_symlinks=False):
                                 dirs.append(p)
@@ -282,6 +371,7 @@ def _iter_candidate_files(root: Path, *, max_files: int) -> Iterable[tuple[str, 
                     for directory in sorted(dirs, key=lambda p: p.name.casefold(), reverse=True):
                         stack.append(directory)
             except OSError:
+                _traversal_issue("directory_unreadable_or_interrupted")
                 continue
 
 
@@ -304,17 +394,30 @@ def _heuristic_reasons(path: Path, category: str, root: Path) -> list[str]:
     return reasons
 
 
-def _yara_matches(rules, path: Path) -> tuple[str, ...]:
+class ArtifactChangedError(OSError):
+    pass
+
+
+def _yara_matches(rules, path: Path, *, expected_sha256: str | None = None) -> tuple[str, ...]:
     if rules is None:
         return ()
     try:
-        matches = rules.match(filepath=str(path), timeout=2)
+        _check_read()
+        _validate_local_path(path)
+        with path.open("rb") as handle:
+            data = handle.read(_READ_LIMIT.get() + 1)
+        if len(data) > _READ_LIMIT.get():
+            raise OSError("YARA input exceeds bounded size")
+        _check_read()
+        if expected_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_sha256:
+            raise ArtifactChangedError("YARA snapshot differs from initial hash")
+        matches = rules.match(data=data, timeout=2)
         return tuple(sorted(str(match.rule) for match in matches))
     except Exception as exc:
         return (f"__YARA_ERROR__:{type(exc).__name__}",)
 
 
-def _registry_hive_metadata(root: Path, *, max_file_bytes: int) -> list[dict]:
+def _registry_hive_metadata(root: Path, *, max_file_bytes: int, max_total_bytes: int = MAX_TOTAL_BYTES_HARD) -> list[dict]:
     candidates: list[tuple[str, Path]] = []
     config = root / "Windows" / "System32" / "config"
     for name in ("SYSTEM", "SOFTWARE", "SAM", "SECURITY", "DEFAULT"):
@@ -323,7 +426,11 @@ def _registry_hive_metadata(root: Path, *, max_file_bytes: int) -> list[dict]:
     if users.is_dir() and not _is_reparse_or_symlink(users):
         try:
             with os.scandir(users) as entries:
-                for entry in entries:
+                for index, entry in enumerate(entries):
+                    _check_read()
+                    if index >= MAX_FILES_HARD:
+                        _traversal_issue("hive_entry_limit")
+                        break
                     try:
                         if entry.is_dir(follow_symlinks=False) and not entry.is_symlink():
                             user_root = Path(entry.path)
@@ -332,14 +439,18 @@ def _registry_hive_metadata(root: Path, *, max_file_bytes: int) -> list[dict]:
                     except OSError:
                         continue
         except OSError:
-            pass
+            _traversal_issue("hive_enumeration_incomplete")
     out: list[dict] = []
     for label, path in candidates:
         if not path.is_file() or _is_reparse_or_symlink(path):
             continue
         try:
             size = int(path.stat().st_size)
-            digest = _sha256_file(path) if size <= max_file_bytes else ""
+            digest = _sha256_file(path) if size <= min(max_file_bytes, max_total_bytes) else ""
+            if digest:
+                max_total_bytes -= size
+            else:
+                _traversal_issue("hive_byte_limit")
             out.append(
                 {
                     "label": label,
@@ -365,6 +476,7 @@ def _registry_hive_metadata(root: Path, *, max_file_bytes: int) -> list[dict]:
 
 
 def _atomic_json(path: Path, payload: dict) -> None:
+    _validate_local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     os.close(fd)
@@ -380,6 +492,7 @@ def _atomic_json(path: Path, payload: dict) -> None:
 
 
 def _append_audit(path: Path, record: dict) -> None:
+    _validate_local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -392,13 +505,19 @@ def scan_offline_windows(
     limits: OfflineScanLimits | None = None,
     intel_catalog: Path | None = None,
     yara_rules: Path | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    progress_callback: Callable[[dict], None] | None = None,
+    require_separate_volume: bool = True,
 ) -> dict:
     limits = limits or OfflineScanLimits()
     limits.validate()
     root = validate_offline_windows_root(offline_root)
+    _validate_local_path(output_dir)
     output = output_dir.resolve()
     if _is_inside(output, root):
         raise ValueError("RR3 output directory must be outside the offline target")
+    if require_separate_volume:
+        validate_report_volume(root, output)
     catalog = load_approved_intel_catalog(intel_catalog)
     rules, yara_status = _compile_yara(yara_rules)
 
@@ -429,21 +548,55 @@ def scan_offline_windows(
     hashed = skipped = errors = ioc_hits = yara_hits = heuristic_hits = 0
     pe_parsed = pe_review_items = pe_rejected_items = pe_unstable_items = 0
     static_snapshot_unstable_items = 0
+    total_bytes = 0
+    incomplete_reasons: list[str] = []
+    import psutil
+    process = psutil.Process()
+    def guard() -> None:
+        reason = (
+            "cancelled" if cancel_check is not None and cancel_check() else
+            "time_limit" if time.perf_counter() - started >= limits.max_seconds else
+            "memory_limit" if process.memory_info().rss >= limits.max_rss_bytes else None
+        )
+        if reason:
+            incomplete_reasons.append(reason)
+            raise OSError(reason)
+
+    issues_token = _TRAVERSAL_ISSUES.set(incomplete_reasons)
+    guard_token = _READ_GUARD.set(guard)
+    limit_token = _READ_LIMIT.set(limits.max_file_bytes)
     try:
         for category, path in _iter_candidate_files(root, max_files=limits.max_files):
+            if cancel_check is not None and cancel_check():
+                incomplete_reasons.append("cancelled")
+                break
+            if time.perf_counter() - started >= limits.max_seconds:
+                incomplete_reasons.append("time_limit")
+                break
+            if process.memory_info().rss >= limits.max_rss_bytes:
+                incomplete_reasons.append("memory_limit")
+                break
             rel = str(path.relative_to(root)).replace("\\", "/")
             try:
+                _validate_local_path(path)
                 st = path.stat(follow_symlinks=False)
                 size = int(st.st_size)
                 if not stat.S_ISREG(st.st_mode):
                     skipped += 1
                     continue
                 if size > limits.max_file_bytes:
+                    incomplete_reasons.append("file_too_large")
                     findings.append(
                         OfflineFinding(rel, category, size, "", "skipped", "not_scanned", ("file_too_large",))
                     )
                     skipped += 1
                     continue
+                if total_bytes + size > limits.max_total_bytes:
+                    findings.append(OfflineFinding(rel, category, size, "", "skipped", "not_scanned", ("total_byte_limit",)))
+                    skipped += 1
+                    incomplete_reasons.append("total_byte_limit")
+                    break
+                total_bytes += size
                 digest = _sha256_file(path)
                 hashed += 1
                 reasons = _heuristic_reasons(path, category, root)
@@ -462,6 +615,8 @@ def scan_offline_windows(
                     pe_parsed += 1
                     pe_decision = pe_report.decision
                     pe_reasons = pe_report.reasons
+                    if "pe_parser_unavailable" in pe_reasons:
+                        incomplete_reasons.append("pe_parser_unavailable")
                     pe_clean_claimed = pe_report.clean_claimed
                     pe_sha256_matches = (
                         pe_report.sha256 == digest if pe_report.sha256 else None
@@ -477,7 +632,7 @@ def scan_offline_windows(
                         pe_unstable_items += 1
 
                 ioc = catalog.get(digest.casefold())
-                ymatches = _yara_matches(rules, path)
+                ymatches = _yara_matches(rules, path, expected_sha256=digest)
                 yara_real = tuple(item for item in ymatches if not item.startswith("__YARA_ERROR__:"))
                 yara_error = tuple(item for item in ymatches if item.startswith("__YARA_ERROR__:"))
                 if ioc:
@@ -488,6 +643,10 @@ def scan_offline_windows(
                     yara_hits += 1
                 if yara_error:
                     reasons.append(yara_error[0])
+                    incomplete_reasons.append("yara_analysis_error")
+                    if "__YARA_ERROR__:ArtifactChangedError" in yara_error:
+                        artifact_unstable = True
+                        reasons.append("artifact_changed_during_static_scan")
 
                 try:
                     final_digest = _sha256_file(path)
@@ -503,6 +662,7 @@ def scan_offline_windows(
 
                 if artifact_unstable:
                     static_snapshot_unstable_items += 1
+                    incomplete_reasons.append("artifact_unstable")
 
                 if any(reason in reasons for reason in (
                     "startup_location_artifact", "startup_script", "executable_or_script_in_user_temp",
@@ -539,13 +699,33 @@ def scan_offline_windows(
                         automatic_action=False,
                     )
                 )
-            except OSError as exc:
+            except (OSError, ValueError) as exc:
                 errors += 1
                 findings.append(
                     OfflineFinding(rel, category, 0, "", "error", "unreadable", (f"{type(exc).__name__}:{exc}",))
                 )
+            if progress_callback is not None:
+                progress_callback({"enumerated": len(findings), "hashed": hashed,
+                                   "skipped": skipped, "errors": errors, "bytes_budgeted": total_bytes})
 
-        hives = _registry_hive_metadata(root, max_file_bytes=limits.max_file_bytes)
+        hives = [] if incomplete_reasons else _registry_hive_metadata(
+            root, max_file_bytes=limits.max_file_bytes,
+            max_total_bytes=limits.max_total_bytes - total_bytes,
+        )
+        total_bytes += sum(item["size"] for item in hives if item["sha256"])
+        if yara_status.startswith("unavailable:"):
+            incomplete_reasons.append("yara_unavailable")
+        if cancel_check is not None and cancel_check():
+            incomplete_reasons.append("cancelled")
+        if time.perf_counter() - started >= limits.max_seconds:
+            incomplete_reasons.append("time_limit")
+        if process.memory_info().rss >= limits.max_rss_bytes:
+            incomplete_reasons.append("memory_limit")
+        if errors or any(str(item["status"]).startswith("error:") for item in hives):
+            incomplete_reasons.append("read_errors")
+        if len(findings) >= limits.max_files:
+            incomplete_reasons.append("file_count_limit")
+        incomplete_reasons = list(dict.fromkeys(incomplete_reasons))
         summary = {
             "enumerated": len(findings),
             "hashed": hashed,
@@ -560,11 +740,18 @@ def scan_offline_windows(
             "pe_unstable_items": pe_unstable_items,
             "static_snapshot_unstable_items": static_snapshot_unstable_items,
             "registry_hives": len(hives),
+            "bytes_budgeted": total_bytes,
+            "incomplete_reasons": incomplete_reasons,
             "truncated_by_max_files": len(findings) >= limits.max_files,
         }
         payload = {
             "profile": PROFILE,
             "mode": "offline_read_only_threat_scan",
+            "state": "incomplete" if incomplete_reasons else "completed",
+            "clean_claimed": False,
+            "coverage": "selected_windows_locations_and_extensions",
+            "resource_enforcement": "cooperative_between_reads_and_files",
+            "report_volume_enforced": require_separate_volume,
             "session_id": session_id,
             "correlation_id": correlation_id,
             "created_utc": _utc_now(),
@@ -599,11 +786,15 @@ def scan_offline_windows(
             },
         }
         _atomic_json(output / "rr3-offline-scan.json", payload)
-        audit("scan_complete", "ok", "offline_scan_completed_read_only", **summary)
+        audit("scan_complete", payload["state"], "offline_scan_completed_read_only", **summary)
         return payload
     except Exception as exc:
         audit("scan_fail", "fail", f"{type(exc).__name__}: {exc}", findings=len(findings), hashed=hashed, errors=errors)
         raise
+    finally:
+        _TRAVERSAL_ISSUES.reset(issues_token)
+        _READ_GUARD.reset(guard_token)
+        _READ_LIMIT.reset(limit_token)
 
 
 def main() -> int:
@@ -614,17 +805,32 @@ def main() -> int:
     parser.add_argument("--yara-rules")
     parser.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     parser.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES)
+    parser.add_argument("--max-total-bytes", type=int, default=1024 * 1024 * 1024)
+    parser.add_argument("--max-seconds", type=int, default=600)
+    parser.add_argument("--max-rss-bytes", type=int, default=1024 * 1024 * 1024)
     args = parser.parse_args()
+    import signal
+    from threading import Event
+    interrupted = Event()
+    signal.signal(signal.SIGINT, lambda signum, frame: interrupted.set())
     try:
         result = scan_offline_windows(
             Path(args.root),
             Path(args.output),
-            limits=OfflineScanLimits(max_files=args.max_files, max_file_bytes=args.max_file_bytes),
+            limits=OfflineScanLimits(
+                max_files=args.max_files, max_file_bytes=args.max_file_bytes,
+                max_total_bytes=args.max_total_bytes, max_seconds=args.max_seconds,
+                max_rss_bytes=args.max_rss_bytes,
+            ),
             intel_catalog=Path(args.intel_catalog) if args.intel_catalog else None,
             yara_rules=Path(args.yara_rules) if args.yara_rules else None,
+            cancel_check=interrupted.is_set,
+            require_separate_volume=True,
         )
-        print(json.dumps({"passed": True, "profile": PROFILE, "summary": result["summary"]}, indent=2))
-        return 0
+        complete = result["state"] == "completed"
+        print(json.dumps({"passed": complete, "state": result["state"], "profile": PROFILE,
+                          "summary": result["summary"]}, indent=2))
+        return 0 if complete else 3
     except Exception as exc:
         print(json.dumps({"passed": False, "profile": PROFILE, "stage": "offline_scan", "reason": f"{type(exc).__name__}: {exc}"}, indent=2))
         return 2

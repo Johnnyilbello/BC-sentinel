@@ -28,7 +28,7 @@ def run(output: Path) -> dict:
         work.mkdir()
         intel = base / "intel.json"
         intel.write_text(json.dumps({"schema":"bc-sentinel-offline-intel-v1","approved":True,"sha256":[{"value":sha_bytes(bad.read_bytes()),"name":"B43.Acceptance.IOC"}]}), encoding="utf-8")
-        rr3.scan_offline_windows(root, work / "rr3", intel_catalog=intel)
+        rr3.scan_offline_windows(root, work / "rr3", intel_catalog=intel, require_separate_volume=False)
         scan = work / "rr3/rr3-offline-scan.json"
         before = {str(p.relative_to(root)): sha_bytes(p.read_bytes()) for p in root.rglob("*") if p.is_file()}
 

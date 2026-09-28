@@ -179,6 +179,7 @@ rule BC_T2_SAFE_STATIC_MARKER
         limits=rr3.OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024),
         intel_catalog=catalog,
         yara_rules=rules,
+        require_separate_volume=False,
     )
 
     item = next(
@@ -211,6 +212,7 @@ def test_safe_static_artifact_is_never_executed_or_quarantined(tmp_path: Path):
         root,
         tmp_path / "out",
         limits=rr3.OfflineScanLimits(max_files=64, max_file_bytes=1024 * 1024),
+        require_separate_volume=False,
     )
     item = next(row for row in result["findings"] if row["relative_path"].endswith("fixture.exe"))
     assert item["automatic_action"] is False

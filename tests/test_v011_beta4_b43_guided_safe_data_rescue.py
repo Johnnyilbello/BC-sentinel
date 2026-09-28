@@ -31,7 +31,7 @@ def fixture(tmp_path: Path):
     intel = tmp_path / "intel.json"
     intel.write_text(json.dumps({"schema":"bc-sentinel-offline-intel-v1","approved":True,"sha256":[{"value":sha(bad.read_bytes()),"name":"B43.Test.IOC"}]}), encoding="utf-8")
     scan_dir = workspace / "rr3"
-    rr3.scan_offline_windows(root, scan_dir, intel_catalog=intel)
+    rr3.scan_offline_windows(root, scan_dir, intel_catalog=intel, require_separate_volume=False)
     return root, workspace, scan_dir / "rr3-offline-scan.json", intel
 
 
@@ -112,3 +112,11 @@ def test_plan_binds_scan_and_selections(tmp_path: Path):
     assert plan["includes"] == ["Users/Alice"]
     assert len(plan["plan_sha256"]) == 64
     assert plan["automatic_execution"] is False
+
+
+@pytest.fixture(autouse=True)
+def simulated_report_volume_for_harmless_fixture(monkeypatch):
+    # These legacy workflow tests create synthetic Windows trees in tmp_path.
+    # Physical-volume rejection is covered by test_v014_offline_candidate.
+    from sentinel import rescue_offline_scanner
+    monkeypatch.setattr(rescue_offline_scanner, "validate_report_volume", lambda root, output: None)

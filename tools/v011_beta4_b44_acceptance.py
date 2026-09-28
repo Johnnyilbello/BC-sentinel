@@ -36,7 +36,7 @@ def _session(base: Path, label: str) -> tuple[Path, Path, Path, Path, Path]:
     workspace = base / "workspace"
     plan = b40.build_session_plan(b40.RescueConsoleRequest(root, workspace))
     b40.write_session_plan(plan, workspace / "session-plan.json", root)
-    rr3.scan_offline_windows(root, workspace / "rr3")
+    rr3.scan_offline_windows(root, workspace / "rr3", require_separate_volume=False)
     scan = workspace / "rr3/rr3-offline-scan.json"
     evidence = base / "evidence"
     baseline = evidence / "critical-baseline.json"

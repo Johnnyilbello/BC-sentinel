@@ -62,6 +62,7 @@ def _scan(root: Path, out: Path, **kwargs):
         out,
         limits=rr3.OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024),
         **kwargs,
+        require_separate_volume=False,
     )
 
 

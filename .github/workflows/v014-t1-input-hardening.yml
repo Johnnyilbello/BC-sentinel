@@ -28,3 +28,14 @@ jobs:
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\acceptance\TEST-V014-T1-INPUT-HARDENING.ps1
 
+      - name: All applicable candidate tests (historical contracts archived separately)
+        shell: powershell
+        run: |
+          $testBase = Join-Path $env:TEMP ('BCSentinel-candidate-' + [guid]::NewGuid().ToString('N'))
+          python -m pytest -q --basetemp $testBase --junitxml=candidate-junit.xml -o faulthandler_timeout=60
+          if ($LASTEXITCODE -ne 0) { throw 'Applicable candidate regression failed.' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: candidate-regression-${{ github.sha }}
+          path: candidate-junit.xml

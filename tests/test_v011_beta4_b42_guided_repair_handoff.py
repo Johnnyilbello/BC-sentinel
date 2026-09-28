@@ -30,7 +30,7 @@ def _fixture(tmp_path: Path):
 
     workspace = tmp_path / "workspace"
     scan_dir = workspace / "rr3"
-    rr3.scan_offline_windows(root, scan_dir, limits=rr3.OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024))
+    rr3.scan_offline_windows(root, scan_dir, limits=rr3.OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024), require_separate_volume=False)
     scan = scan_dir / "rr3-offline-scan.json"
 
     replacement = tmp_path / "trusted-replacement.sys"
@@ -154,3 +154,11 @@ def test_audit_contains_ids_hashes_and_zero_execution(tmp_path: Path):
     completed = rows[-1]
     assert completed["plan_sha256"] == result["plan_sha256"]
     assert completed["execution_performed"] is False
+
+
+@pytest.fixture(autouse=True)
+def simulated_report_volume_for_harmless_fixture(monkeypatch):
+    # These legacy workflow tests create synthetic Windows trees in tmp_path.
+    # Physical-volume rejection is covered by test_v014_offline_candidate.
+    from sentinel import rescue_offline_scanner
+    monkeypatch.setattr(rescue_offline_scanner, "validate_report_volume", lambda root, output: None)

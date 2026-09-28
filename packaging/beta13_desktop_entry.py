@@ -187,7 +187,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--diagnostics-json")
+    parser.add_argument("--offline-root")
+    parser.add_argument("--offline-output")
+    parser.add_argument("--intel-catalog")
+    parser.add_argument("--yara-rules")
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    if args.offline_root or args.offline_output:
+        if not args.offline_root or not args.offline_output:
+            return 2
+        from sentinel.rescue_offline_scanner import scan_offline_windows
+        try:
+            report = scan_offline_windows(
+                Path(args.offline_root), Path(args.offline_output), require_separate_volume=True,
+                intel_catalog=Path(args.intel_catalog) if args.intel_catalog else None,
+                yara_rules=Path(args.yara_rules) if args.yara_rules else None,
+            )
+        except (OSError, ValueError):
+            return 2
+        return 0 if report["state"] == "completed" else 3
 
     if args.identity_json:
         print(json.dumps({
@@ -234,12 +252,18 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.smoke:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from sentinel.offline_scan_dialog import OfflineScanDialog
         smoke = commercial_ui.smoke_test_window(
             snapshot,
             commercial_state=state,
         )
+        offline_dialog = OfflineScanDialog()
+        offline_dialog_ready = bool(offline_dialog.start_button.isEnabled()
+                                    and not offline_dialog.cancel_button.isEnabled())
+        offline_dialog.close()
         report = {
-            "passed": bool(smoke["passed"]),
+            "passed": bool(smoke["passed"] and offline_dialog_ready),
+            "offline_dialog_ready": offline_dialog_ready,
             "profile": PROFILE,
             "page_count": smoke["page_count"],
             "commercial_selected": smoke["commercial_selected"],
@@ -271,6 +295,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     window.setProperty("bcSentinelRuntimeProfile", PROFILE)
     window.setProperty("bcSentinelSourceCheckpoint", commercial.SOURCE_CHECKPOINT)
     window.setProperty("bcSentinelSourceCommit", commercial.SOURCE_CHECKPOINT_COMMIT)
+    from PySide6.QtWidgets import QPushButton
+    from sentinel.offline_scan_dialog import OfflineScanDialog
+
+    def open_offline_scan() -> None:
+        dialog = OfflineScanDialog(window)
+        dialog.exec()
+
+    offline_button = QPushButton("Scansione offline")
+    offline_button.setObjectName("OfflineScanEntry")
+    offline_button.setToolTip("Esamina un volume Windows offline in sola lettura")
+    offline_button.clicked.connect(open_offline_scan)
+    window.sidebar.layout().insertWidget(max(0, window.sidebar.layout().count() - 1), offline_button)
+    window.offline_scan_button = offline_button
     window.show()
     return app.exec()
 
