@@ -84,7 +84,7 @@ finally {
 }
 
 $zip = Join-Path $out 'BC-Sentinel-Offline-Candidate.zip'
-& $py -c 'import pathlib,sys,zipfile; root=pathlib.Path(sys.argv[1]); z=zipfile.ZipFile(sys.argv[2], "x", zipfile.ZIP_DEFLATED); [z.write(p,p.relative_to(root.parent)) for p in sorted(root.rglob("*")) if p.is_file()]; z.close()' $root $zip
+& $py (Join-Path $repoRoot 'tools\build_candidate_archive.py') $root $zip
 if ($LASTEXITCODE -ne 0) { throw 'Portable archive creation failed.' }
 $manifest = [ordered]@{
     profile = 'internal-offline-candidate'
