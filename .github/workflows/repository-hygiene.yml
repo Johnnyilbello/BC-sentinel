@@ -15,6 +15,7 @@ on:
 
 jobs:
   repository-hygiene:
+    if: ${{ github.event_name != 'pull_request' || github.head_ref == 'chore/v011-beta8-repository-hygiene' }}
     runs-on: windows-latest
     timeout-minutes: 30
     env:

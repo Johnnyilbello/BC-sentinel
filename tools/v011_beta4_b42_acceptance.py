@@ -38,7 +38,7 @@ def run(output: Path) -> dict:
 
         workspace = base / "workspace"
         scan_dir = workspace / "rr3"
-        rr3.scan_offline_windows(root, scan_dir, limits=rr3.OfflineScanLimits(max_files=64, max_file_bytes=1024 * 1024))
+        rr3.scan_offline_windows(root, scan_dir, limits=rr3.OfflineScanLimits(max_files=64, max_file_bytes=1024 * 1024), require_separate_volume=False)
         scan = scan_dir / "rr3-offline-scan.json"
         replacement = base / "replacement.sys"
         replacement.write_bytes(b"B42 REPLACEMENT")

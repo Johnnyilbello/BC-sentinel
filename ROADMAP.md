@@ -770,10 +770,85 @@ Windows CI run `35515972231` and local Windows acceptance both PASS on exact SHA
 11. **B14-10 — Real Host Preflight** — 🚧 CURRENT — collect read-only facts from the dedicated Linux/KVM lab host and gate entry into the benign revert drill.
 12. **B14-11+ — Revert Drill, Authoritative REAL_HOST_OBSERVATION and First Real T2 Campaign** — PLANNED — only after B14-10 passes on actual dedicated hardware.
 
+### Post-B14-10 defensive hardening track
+
+Extended installer verification (2026-09-23): reproduced startup failures from
+invalid UTF-8 trial data and overflowing numeric trial values; added fail-closed
+recovery that preserves the original file. Frozen UI smoke now exercises all
+nine navigation pages. Removed unconditional active-protection claims from
+license and unknown-runtime UI copy. Desktop scanning remains unwired in the
+Beta13 shell, and the historical full scanner runtime is absent; installation
+and detector-harness PASS do not establish an operational endpoint-protection
+product. `tools/verify_packaged_runtime.py` verifies disposable-profile recovery
+and diagnostic export on the actual frozen executable.
+
+Installer repair (2026-09-23): isolated the packaging DLL search from foreign
+PATH entries and added a frozen UI smoke gate. Source
+`a3ca97da1e561434272bd623887917a8a1e990d2` passed local regression (1498 tests)
+and Windows CI run `35794872653`; local install/UI/diagnostics/uninstall passed.
+See `docs/WINDOWS-INSTALLATION.md` for evidence and installation limits.
+
+The accepted B14-10 checkpoint remains immutable. Work after it continues on
+`hardening/v014-t1-variants` and does not promote physical-lab, T2/T3, detection,
+or remediation authority.
+
+**T1-H1 — hostile metadata and parser resilience**
+
+- baseline: authorized T1 battery PASS on `e5a7462539f1f78827d4350e12bfe0bf767c6ab7`;
+- finding: unbounded integer metadata and non-finite floating-point values could
+  pass selected evidence validators and later fail during digest/serialization;
+- fix: file-event and mutation counts are bounded, PID metadata is restricted to
+  the Windows 32-bit PID domain, and `NaN`/infinite measurements fail closed;
+- regression: pathological 5,000-digit values and all non-finite variants are
+  covered without echoing input data or throwing from detector summaries;
+- remaining limits: the live T1 battery remains four narrow harmless scenarios;
+  archive/container, larger benign corpora, crash/recovery, sustained load and
+  physical-lab T2/T3 evidence remain future work and earn no coverage claim yet.
+
+**T1-H2 — archive/container metadata preflight**
+
+- adds a read-only ZIP-family central-directory preflight that never extracts or
+  reads member content and never claims that an accepted archive is clean;
+- rejects malformed/unsupported inputs and sends traversal paths, absolute paths,
+  symlinks, encrypted entries, nested containers, excessive depth, oversized
+  entries and suspicious compression ratios to review;
+- enforces archive, entry-count and uncompressed-size budgets before any later
+  scanner may handle the artifact;
+- remaining limits: ZIP-family metadata only; RAR/7z and recursive content
+  inspection remain unsupported, and no archive scenario is promoted to VERIFIED.
+
+**T2-H6 extended — PE structural budgets and geometry (2026-09-25)**
+
+- Continues from `checkpoint/v014-t2h5-pass` through the existing H6–H9 and
+  T3-H1 fixes on `hardening/v014-t1-variants`; existing checkpoints remain immutable.
+- Reproduced 23 failing assertions on the pre-change head, grouped into raw
+  header budgets, image/section geometry, architecture/header consistency,
+  entrypoint backing and link/junction provenance. These are static parser
+  acceptance gaps, not evidence of successful malware execution.
+- Bounds section count and header tables before invoking pefile; reviews
+  inconsistent alignment, image bounds, directory counts and unbacked entrypoints.
+- Checks the supplied path and its parents before resolving filesystem links.
+  This static check does not claim atomic protection from concurrent path swaps.
+- Adds 46 regression cases, including 512 seeded byte mutations, benign PE32,
+  PE32+ x64/ARM64 controls, real YARA + SHA-256 detection of an innocuous marker,
+  negative controls, parser unavailability and YARA timeout propagation.
+- Windows Beta5–Beta14 acceptance: **1854 passed, 41 existing warnings**.
+  The complementary historical suite reports **344 passed, 12 failed, 9
+  collection errors** from scripts/runtime modules absent on the starting head.
+  The full repository suite is therefore not PASS. The checkpoint
+  `checkpoint/v014-t2h6-extended-pass` certifies the static hardening acceptance
+  scope only; it is not a stable product release.
+- Scanned fixtures remain byte-identical. No sample execution, image loading,
+  import resolution, network access, quarantine or remediation is authorized.
+- Production readiness is unchanged: the Beta13 desktop scan wiring, full
+  historical runtime, representative real-sample/benign-corpus evaluation and
+  equivalent-condition competitor benchmarks are still incomplete. No claim of
+  product superiority or production certification follows from this milestone.
+
 Current engineering branch:
 
 ```text
-feature/v014-b1410-real-host-preflight
+hardening/v014-t1-variants
 ```
 
 ## Longer-term programs

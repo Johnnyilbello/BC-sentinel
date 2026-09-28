@@ -92,7 +92,7 @@ try {
             '--hidden-import', 'sentinel.beta13_installer',
             $Entry
         )
-        & $Py -m PyInstaller @PyInstallerArgs
+        & $Py (Join-Path $RepoRoot 'tools\windows_packaging.py') @PyInstallerArgs
         if ($LASTEXITCODE -ne 0) { throw 'PyInstaller B13-3 onedir build failed.' }
     }
     finally {
@@ -102,6 +102,23 @@ try {
 
     $Exe = Join-Path $ProductRoot 'BC-Sentinel.exe'
     if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw 'B13-3 packaged executable missing.' }
+
+    # Contract-only self-check does not import QtWidgets. Exercise the frozen UI
+    # before producing an installer so missing/incompatible DLLs fail the build.
+    $SmokeProfile = Join-Path $WorkBase 'smoke-profile'
+    New-Item -ItemType Directory -Path $SmokeProfile -Force | Out-Null
+    $SavedLocalAppData = $env:LOCALAPPDATA
+    try {
+        $env:LOCALAPPDATA = $SmokeProfile
+        $SmokeProcess = Start-Process -FilePath $Exe -ArgumentList '--smoke' -WindowStyle Hidden -PassThru
+        if (-not $SmokeProcess.WaitForExit(120000)) {
+            $SmokeProcess.Kill()
+            throw 'Packaged UI smoke timed out.'
+        }
+        $SmokeProcess.Refresh()
+        if ($SmokeProcess.ExitCode -ne 0) { throw ('Packaged UI smoke failed: ' + $SmokeProcess.ExitCode) }
+    }
+    finally { $env:LOCALAPPDATA = $SavedLocalAppData }
 
     $ManifestArgs = @(
         '-m', 'sentinel.beta13_installer',

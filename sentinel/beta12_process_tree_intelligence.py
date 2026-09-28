@@ -23,6 +23,7 @@ SOURCE: Final[str] = "WINDOWS_PROCESS_TREE_LIVE_CONTROLS"
 SOURCE_CHECKPOINT: Final[str] = "checkpoint/v012-beta12-b123-pass"
 SOURCE_CHECKPOINT_COMMIT: Final[str] = "90776f9b0e3f1a9c034b79a5886b30df0db41e5c"
 TARGET_SCENARIO: Final[str] = "B12-PROCESS-TREE-001"
+MAX_PID: Final[int] = 0xFFFFFFFF
 
 BASELINE_VERIFIED: Final[tuple[str, ...]] = (
     "B7-POWERSHELL-001",
@@ -155,11 +156,19 @@ def _valid_sha256(value: object) -> bool:
 def _valid_pid(value: object, *, allow_none: bool = False) -> bool:
     if value is None:
         return allow_none
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 < value <= MAX_PID
+    )
+
+
+def _valid_allowed_string(value: object, allowed: set[str]) -> bool:
+    return isinstance(value, str) and value in allowed
 
 
 def _valid_signer(state: object, subject_digest: object) -> bool:
-    if state not in SIGNER_STATES:
+    if not _valid_allowed_string(state, SIGNER_STATES):
         return False
     if state in {"SIGNED_UNVERIFIED", "SIGNED_VERIFIED"}:
         return _valid_sha256(subject_digest)
@@ -171,7 +180,7 @@ def _validate_process(row: object, index: int) -> list[str]:
     if not isinstance(row, dict) or set(row) != PROCESS_FIELDS:
         return [f"{prefix}:fields_invalid"]
     failures: list[str] = []
-    if row.get("role") not in PROCESS_ROLES:
+    if not _valid_allowed_string(row.get("role"), PROCESS_ROLES):
         failures.append(f"{prefix}:role_invalid")
     if not _valid_pid(row.get("pid")):
         failures.append(f"{prefix}:pid_invalid")
@@ -183,7 +192,7 @@ def _validate_process(row: object, index: int) -> list[str]:
         failures.append(f"{prefix}:image_path_digest_invalid")
     if not _valid_signer(row.get("signer_state"), row.get("signer_subject_digest")):
         failures.append(f"{prefix}:signer_invalid")
-    if row.get("image_kind") not in IMAGE_KINDS:
+    if not _valid_allowed_string(row.get("image_kind"), IMAGE_KINDS):
         failures.append(f"{prefix}:image_kind_invalid")
     if not isinstance(row.get("image_user_writable"), bool):
         failures.append(f"{prefix}:image_user_writable_invalid")
@@ -266,9 +275,14 @@ def validate_evidence(data: object) -> tuple[str, ...]:
         if not isinstance(processes, list) or not (2 <= len(processes) <= 4):
             failures.append(f"{prefix}:process_count_invalid")
             continue
+        process_failures: list[str] = []
         for pindex, row in enumerate(processes):
-            failures.extend(_validate_process(row, pindex))
-        if all(isinstance(row, dict) and set(row) == PROCESS_FIELDS for row in processes):
+            row_failures = _validate_process(row, pindex)
+            process_failures.extend(row_failures)
+            failures.extend(row_failures)
+        if not process_failures and all(
+            isinstance(row, dict) and set(row) == PROCESS_FIELDS for row in processes
+        ):
             failures.extend(_validate_chain(processes, index))
 
     if all(isinstance(row, dict) for row in controls):

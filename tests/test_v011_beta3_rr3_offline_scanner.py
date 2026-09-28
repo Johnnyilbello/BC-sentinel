@@ -30,6 +30,7 @@ def _scan(root: Path, out: Path, **kwargs):
         out,
         limits=kwargs.pop("limits", rr3.OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024)),
         **kwargs,
+        require_separate_volume=False,
     )
 
 
@@ -207,9 +208,9 @@ def test_yara_match_is_optional_and_review_only(tmp_path: Path, monkeypatch: pyt
         rule = "RR3_Test_Rule"
 
     class Rules:
-        def match(self, filepath: str, timeout: int):
+        def match(self, data: bytes, timeout: int):
             assert timeout == 2
-            return [Match()] if filepath.endswith("fixture.sys") else []
+            return [Match()] if data == b"YARA harmless fixture marker" else []
 
     monkeypatch.setattr(rr3, "_compile_yara", lambda path: (Rules(), "available"))
     result = _scan(root, tmp_path / "out", yara_rules=tmp_path / "rules.yar")

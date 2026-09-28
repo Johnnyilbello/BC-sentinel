@@ -213,3 +213,11 @@ def test_workspace_inside_target_remains_refused(tmp_path: Path):
     root = _offline_fixture(tmp_path)
     with pytest.raises(ValueError):
         b41.inventory_evidence(root, root / "workspace")
+
+
+@pytest.fixture(autouse=True)
+def simulated_report_volume_for_harmless_fixture(monkeypatch):
+    # These legacy workflow tests create synthetic Windows trees in tmp_path.
+    # Physical-volume rejection is covered by test_v014_offline_candidate.
+    from sentinel import rescue_offline_scanner
+    monkeypatch.setattr(rescue_offline_scanner, "validate_report_volume", lambda root, output: None)

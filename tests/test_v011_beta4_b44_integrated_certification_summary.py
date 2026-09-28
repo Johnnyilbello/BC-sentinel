@@ -36,7 +36,7 @@ def _session(base: Path) -> tuple[Path, Path, Path]:
     workspace = base / "workspace"
     plan = b40.build_session_plan(b40.RescueConsoleRequest(root, workspace))
     b40.write_session_plan(plan, workspace / "session-plan.json", root)
-    rr3.scan_offline_windows(root, workspace / "rr3")
+    rr3.scan_offline_windows(root, workspace / "rr3", require_separate_volume=False)
     return root, workspace, workspace / "rr3/rr3-offline-scan.json"
 
 
@@ -264,3 +264,11 @@ def test_workspace_inside_target_is_refused(tmp_path: Path) -> None:
             tmp_path / "baseline.json",
             tmp_path / "provenance.json",
         ))
+
+
+@pytest.fixture(autouse=True)
+def simulated_report_volume_for_harmless_fixture(monkeypatch):
+    # These legacy workflow tests create synthetic Windows trees in tmp_path.
+    # Physical-volume rejection is covered by test_v014_offline_candidate.
+    from sentinel import rescue_offline_scanner
+    monkeypatch.setattr(rescue_offline_scanner, "validate_report_volume", lambda root, output: None)

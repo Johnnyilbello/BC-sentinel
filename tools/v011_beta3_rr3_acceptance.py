@@ -57,7 +57,7 @@ def run_acceptance() -> dict:
             output,
             limits=OfflineScanLimits(max_files=128, max_file_bytes=1024 * 1024),
             intel_catalog=catalog,
-        )
+         require_separate_volume=False)
         after = {str(p.relative_to(root)): _sha(p) for p in root.rglob("*") if p.is_file()}
         ioc = [item for item in result["findings"] if item["ioc_name"] == "RR3.Acceptance.IOC"]
         startup = [item for item in result["findings"] if "startup_location_artifact" in item["reasons"]]

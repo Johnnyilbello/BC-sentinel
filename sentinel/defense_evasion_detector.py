@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 import argparse
 import hashlib
 import json
+import math
 import time
 import tracemalloc
 from typing import Any, Final, Iterable
@@ -93,7 +94,13 @@ def _nonempty(value: Any) -> bool:
 
 
 def _valid_number(value: Any) -> bool:
-    return not isinstance(value, bool) and isinstance(value, (int, float))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        numeric = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(numeric)
 
 
 def _validate_provenance(value: Any, prefix: str) -> list[str]:
@@ -146,22 +153,31 @@ class ControlTamperObservation:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ControlTamperObservation":
-        return cls(
-            event_id=str(payload.get("event_id") or ""),
-            observed_at=float(payload.get("observed_at") or 0.0),
-            control_surface=str(payload.get("control_surface") or ""),
-            evidence_id=str(payload.get("evidence_id") or ""),
-            provenance=dict(payload.get("provenance") or {}),
-            protection_disable_attempted=bool(payload.get("protection_disable_attempted", False)),
-            telemetry_suppressed=bool(payload.get("telemetry_suppressed", False)),
-            exclusion_scope_expanded=bool(payload.get("exclusion_scope_expanded", False)),
-            policy_weakened=bool(payload.get("policy_weakened", False)),
-            security_service_stop_attempted=bool(payload.get("security_service_stop_attempted", False)),
-            approved_change=bool(payload.get("approved_change", False)),
-            maintenance_window=bool(payload.get("maintenance_window", False)),
-            signed_admin_workflow=bool(payload.get("signed_admin_workflow", False)),
-            correlation_key=str(payload.get("correlation_key") or ""),
+        if not isinstance(payload, dict):
+            raise ValueError("defense_evasion_detector_observation_not_object")
+        candidate = cls(
+            event_id=payload.get("event_id", ""),
+            observed_at=payload.get("observed_at", 0.0),
+            control_surface=payload.get("control_surface", ""),
+            evidence_id=payload.get("evidence_id", ""),
+            provenance=payload.get("provenance", {}),
+            protection_disable_attempted=payload.get("protection_disable_attempted", False),
+            telemetry_suppressed=payload.get("telemetry_suppressed", False),
+            exclusion_scope_expanded=payload.get("exclusion_scope_expanded", False),
+            policy_weakened=payload.get("policy_weakened", False),
+            security_service_stop_attempted=payload.get("security_service_stop_attempted", False),
+            approved_change=payload.get("approved_change", False),
+            maintenance_window=payload.get("maintenance_window", False),
+            signed_admin_workflow=payload.get("signed_admin_workflow", False),
+            correlation_key=payload.get("correlation_key", ""),
         )
+        validation = validate_observations((candidate,))
+        if not validation.passed:
+            raise ValueError(
+                "defense_evasion_detector_invalid_observation:"
+                + ",".join(validation.failures)
+            )
+        return candidate
 
 
 @dataclass(frozen=True)
@@ -230,17 +246,23 @@ class DetectionResult:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "DetectionResult":
+        validation = validate_result(payload)
+        if not validation.passed:
+            raise ValueError(
+                "defense_evasion_detector_invalid_result:"
+                + ",".join(validation.failures)
+            )
         return cls(
-            outcome=str(payload.get("outcome") or ""),
-            score=int(payload.get("score") or 0),
-            matched_signals=tuple(sorted(str(item) for item in (payload.get("matched_signals") or []))),
-            evidence_ids=tuple(sorted(str(item) for item in (payload.get("evidence_ids") or []))),
-            event_ids=tuple(sorted(str(item) for item in (payload.get("event_ids") or []))),
-            control_surfaces=tuple(sorted(str(item) for item in (payload.get("control_surfaces") or []))),
-            first_observed_at=float(payload.get("first_observed_at") or 0.0),
-            detection_observed_at=float(payload.get("detection_observed_at") or 0.0),
-            detection_latency=float(payload.get("detection_latency") or 0.0),
-            suppressor_reasons=tuple(sorted(str(item) for item in (payload.get("suppressor_reasons") or []))),
+            outcome=payload["outcome"],
+            score=payload["score"],
+            matched_signals=tuple(sorted(payload["matched_signals"])),
+            evidence_ids=tuple(sorted(payload["evidence_ids"])),
+            event_ids=tuple(sorted(payload["event_ids"])),
+            control_surfaces=tuple(sorted(payload["control_surfaces"])),
+            first_observed_at=payload["first_observed_at"],
+            detection_observed_at=payload["detection_observed_at"],
+            detection_latency=payload["detection_latency"],
+            suppressor_reasons=tuple(sorted(payload["suppressor_reasons"])),
         )
 
 
@@ -276,20 +298,44 @@ def validate_observations(observations: Iterable[ControlTamperObservation]) -> D
             failures.append(f"{prefix}:event_id_invalid")
         elif item.event_id in seen_events:
             failures.append(f"{prefix}:duplicate_event_id")
-        seen_events.add(item.event_id)
+        else:
+            seen_events.add(item.event_id)
         if not _nonempty(item.evidence_id):
             failures.append(f"{prefix}:evidence_id_invalid")
         elif item.evidence_id in seen_evidence:
             failures.append(f"{prefix}:duplicate_evidence_id")
-        seen_evidence.add(item.evidence_id)
+        else:
+            seen_evidence.add(item.evidence_id)
         if not _nonempty(item.control_surface):
             failures.append(f"{prefix}:control_surface_invalid")
         if not _valid_number(item.observed_at) or item.observed_at < 0:
             failures.append(f"{prefix}:observed_at_invalid")
+        for field_name in (
+            "protection_disable_attempted",
+            "telemetry_suppressed",
+            "exclusion_scope_expanded",
+            "policy_weakened",
+            "security_service_stop_attempted",
+            "approved_change",
+            "maintenance_window",
+            "signed_admin_workflow",
+        ):
+            if not isinstance(getattr(item, field_name), bool):
+                failures.append(f"{prefix}:{field_name}_invalid")
         failures.extend(_validate_provenance(item.provenance, prefix))
-        if item.correlation_key and not item.correlation_key.strip():
+        if not isinstance(item.correlation_key, str):
             failures.append(f"{prefix}:correlation_key_invalid")
-    return DetectorValidation(not failures, tuple(failures))
+        elif item.correlation_key and not item.correlation_key.strip():
+            failures.append(f"{prefix}:correlation_key_invalid")
+
+    valid_items = tuple(item for item in items if isinstance(item, ControlTamperObservation))
+    if len(valid_items) > 1:
+        keys = tuple(item.correlation_key for item in valid_items)
+        if any(not isinstance(key, str) or not key.strip() for key in keys):
+            failures.append("observations:correlation_key_required_for_batch")
+        elif len(set(keys)) != 1:
+            failures.append("observations:mixed_correlation_keys")
+    return DetectorValidation(not failures, tuple(dict.fromkeys(failures)))
 
 
 def _signals(observation: ControlTamperObservation) -> set[str]:
@@ -319,10 +365,11 @@ def _score(signals: set[str]) -> int:
 
 
 def detect(observations: Iterable[ControlTamperObservation]) -> DetectionResult:
-    items = tuple(sorted(observations, key=lambda item: (item.observed_at, item.event_id)))
+    items = tuple(observations)
     validation = validate_observations(items)
     if not validation.passed:
         raise ValueError("defense_evasion_detector_invalid_input:" + ",".join(validation.failures))
+    items = tuple(sorted(items, key=lambda item: (item.observed_at, item.event_id)))
 
     all_signals: set[str] = set()
     evidence_ids: set[str] = set()
@@ -395,28 +442,90 @@ def validate_result(payload: dict[str, Any] | Any) -> DetectorValidation:
     for field_name, expected in exact.items():
         if payload.get(field_name) != expected:
             failures.append(f"result:{field_name}_mismatch")
-    if payload.get("outcome") not in ALLOWED_OUTCOMES:
+    outcome = payload.get("outcome")
+    if not isinstance(outcome, str) or outcome not in ALLOWED_OUTCOMES:
         failures.append("result:outcome_invalid")
     score = payload.get("score")
-    if isinstance(score, bool) or not isinstance(score, int) or score < 0:
+    if isinstance(score, bool) or not isinstance(score, int) or not (0 <= score <= 12):
         failures.append("result:score_invalid")
     signals = payload.get("matched_signals")
-    if not isinstance(signals, list) or any(item not in ALLOWED_SIGNALS for item in signals):
+    signals_valid = isinstance(signals, list) and all(
+        isinstance(item, str) and item in ALLOWED_SIGNALS for item in signals
+    )
+    if not signals_valid:
         failures.append("result:signals_invalid")
-    for field_name in ("evidence_ids", "event_ids", "control_surfaces", "suppressor_reasons"):
+    for field_name in ("evidence_ids", "event_ids", "control_surfaces"):
         value = payload.get(field_name)
-        if not isinstance(value, list) or any(not _nonempty(item) for item in value):
+        if (
+            not isinstance(value, list)
+            or not value
+            or any(not _nonempty(item) for item in value)
+        ):
             failures.append(f"result:{field_name}_invalid")
+    suppressor_reasons = payload.get("suppressor_reasons")
+    allowed_suppressors = {
+        "APPROVED_CHANGE",
+        "MAINTENANCE_WINDOW",
+        "SIGNED_ADMIN_WORKFLOW",
+    }
+    suppressors_valid = isinstance(suppressor_reasons, list) and all(
+        isinstance(item, str) and item in allowed_suppressors
+        for item in suppressor_reasons
+    )
+    if not suppressors_valid:
+        failures.append("result:suppressor_reasons_invalid")
     for field_name in ("first_observed_at", "detection_observed_at", "detection_latency"):
         value = payload.get(field_name)
         if not _valid_number(value) or value < 0:
             failures.append(f"result:{field_name}_invalid")
+    first_observed = payload.get("first_observed_at")
+    detection_observed = payload.get("detection_observed_at")
+    latency = payload.get("detection_latency")
     if (
-        _valid_number(payload.get("first_observed_at"))
-        and _valid_number(payload.get("detection_observed_at"))
-        and payload["detection_observed_at"] < payload["first_observed_at"]
+        _valid_number(first_observed)
+        and _valid_number(detection_observed)
+        and detection_observed < first_observed
     ):
         failures.append("result:time_order_invalid")
+    if (
+        _valid_number(first_observed)
+        and _valid_number(detection_observed)
+        and _valid_number(latency)
+        and abs((detection_observed - first_observed) - latency) > 1e-9
+    ):
+        failures.append("result:detection_latency_mismatch")
+    if signals_valid and isinstance(score, int) and not isinstance(score, bool):
+        signal_set = set(signals)
+        expected_score = _score(signal_set)
+        if score != expected_score:
+            failures.append("result:score_signal_mismatch")
+        direct_control_interference = bool(
+            {SIGNAL_PROTECTION_DISABLE, SIGNAL_SERVICE_STOP} & signal_set
+        )
+        concealment_or_weakening = bool(
+            {
+                SIGNAL_TELEMETRY_SUPPRESSION,
+                SIGNAL_EXCLUSION_EXPANSION,
+                SIGNAL_POLICY_WEAKENING,
+            }
+            & signal_set
+        )
+        expected_detect_shape = (
+            direct_control_interference
+            and concealment_or_weakening
+            and score >= DETECT_SCORE
+        )
+        has_suppressors = bool(suppressor_reasons) if suppressors_valid else False
+        if has_suppressors:
+            expected_outcome = OUTCOME_REVIEW if score >= REVIEW_SCORE else OUTCOME_NO_MATCH
+        elif expected_detect_shape:
+            expected_outcome = OUTCOME_DETECTED
+        elif score >= REVIEW_SCORE:
+            expected_outcome = OUTCOME_REVIEW
+        else:
+            expected_outcome = OUTCOME_NO_MATCH
+        if isinstance(outcome, str) and outcome in ALLOWED_OUTCOMES and outcome != expected_outcome:
+            failures.append("result:outcome_signal_mismatch")
     if payload.get("read_only") is not True:
         failures.append("result:read_only_required")
     if payload.get("synthetic_fixture_only") is not True:
@@ -431,10 +540,11 @@ def build_evidence_graph(
     observations: Iterable[ControlTamperObservation],
     result: DetectionResult,
 ) -> security_graph.SecurityGraph:
-    items = tuple(sorted(observations, key=lambda item: (item.observed_at, item.event_id)))
+    items = tuple(observations)
     validation = validate_observations(items)
     if not validation.passed:
         raise ValueError("defense_evasion_detector_invalid_graph_input:" + ",".join(validation.failures))
+    items = tuple(sorted(items, key=lambda item: (item.observed_at, item.event_id)))
     result_validation = validate_result(result.to_dict())
     if not result_validation.passed:
         raise ValueError("defense_evasion_detector_invalid_result:" + ",".join(result_validation.failures))

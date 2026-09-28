@@ -130,3 +130,11 @@ def test_invalid_windows_target_is_refused(tmp_path: Path):
     root.mkdir()
     with pytest.raises((ValueError, FileNotFoundError)):
         b40.build_session_plan(b40.RescueConsoleRequest(root, tmp_path / "workspace"))
+
+
+@pytest.fixture(autouse=True)
+def simulated_report_volume_for_harmless_fixture(monkeypatch):
+    # These legacy workflow tests create synthetic Windows trees in tmp_path.
+    # Physical-volume rejection is covered by test_v014_offline_candidate.
+    from sentinel import rescue_offline_scanner
+    monkeypatch.setattr(rescue_offline_scanner, "validate_report_volume", lambda root, output: None)
