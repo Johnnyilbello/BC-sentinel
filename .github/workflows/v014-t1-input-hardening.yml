@@ -32,10 +32,42 @@ jobs:
         shell: powershell
         run: |
           $testBase = Join-Path $env:TEMP ('BCSentinel-candidate-' + [guid]::NewGuid().ToString('N'))
-          python -m pytest -q --basetemp $testBase --junitxml=candidate-junit.xml -o faulthandler_timeout=60
+          python -m pytest -q --basetemp $testBase --junitxml="$env:RUNNER_TEMP/candidate-junit.xml" -o faulthandler_timeout=60
           if ($LASTEXITCODE -ne 0) { throw 'Applicable candidate regression failed.' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: candidate-regression-${{ github.sha }}
-          path: candidate-junit.xml
+          path: ${{ runner.temp }}/candidate-junit.xml
+      - name: Build exact-commit internal portable package
+        shell: powershell
+        run: |
+          ./BUILD-V014-OFFLINE-CANDIDATE.ps1 -OutputRoot "$env:RUNNER_TEMP/offline-candidate" -PythonPath (Get-Command python).Source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-candidate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/offline-candidate/BC-Sentinel-Offline-Candidate.zip
+            ${{ runner.temp }}/offline-candidate/candidate-manifest.json
+            tools/VERIFY-OFFLINE-CANDIDATE-VM.ps1
+          if-no-files-found: error
+  fresh-windows-package:
+    needs: windows-acceptance
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: offline-candidate-${{ github.sha }}
+          path: candidate-artifact
+      - name: Portable install scan and uninstall on a separate fresh VM
+        shell: powershell
+        run: |
+          $archive = Get-ChildItem candidate-artifact -Filter BC-Sentinel-Offline-Candidate.zip -Recurse | Select-Object -First 1
+          $verifier = Get-ChildItem candidate-artifact -Filter VERIFY-OFFLINE-CANDIDATE-VM.ps1 -Recurse | Select-Object -First 1
+          & $verifier.FullName -ArtifactDirectory $archive.DirectoryName -EvidenceDirectory "$env:RUNNER_TEMP/offline-vm-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-vm-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/offline-vm-evidence
