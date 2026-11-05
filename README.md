@@ -17,7 +17,7 @@ La versione in sviluppo integra **BC Storage Analyzer** e i controlli di **Micro
 
 ## Avvio su Windows
 
-Nel pacchetto completo, estrai lo ZIP e apri **BC-Sentinel-Offline-Candidate.exe** nella cartella payload/BC-Sentinel-Offline-Candidate. Il pacchetto include Storage Analyzer. Il nome “Offline Candidate” identifica la distribuzione interna in valutazione.
+Nel pacchetto completo, estrai lo ZIP e apri **BC-Sentinel-Offline-Candidate.exe** nella cartella BC-Sentinel-Offline-Candidate. Il pacchetto include Storage Analyzer. Il nome “Offline Candidate” identifica la distribuzione interna in valutazione.
 
 Dai sorgenti servono Python 3.12 e le dipendenze di requirements.txt.
 
@@ -36,6 +36,7 @@ Defender applica le impostazioni di risposta configurate in Windows durante le s
 ## Guide e limiti
 
 - [Storage Analyzer e controlli di protezione](docs/STORAGE-AND-PROTECTION.md)
+- [Risultati delle verifiche dell’integrazione](docs/VALIDATION-STORAGE-PROTECTION.md)
 - [Scansione offline e qualificazione](docs/OFFLINE-CANDIDATE.md)
 - [Installazione Windows](docs/WINDOWS-INSTALLATION.md)
 - [Canale stabile storico](STABLE-RELEASE.md)
