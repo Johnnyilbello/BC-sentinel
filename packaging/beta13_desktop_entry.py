@@ -256,6 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         smoke = commercial_ui.smoke_test_window(
             snapshot,
             commercial_state=state,
+            include_storage=True,
         )
         offline_dialog = OfflineScanDialog()
         offline_dialog_ready = bool(offline_dialog.start_button.isEnabled()
@@ -290,6 +291,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         notification_center=center,
         commercial_state=state,
         on_export_diagnostics=lambda: _interactive_export(state),
+        include_storage=True,
     )
     window.setWindowTitle(PRODUCT_NAME)
     window.setProperty("bcSentinelRuntimeProfile", PROFILE)

@@ -35,3 +35,16 @@ malware or live acceptance scripts were executed.
 
 The current candidate CI additionally runs `python -m pytest` across every
 applicable current test, not only the Beta5–Beta14 filename selection.
+
+## Beta1 compatibility runner
+
+python tools/run_historical_beta1_tests.py reconstructs missing legacy dependencies
+in a fresh temporary workspace from the pinned full-source baseline. It overlays
+current adapters, applies existing bounded Windows-retry patches, and supplies two
+performance scripts from commits 15702be and 6c68027 for text assertions.
+It executes only pytest, never the administrative scripts.
+
+All 19 tests in the three Beta1 modules pass in this reconstructed environment.
+This is a compatibility result, rather than a claim about the current tree alone.
+The current ETW adapter also installs its idle-backoff shim before starting capture,
+fixing the missing runtime activation exposed by these tests.

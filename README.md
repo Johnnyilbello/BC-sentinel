@@ -1,120 +1,74 @@
 # BC Sentinel
 
-For installing the compiled Windows test build without Python, Git or winget,
-see [Windows installation and QtWidgets startup repair](docs/WINDOWS-INSTALLATION.md).
+BC Sentinel è un progetto Windows per analisi delle minacce, scansione offline, recupero e gestione dello spazio del PC. L’interfaccia è in italiano.
 
-BC Sentinel is a Windows endpoint-security, recovery, and incident-intelligence project focused on deterministic validation, conservative security claims, and explicit safety boundaries.
+La versione in sviluppo integra **BC Storage Analyzer** e i controlli di **Microsoft Defender** per scansione e rimozione delle minacce attive rilevate. Il progetto è in valutazione interna. I test descrivono i casi verificati e non garantiscono il riconoscimento di ogni malware.
 
-> **Development status:** Beta7 is complete and frozen. Beta8 is active, and **B8-0 — Beta8 Foundation + New Coverage Baseline** is accepted and frozen. BC Sentinel remains a development project and should not replace Microsoft Defender, Windows Firewall, or a production EDR on an everyday workstation.
+## Cosa puoi fare
 
-## Latest accepted engineering checkpoint
+| Area | Utilizzo |
+| --- | --- |
+| Dashboard e Trust Center | Consultare stato, evidenze e limiti della protezione |
+| Scansione offline | Esaminare Windows offline con SHA-256, YARA e controlli strutturali su PE e ZIP |
+| Protezione → Microsoft Defender | Leggere lo stato del motore Windows, avviare scansioni e richiedere la rimozione delle minacce attive |
+| Storage Analyzer | Confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
+| Rimozioni in Storage Analyzer | Spostare nel Cestino, eliminare definitivamente o disinstallare un’app dopo conferma |
+| Quarantena e recupero | Usare i percorsi di ripristino previsti dal runtime e dai suoi controlli |
 
-```text
-v0.11.0-beta.8 — B8-0 Foundation + New Coverage Baseline
-checkpoint/v011-beta8-b80-pass
-969781bd7633d0b2bc92840e8f12220f00de4279
-```
+## Avvio su Windows
 
-B8-0 acceptance on Windows:
+Nel pacchetto completo, estrai lo ZIP e apri **BC-Sentinel-Offline-Candidate.exe** nella cartella payload/BC-Sentinel-Offline-Candidate. Il pacchetto include Storage Analyzer. Il nome “Offline Candidate” identifica la distribuzione interna in valutazione.
 
-- compile gate: PASS;
-- complete Beta5 + Beta6 + Beta7 predecessor regression: PASS;
-- **450 tests passed** locally;
-- exact-head Windows CI: PASS;
-- protected B2 and accepted Beta7 intelligence sources unchanged;
-- canonical single-roadmap rule: PASS;
-- no remediation authority added.
+Dai sorgenti servono Python 3.12 e le dipendenze di requirements.txt.
 
-## Current measurable coverage
+~~~powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+powershell.exe -NoProfile -File .\tools\BUILD-STORAGE-ANALYZER.ps1
+$env:PYTHONPATH = (Get-Location).Path
+.\.venv\Scripts\python.exe .\packaging\beta13_desktop_entry.py
+~~~
 
-```text
-PARTIAL   3
-GAP       3
-VERIFIED  0
-```
+Apri **Storage Analyzer** nel menu laterale per analizzare spazio e RAM. Per le minacce apri **Protezione → Apri i controlli di Microsoft Defender**, poi **Aggiorna stato**.
 
-Current PARTIAL families:
+Defender applica le impostazioni di risposta configurate in Windows durante le scansioni. Il comando di rimozione riguarda tutte le minacce attive riconosciute da Defender. Permessi insufficienti, motore disabilitato o modalità passiva vengono riportati nell’interfaccia.
 
-- suspicious script / PowerShell abuse;
-- persistence;
-- suspicious DNS / network activity.
+## Guide e limiti
 
-Current explicit GAP families and Beta8 verification targets:
+- [Storage Analyzer e controlli di protezione](docs/STORAGE-AND-PROTECTION.md)
+- [Scansione offline e qualificazione](docs/OFFLINE-CANDIDATE.md)
+- [Installazione Windows](docs/WINDOWS-INSTALLATION.md)
+- [Canale stabile storico](STABLE-RELEASE.md)
+- [Roadmap e checkpoint](ROADMAP.md)
+- [Sicurezza e segnalazioni](SECURITY.md)
 
-- ransomware-like behavior;
-- defense evasion / control tampering;
-- credential-access indicators.
+L’analisi offline è limitata ai percorsi, formati e budget documentati. Le euristiche producono anche elementi da esaminare manualmente. Lo spazio logico di Storage Analyzer può differire dall’occupazione fisica del volume.
 
-Synthetic evidence alone is never treated as VERIFIED detector coverage.
+## Test riproducibili
 
-## Active development
+Usa una directory temporanea nuova. Alcuni test richiedono fixture nella cartella temporanea di Windows.
 
-The next security milestone is **B8-1 — Ransomware-like Detector Acceptance**. It must use harmless controlled fixtures and may promote ransomware coverage only after a reproducible detector-path acceptance.
+~~~powershell
+$env:QT_QPA_PLATFORM = 'offscreen'
+$env:BC_SENTINEL_REDUCED_MOTION = '1'
+$testBase = Join-Path $env:TEMP ('BCSentinel-tests-' + [guid]::NewGuid().ToString('N'))
+.\.venv\Scripts\python.exe -m pytest -q --basetemp $testBase
+pwsh -NoProfile -File .\tools\TEST-STORAGE-ANALYZER.ps1
+.\.venv\Scripts\python.exe .\tools\run_historical_beta1_tests.py
+~~~
 
-The project has exactly one roadmap source of truth:
+La prima suite verifica il codice attuale. Lo script PowerShell 7 prova Storage Analyzer su campioni dedicati, comprese le rimozioni. L’ultimo comando ricostruisce un ambiente isolato di compatibilità per tre moduli Beta1 archiviati. [Guida ai test storici](tests/historical/README.md)
 
-[**ROADMAP.md**](ROADMAP.md)
+## Struttura della repository
 
-## Repository layout
+| Cartella | Contenuto |
+| --- | --- |
+| sentinel/ | Motori, modelli, controlli e interfaccia Python/Qt |
+| tools/storage_analyzer/ | Sorgenti C# del componente portabile |
+| packaging/ | Punti di avvio dei pacchetti Windows |
+| tests/ | Test attuali e contratti storici separati |
+| tools/ | Compilazione, verifiche e accettazione |
+| docs/ | Guide e limiti delle verifiche |
+| .github/workflows/ | Controlli automatici e costruzione dei pacchetti |
 
-The public root is intentionally compact. Historical milestone launchers, old acceptance scripts, diagnostic helpers, obsolete patches, historical checksums and superseded reports are kept in Git history/checkpoints rather than displayed in the repository root.
-
-Primary root files:
-
-- `README.md` — public project entry point;
-- `ROADMAP.md` — single canonical roadmap and development-status source;
-- `SECURITY.md` — security and responsible-disclosure guidance;
-- `STABLE-RELEASE.md` — current stable-channel instructions;
-- `STABLE_VERSION.json` — machine-readable stable-channel descriptor;
-- `START-BC-SENTINEL-STABLE.bat` / `.ps1` — stable Windows launcher;
-- `pyproject.toml` / `requirements.txt` — project/dependency metadata.
-
-Core implementation and engineering assets live under folders such as `.github/`, `sentinel/`, `tests/`, `tools/`, and `packaging/`.
-
-## Stable channel versus engineering checkpoints
-
-The latest accepted **engineering** checkpoint is B8-0. The currently published stable launcher remains the separately documented B6-0 stable channel until a later release milestone explicitly promotes a newer build.
-
-See [STABLE-RELEASE.md](STABLE-RELEASE.md) for stable-launch instructions.
-
-## Safety boundary
-
-Unless a future dedicated milestone explicitly expands authority and passes Windows acceptance, the following remain false:
-
-```text
-automatic quarantine          = false
-automatic repair              = false
-automatic restore             = false
-general Home execution        = false
-DELETE                        = false
-REPAIR                        = false
-TERMINATE_PROCESS             = false
-TRUST/ALLOWLIST mutation      = false
-privileged/system mutation    = false
-```
-
-`RECOMMEND` remains advisory. Missing evidence is never interpreted as proof of safety.
-
-## Start the current stable launcher on Windows
-
-Double-click:
-
-```text
-START-BC-SENTINEL-STABLE.bat
-```
-
-or run:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1
-```
-
-Self-check only:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START-BC-SENTINEL-STABLE.ps1 -SelfCheckOnly
-```
-
-## Responsible testing
-
-Use harmless fixtures, disposable VMs, and controlled offline targets. Do not deliberately expose an everyday workstation to live malware solely to test a development build.
+Per compilare il pacchetto completo da un commit salvato, usa BUILD-V014-OFFLINE-CANDIDATE.ps1 con -OutputRoot seguito da una nuova cartella esterna e -PythonPath seguito dal percorso di python.exe. La procedura registra commit e impronte dei file. La qualificazione su Windows pulito richiede le evidenze della guida offline.

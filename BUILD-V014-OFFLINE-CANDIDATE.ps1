@@ -25,10 +25,13 @@ $build = Join-Path $out 'build'
 $spec = Join-Path $out 'spec'
 $profile = Join-Path $out 'disposable-profile'
 New-Item -ItemType Directory -Force -Path $payload,$build,$spec,$profile | Out-Null
+& (Join-Path $repoRoot 'tools\BUILD-STORAGE-ANALYZER.ps1')
+$storageDirectory = Join-Path $repoRoot 'build\storage_analyzer'
 $args = @(
     '--noconfirm','--onedir','--windowed','--name','BC-Sentinel-Offline-Candidate',
     '--distpath',$payload,'--workpath',$build,'--specpath',$spec,
     '--paths',$repoRoot,
+    '--add-binary',($storageDirectory + ';storage_analyzer'),
     '--runtime-hook',(Join-Path $repoRoot 'packaging\beta11_windowed_runtime_hook.py'),
     '--hidden-import','sentinel.offline_scan_dialog',
     '--hidden-import','sentinel.rescue_offline_scanner',

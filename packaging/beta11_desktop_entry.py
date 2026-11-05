@@ -145,7 +145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.smoke:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        smoke = product_ui.smoke_test_window(snapshot)
+        smoke = product_ui.smoke_test_window(snapshot, include_storage=True)
         result = {
             "passed": bool(smoke["passed"]),
             "profile": identity.PROFILE,
@@ -171,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setApplicationVersion(identity.PRODUCT_VERSION)
     app.setOrganizationName("BC TECH Studio")
 
-    window = product_ui.TrustCenterWindow(trust_snapshot=snapshot)
+    window = product_ui.TrustCenterWindow(trust_snapshot=snapshot, include_storage=True)
     window.setWindowTitle(identity.PRODUCT_NAME)
     window.setProperty("bcSentinelRuntimeProfile", identity.PROFILE)
     window.setProperty("bcSentinelSourceCheckpoint", identity.SOURCE_CHECKPOINT)

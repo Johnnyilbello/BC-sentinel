@@ -7,6 +7,7 @@ from time import monotonic, sleep, time
 
 from .core.events import SecurityEvent
 from .process_identity import ProcessIdentityResolver
+from .pywintrace_idle import install_pywintrace_idle_backoff
 from .web_protection import DNSCorrelationCache, WebProtectionEngine, extract_ip_addresses, normalize_domain
 
 PROCESS_PROVIDER = "{22FB2CD6-0E7B-422B-A0C7-2FAD1FD0E716}"
@@ -155,6 +156,7 @@ class ETWMonitor:
             return False
         try:
             import etw
+            install_pywintrace_idle_backoff()
             self.error = ""
             self.dns_tracking = False
             self._provider_filter_keepalive = []

@@ -353,10 +353,10 @@ def inspect_pe_metadata(path: Path, *, max_bytes: int = MAX_PE_BYTES) -> PEMetad
     except (AttributeError, OverflowError, TypeError, ValueError):
         return _rejected("malformed_pe_metadata", file_size=len(data), sha256=digest)
     finally:
-        try:
-            pe.close()
-        except Exception:
-            pass
+        # PE(data=...) owns a bounded byte snapshot, with no file or mmap handle.
+        # pefile.close() forces a process-wide gc.collect() even for byte input.
+        # Release this parser normally instead of pausing the whole UI heap per file.
+        del pe
 
     unique = tuple(dict.fromkeys(reasons))
     return PEMetadataPreflight(

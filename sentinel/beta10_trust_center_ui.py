@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 from sentinel import beta10_trust_center as trust
 from sentinel import home_security_ui
 from sentinel.ui_design_system import COLORS, make_icon
+from sentinel.storage_analyzer_ui import StorageWindowMixin
 
 TRUST_PAGE_NAME = "Trust Center"
 
@@ -297,11 +298,14 @@ class TrustCenterPage(QWidget):
         self._render_capabilities(columns=1 if compact else 2)
 
 
-class TrustCenterWindow(home_security_ui.SecurityOverviewWindow):
-    def __init__(self, *, trust_snapshot: dict[str, Any] | None = None, status_provider=None) -> None:
+class TrustCenterWindow(StorageWindowMixin, home_security_ui.SecurityOverviewWindow):
+    def __init__(self, *, trust_snapshot: dict[str, Any] | None = None, status_provider=None,
+                 include_storage: bool = False) -> None:
         self._trust_snapshot_input = trust_snapshot
         super().__init__(status_provider=status_provider)
         self._install_trust_center()
+        if include_storage:
+            self._install_storage_analyzer()
         QTimer.singleShot(0, lambda: self._apply_responsive_layout(force=True))
 
     def _install_trust_center(self) -> None:
@@ -360,9 +364,9 @@ class TrustCenterWindow(home_security_ui.SecurityOverviewWindow):
             button.setText("" if self._layout_mode == "mobile" else TRUST_PAGE_NAME)
 
 
-def smoke_test_window(snapshot: dict[str, Any]) -> dict[str, Any]:
+def smoke_test_window(snapshot: dict[str, Any], *, include_storage: bool = False) -> dict[str, Any]:
     app = QApplication.instance() or QApplication([])
-    window = TrustCenterWindow(trust_snapshot=snapshot)
+    window = TrustCenterWindow(trust_snapshot=snapshot, include_storage=include_storage)
     widths = (1440, 960, 680, 560)
     overflow: dict[str, int] = {}
     try:
@@ -377,7 +381,7 @@ def smoke_test_window(snapshot: dict[str, Any]) -> dict[str, Any]:
             app.processEvents()
             overflow[str(width)] = int(window.trust_center_scroll.horizontalScrollBar().maximum())
         passed = (
-            window.stack.count() == 7
+            window.stack.count() == (8 if include_storage else 7)
             and window.stack.currentWidget() is window.trust_center_scroll
             and window.trust_center_nav_button.isEnabled()
             and all(value == 0 for value in overflow.values())
