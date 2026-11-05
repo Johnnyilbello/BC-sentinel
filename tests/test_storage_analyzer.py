@@ -99,3 +99,17 @@ def test_navigation_refresh_and_narrow_layout_preserve_storage_route(app, monkey
             assert window.stack.currentWidget() is window.storage_scroll
     finally:
         window.close()
+
+
+def test_host_keeps_embedded_component_alive_until_its_window_closes(app, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+    window = TrustCenterWindow(include_storage=True)
+    ignored = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a: None)
+    try:
+        window.storage_page.process = SimpleNamespace(poll=lambda: None)
+        window.closeEvent(SimpleNamespace(ignore=lambda: ignored.append(True)))
+        assert ignored == [True]
+    finally:
+        window.storage_page.process = None
+        window.close()

@@ -191,7 +191,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--offline-output")
     parser.add_argument("--intel-catalog")
     parser.add_argument("--yara-rules")
+    parser.add_argument("--storage-smoke", action="store_true")
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    if args.storage_smoke:
+        import subprocess
+        from sentinel.storage_analyzer import executable_path, availability
+        ready, _ = availability()
+        if not ready:
+            return 2
+        try:
+            return subprocess.run([str(executable_path()), "--smoke"],
+                cwd=str(executable_path().parent), timeout=30, shell=False).returncode
+        except (OSError, subprocess.TimeoutExpired):
+            return 2
 
     if args.offline_root or args.offline_output:
         if not args.offline_root or not args.offline_output:

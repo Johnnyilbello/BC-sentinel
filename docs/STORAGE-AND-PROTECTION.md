@@ -42,7 +42,7 @@ I costruttori dei checkpoint storici mantengono un’opzione esplicita per ripro
 tools/BUILD-STORAGE-ANALYZER.ps1 compila i quattro sorgenti C# con il compilatore .NET Framework di Windows.
 Le procedure Beta11, installer Beta13 e candidato offline includono il risultato nelle risorse PyInstaller.
 Il componente viene risolto da una posizione controllata nel progetto o nel pacchetto.
-Chiudere Sentinel lascia Storage Analyzer aperto. Il pulsante impedisce aperture duplicate dalla stessa finestra finché il processo è attivo.
+La versione a file singolo estrae automaticamente i componenti temporanei. Chiudi Storage Analyzer prima di chiudere Sentinel, così i componenti restano disponibili per tutta la sessione. Il pulsante impedisce aperture duplicate dalla stessa finestra finché il processo è attivo.
 
 ## Verifiche e limiti
 

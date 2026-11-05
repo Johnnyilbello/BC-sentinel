@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, QTimer
-from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget, QMessageBox
 
 from sentinel import storage_analyzer
 from sentinel import home_security_ui
@@ -55,6 +55,15 @@ class StorageWindowMixin:
         super()._refresh_snapshot()
         if hasattr(self, "storage_page"):
             self._install_defender_entry()
+
+    def closeEvent(self, event) -> None:
+        page = getattr(self, "storage_page", None)
+        if page is not None and page.process is not None and page.process.poll() is None:
+            QMessageBox.information(self, "Storage Analyzer aperto",
+                "Chiudi la finestra di Storage Analyzer prima di chiudere BC Sentinel.")
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def _navigate(self, page: str) -> None:
         if page != PAGE_NAME or not hasattr(self, "storage_scroll"):

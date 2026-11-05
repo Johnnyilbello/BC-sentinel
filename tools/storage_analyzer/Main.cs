@@ -19,13 +19,23 @@ namespace BCStorage
     internal static class Program
     {
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("it-IT");
             CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainWindow());
+            var window = new MainWindow();
+            if (args.Length == 1 && args[0] == "--smoke")
+            {
+                var timer = new System.Windows.Forms.Timer { Interval = 700 };
+                timer.Tick += (sender, e) => { timer.Stop(); window.Close(); };
+                window.Shown += (sender, e) => timer.Start();
+                Application.Run(window);
+                timer.Dispose();
+                return;
+            }
+            Application.Run(window);
         }
     }
 

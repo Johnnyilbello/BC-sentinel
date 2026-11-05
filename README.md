@@ -17,7 +17,9 @@ La versione in sviluppo integra **BC Storage Analyzer** e i controlli di **Micro
 
 ## Avvio su Windows
 
-Nel pacchetto completo, estrai lo ZIP e apri **BC-Sentinel-Offline-Candidate.exe** nella cartella BC-Sentinel-Offline-Candidate. Il pacchetto include Storage Analyzer. Il nome “Offline Candidate” identifica la distribuzione interna in valutazione.
+La versione a file singolo si avvia con un doppio clic su **BC Sentinel.exe**. Include l’interfaccia e Storage Analyzer. I componenti vengono estratti automaticamente in una cartella temporanea durante l’esecuzione.
+
+Per compilare questa versione dai sorgenti, usa tools/BUILD-SINGLE-EXE.ps1 con -OutputDirectory seguito dalla cartella di destinazione e -PythonPath seguito dal percorso di python.exe.
 
 Dai sorgenti servono Python 3.12 e le dipendenze di requirements.txt.
 
