@@ -52,6 +52,7 @@ class BCScanPage(QWidget):
     scan_failed = Signal(str)
     monitor_stopped = Signal()
     monitor_notice = Signal(str)
+    monitor_finding = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -172,6 +173,7 @@ class BCScanPage(QWidget):
             notice = f"{item['name']} — {item['path']}"
             self.monitor_report.appendPlainText(notice)
             self.monitor_notice.emit(notice)
+            self.monitor_finding.emit(item)
         for error in result["errors"][-20:]:
             self.monitor_report.appendPlainText(error)
         if missed:

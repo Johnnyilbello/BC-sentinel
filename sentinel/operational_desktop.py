@@ -23,6 +23,7 @@ from sentinel.ui_pages import PageHeader
 from sentinel.ui_styles import home_stylesheet
 from sentinel.windows_defender_ui import WindowsDefenderDialog
 from sentinel.bc_scan_ui import BCScanPage
+from sentinel.bc_quarantine_ui import BCVaultPane
 from sentinel.operational_overview import OperationalOverview
 
 
@@ -153,6 +154,9 @@ class OperationalWindow(QMainWindow):
         self._button("offline_open", "Apri scansione offline", self.open_offline, page, primary=True)
 
         page = self._page("Quarantena", "Segnalazioni del motore BC e rilevamenti di Microsoft Defender")
+        self.bc_vault = BCVaultPane(self.data_root / "quarantine")
+        page.layout().addWidget(self.bc_vault)
+        self.bc_page.monitor_finding.connect(self.bc_vault.add_finding)
         self._label("Motore BC · avvisi della sessione", page)
         self.bc_notices = QPlainTextEdit()
         self.bc_notices.setReadOnly(True)
@@ -287,6 +291,7 @@ class OperationalWindow(QMainWindow):
         if name == "Cronologia":
             self.render_history()
         if name == "Quarantena":
+            self.bc_vault.refresh()
             self._unread_bc_notices = 0
             self.nav_buttons["Quarantena"].setText("Minacce")
             self.nav_buttons["Quarantena"].setAccessibleName("Minacce")
@@ -314,6 +319,7 @@ class OperationalWindow(QMainWindow):
     def _bc_completed(self, result):
         for finding in result["findings"][-100:]:
             self._add_bc_notice(f"{finding['name']} — {finding['path']}")
+            self.bc_vault.add_finding(finding)
         self._record("Scansione BC",
                      f"{result['files']} file analizzati · {result['skipped']} saltati",
                      rilevazioni=len(result["findings"]),
@@ -631,14 +637,46 @@ def smoke_test():
         activity_passed = activity_passed and window._unread_bc_notices >= 1
         window.navigate("Quarantena")
         activity_passed = activity_passed and window._unread_bc_notices == 0
+        vault_passed = _smoke_quarantine()
         return {
-            "passed": monitor_passed and activity_passed and all(value == 0 for value in overflow.values()) and
+            "passed": monitor_passed and activity_passed and vault_passed and all(value == 0 for value in overflow.values()) and
                 (window.storage_page.launch_button.isEnabled() or not getattr(sys, "frozen", False)),
             "page_count": window.stack.count(), "command_count": len(window.command_buttons),
             "horizontal_overflow": overflow, "operational_desktop": True,
             "storage_ready": window.storage_page.launch_button.isEnabled(),
             "bc_folder_monitor": monitor_passed,
             "bc_rename_activity": activity_passed,
+            "bc_quarantine": vault_passed,
         }
     finally:
         window.close()
+
+
+def _smoke_quarantine():
+    if os.name != "nt":
+        return True
+    from hashlib import sha256
+    from tempfile import TemporaryDirectory
+    from sentinel.bc_quarantine import BCQuarantine
+
+    with TemporaryDirectory(prefix="bc-vault-smoke-") as folder:
+        root = Path(folder).resolve()
+        profile = root / "profile"
+        target = profile / "Documents" / "innocuous.txt"
+        target.parent.mkdir(parents=True)
+        data = b"BC Sentinel harmless quarantine smoke"
+        target.write_bytes(data)
+        previous = os.environ.get("LOCALAPPDATA")
+        os.environ["LOCALAPPDATA"] = str(root / "disposable-appdata")
+        try:
+            vault = BCQuarantine(root / "vault", user_profile=profile)
+            entry = vault.isolate(target, sha256(data).hexdigest())
+            if target.exists() or vault.entries() != [entry]:
+                return False
+            vault.restore(entry.token)
+            return target.read_bytes() == data and not vault.entries()
+        finally:
+            if previous is None:
+                os.environ.pop("LOCALAPPDATA", None)
+            else:
+                os.environ["LOCALAPPDATA"] = previous

@@ -128,7 +128,8 @@ def _scan(engine, candidates, cancelled, progress):
 
     def inspect(data, digest, path):
         if digest in catalog:
-            result["findings"].append({"path": str(path), "sha256": digest, **catalog[digest]})
+            result["findings"].append({"path": str(path), "sha256": digest, **catalog[digest],
+                                       "isolate_path": str(path) if isinstance(path, Path) else None})
         if rules is None:
             return
         try:
