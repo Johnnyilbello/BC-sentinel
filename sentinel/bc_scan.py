@@ -11,6 +11,7 @@ import zlib
 
 from sentinel.archive_container_preflight import ARCHIVE_SUFFIXES, MAX_EOCD_TAIL_BYTES, read_zip_directory_tail
 from sentinel import bc_research_intel
+from sentinel.bc_script_analysis import MAX_SCRIPT_BYTES, SCRIPT_SUFFIXES, inspect_script
 from sentinel.rescue_offline_scanner import load_approved_intel_catalog, _is_reparse_or_symlink, _validate_local_path, _compile_yara
 
 # EICAR's harmless 68-byte standard test file, not a malware signature database.
@@ -48,8 +49,9 @@ def _scan_archive(data, path, cancelled, inspect, error):
                 if len(payload) != member.file_size or len(payload) > MAX_MEMBER_BYTES:
                     error(f"Dimensione elemento ZIP incoerente: {location}")
                     continue
-                inspect(payload, hashlib.sha256(payload).hexdigest(), location)
-                if Path(member.filename).suffix.casefold() in ARCHIVE_SUFFIXES or payload.startswith(b"PK\x03\x04"):
+                suffix = Path(member.filename).suffix.casefold()
+                inspect(payload, hashlib.sha256(payload).hexdigest(), location, suffix)
+                if suffix in ARCHIVE_SUFFIXES or payload.startswith(b"PK\x03\x04"):
                     error(f"Archivio annidato non aperto: {location}")
     except (OSError, ValueError, RuntimeError, EOFError, zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as exc:
         error(f"Contenuto ZIP non analizzato: {path} ({exc})")
@@ -128,7 +130,7 @@ def _scan(engine, candidates, cancelled, progress):
         if len(result["errors"]) < 100:
             result["errors"].append(str(exc))
 
-    def inspect(data, digest, path):
+    def inspect(data, digest, path, suffix, *, script_limited=False):
         signature = catalog.get(digest)
         if signature is None and digest in engine.research.hashes:
             signature = {"name": engine.research.hashes[digest], "source": bc_research_intel.SOURCE}
@@ -139,6 +141,16 @@ def _scan(engine, candidates, cancelled, progress):
             inspect_rules(engine.research.rules, bc_research_intel.SOURCE, data, digest, path)
         if rules is not None:
             inspect_rules(rules, "regola locale", data, digest, path)
+        try:
+            if script_limited:
+                raise ValueError("limite analisi script: 256 KiB")
+            signals = inspect_script(data, suffix)
+        except ValueError as exc:
+            error(f"Analisi script incompleta per {path}: {exc}")
+            return
+        for name in signals:
+            result["findings"].append({"path": str(path), "sha256": digest,
+                                       "name": name, "source": "euristica statica BC"})
 
     def inspect_rules(ruleset, source, data, digest, path):
         try:
@@ -161,7 +173,9 @@ def _scan(engine, candidates, cancelled, progress):
             digest = hashlib.sha256()
             buffer = None
             read_size = 0
-            is_archive = p.suffix.casefold() in ARCHIVE_SUFFIXES
+            suffix = p.suffix.casefold()
+            script_limited = suffix in SCRIPT_SUFFIXES and before.st_size > MAX_SCRIPT_BYTES
+            is_archive = suffix in ARCHIVE_SUFFIXES
             with p.open("rb") as f:
                 opened = os.fstat(f.fileno())
                 if not os.path.samestat(before, opened):
@@ -175,7 +189,8 @@ def _scan(engine, candidates, cancelled, progress):
                         break
                     if read_size == 0:
                         is_archive = is_archive or block.startswith((b"PK\x03\x04", b"PK\x05\x06"))
-                        if rules is not None or is_archive or block.startswith(b"MZ"):
+                        if (rules is not None or is_archive or block.startswith(b"MZ") or
+                                (suffix in SCRIPT_SUFFIXES and not script_limited)):
                             buffer = bytearray()
                     read_size += len(block)
                     if read_size > MAX_BYTES:
@@ -191,7 +206,7 @@ def _scan(engine, candidates, cancelled, progress):
                 raise OSError(f"File modificato durante la scansione: {p}")
             result["files"] += 1
             data = bytes(buffer) if buffer is not None else b""
-            inspect(data, digest.hexdigest(), p)
+            inspect(data, digest.hexdigest(), p, suffix, script_limited=script_limited)
             if is_archive:
                 _scan_archive(data, p, cancelled, inspect, error)
                 if cancelled():
