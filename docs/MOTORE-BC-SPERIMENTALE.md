@@ -14,7 +14,7 @@ Il pulsante **Carica catalogo hash** accetta il formato JSON già usato dallo sc
 }
 ```
 
-Usare soltanto cataloghi verificati: un hash nel catalogo produce una corrispondenza, non una prova indipendente di pericolosità. La scansione può essere annullata; collegamenti, file oltre 64 MiB e errori di accesso sono conteggiati come elementi saltati. Non elimina, isola o modifica i file. Non analizza archivi, memoria o comportamenti, e non offre monitoraggio in tempo reale. Un esito senza corrispondenze non garantisce la sicurezza del PC.
+Si possono caricare regole YARA locali usando **Carica regole YARA**. Le regole vengono compilate senza include, ogni analisi ha un limite di tempo e gli errori vengono segnalati. Le regole sono fornite dall'utente: non è incluso un set di regole malware né un servizio di aggiornamento. Usare soltanto cataloghi e regole verificati: una corrispondenza non è una prova indipendente di pericolosità. La scansione può essere annullata; collegamenti, file oltre 64 MiB e errori di accesso sono conteggiati come elementi saltati. Non elimina, isola o modifica i file. Non analizza archivi, memoria o comportamenti, e non offre monitoraggio in tempo reale. Un esito senza corrispondenze non garantisce la sicurezza del PC.
 
 Le pagine **Scansione**, **Protezione** e **Quarantena** operano su Microsoft Defender tramite le API di Windows. Il componente BC e Defender sono distinti. Lo scanner offline BC è separato e può utilizzare anche regole YARA. Nessun confronto indipendente dimostra che il componente BC superi Defender o altri antivirus. Mantenere attiva una protezione antivirus affidabile.
 

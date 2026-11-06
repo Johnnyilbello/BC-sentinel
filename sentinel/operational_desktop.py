@@ -107,11 +107,22 @@ class OperationalWindow(QMainWindow):
         navigation.addStretch()
         self.sidebar = sidebar
 
-        page = self._page("Dashboard", "Sicurezza e spazio, con controlli chiari")
-        self._label("Benvenuto in BC Sentinel. Scegli il motore BC per analizzare una cartella oppure consulta lo stato di Microsoft Defender.", page)
-        self._button("dashboard_bc", "Avvia scansione BC", lambda: self.navigate("Motore BC"), page, primary=True)
-        self.overview = self._label("Verifica dello stato antivirus in corso…", page)
-        self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, page)
+        page = self._page("Dashboard", "Sicurezza e archiviazione, in un unico posto")
+        self._label("Scegli un’azione per iniziare. Il motore BC esegue analisi su richiesta; lo stato qui sotto riguarda Microsoft Defender.", page)
+        self._button("dashboard_bc", "Avvia scansione BC  →", lambda: self.navigate("Motore BC"), page, primary=True)
+        panel = QFrame()
+        panel.setObjectName('OverviewPanel')
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(20, 18, 20, 18)
+        section = QLabel('Stato di Microsoft Defender')
+        section.setObjectName('SectionTitle')
+        panel_layout.addWidget(section)
+        self.overview = self._label("Verifica dello stato antivirus in corso…", panel)
+        self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, panel)
+        page.layout().addWidget(panel)
+        section = QLabel('Azioni rapide')
+        section.setObjectName('SectionTitle')
+        page.layout().addWidget(section)
         self._button("dashboard_quick", "Scansione rapida con Defender", lambda: self.request_scan("quick"), page)
         self._button("dashboard_full", "Scansione completa con Defender", lambda: self.request_scan("full"), page)
         self._button("dashboard_storage", "Analizza spazio e RAM", lambda: self.navigate("Storage Analyzer"), page)
@@ -186,6 +197,9 @@ class OperationalWindow(QMainWindow):
         self.setStyleSheet(home_stylesheet() + f"""
             QMainWindow, QWidget {{ background: {COLORS['bg_app']}; color: {COLORS['text_primary']}; }}
             #Sidebar {{ background: {COLORS['bg_sidebar']}; }}
+            #OverviewPanel {{ background: {COLORS['surface_1']}; border: 1px solid {COLORS['border_subtle']}; border-radius: 12px; }}
+            #OverviewPanel QLabel {{ background: transparent; border: none; }}
+            #SectionTitle {{ font-size: 17px; font-weight: 600; }}
             QPushButton {{ padding: 10px; border: 1px solid {COLORS['border_strong']};
                 border-radius: 8px; background: {COLORS['surface_1']}; text-align: left; }}
             QPushButton:hover {{ background: {COLORS['hover']}; }}

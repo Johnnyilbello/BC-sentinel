@@ -13,14 +13,14 @@ class ScanThread(QThread):
     result_ready = Signal(object)
     failure = Signal(str)
 
-    def __init__(self, folder, catalog):
+    def __init__(self, folder, catalog, yara_path=None):
         super().__init__()
-        self.folder, self.catalog = folder, catalog
+        self.folder, self.catalog, self.yara_path = folder, catalog, yara_path
         self.stop_event = Event()
 
     def run(self):
         try:
-            self.result_ready.emit(scan_folder(self.folder, catalog_path=self.catalog,
+            self.result_ready.emit(scan_folder(self.folder, catalog_path=self.catalog, yara_path=self.yara_path,
                 cancelled=self.stop_event.is_set, progress=self.update.emit))
         except Exception as exc:
             self.failure.emit(str(exc))
@@ -31,6 +31,7 @@ class BCScanPage(QWidget):
         super().__init__(parent)
         self.worker = None
         self.catalog = None
+        self.yara_path = None
         self.last_result = None
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
@@ -53,6 +54,13 @@ class BCScanPage(QWidget):
             button.setMinimumHeight(44)
             row.addWidget(button)
         layout.addLayout(row)
+        self.yara_button = QPushButton('Carica regole YARA…')
+        self.yara_button.setMinimumHeight(44)
+        self.yara_button.clicked.connect(self.choose_yara)
+        layout.addWidget(self.yara_button)
+        self.yara_label = QLabel('Regole YARA: nessuna selezionata')
+        self.yara_label.setWordWrap(True)
+        layout.addWidget(self.yara_label)
         self.catalog_label = QLabel("Catalogo: test EICAR integrato")
         self.catalog_label.setWordWrap(True)
         layout.addWidget(self.catalog_label)
@@ -86,6 +94,20 @@ class BCScanPage(QWidget):
         if folder:
             self.start_scan(folder)
 
+    def choose_yara(self):
+        path, _ = QFileDialog.getOpenFileName(self, 'Seleziona regole YARA', '', 'YARA (*.yar *.yara)')
+        if path:
+            from sentinel.rescue_offline_scanner import _compile_yara
+            try:
+                rules, status = _compile_yara(Path(path))
+                if rules is None:
+                    raise ValueError('Motore YARA non disponibile: ' + status)
+            except ValueError as exc:
+                QMessageBox.warning(self, 'Regole non valide', str(exc))
+                return
+            self.yara_path = path
+            self.yara_label.setText('Regole YARA: ' + Path(path).name)
+
     def start_scan(self, folder):
         if self.worker is not None:
             return
@@ -95,8 +117,9 @@ class BCScanPage(QWidget):
         self.progress.setRange(0, 0)
         self.start_button.setEnabled(False)
         self.catalog_button.setEnabled(False)
+        self.yara_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        self.worker = ScanThread(folder, self.catalog)
+        self.worker = ScanThread(folder, self.catalog, self.yara_path)
         self.worker.update.connect(lambda count, path: self.status.setText(f"File analizzati: {count} · {path}"))
         self.worker.result_ready.connect(self.finished_scan)
         self.worker.failure.connect(self.failed_scan)
@@ -132,4 +155,5 @@ class BCScanPage(QWidget):
         self.progress.setValue(1)
         self.start_button.setEnabled(True)
         self.catalog_button.setEnabled(True)
+        self.yara_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
