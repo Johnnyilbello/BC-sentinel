@@ -30,6 +30,7 @@ class ScanThread(QThread):
 class MonitorThread(QThread):
     ready = Signal(str)
     batch = Signal(object, int)
+    alert = Signal(str, object)
     failure = Signal(str)
 
     def __init__(self, folder, catalog, yara_path):
@@ -40,7 +41,7 @@ class MonitorThread(QThread):
     def run(self):
         try:
             monitor_folder(self.folder, catalog=self.catalog, yara_path=self.yara_path, stop=self.stop_event,
-                           started=self.ready.emit, report=self.batch.emit)
+                           started=self.ready.emit, report=self.batch.emit, on_alert=self.alert.emit)
         except Exception as exc:
             self.failure.emit(str(exc))
 
@@ -50,6 +51,7 @@ class BCScanPage(QWidget):
     scan_completed = Signal(object)
     scan_failed = Signal(str)
     monitor_stopped = Signal()
+    monitor_notice = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -106,7 +108,7 @@ class BCScanPage(QWidget):
         heading = QLabel("Monitoraggio cartella")
         heading.setObjectName("SectionTitle")
         layout.addWidget(heading)
-        scope = QLabel("Analizza i file nuovi o modificati nella cartella scelta finché l’app è aperta. La scansione avviene dopo la modifica e non blocca l’apertura dei file.")
+        scope = QLabel("Analizza i file nuovi o modificati e segnala raffiche di rinomine nella cartella scelta finché l’app è aperta. L’analisi avviene dopo la modifica.")
         scope.setWordWrap(True)
         layout.addWidget(scope)
         self.monitor_button = QPushButton("Scegli cartella da monitorare…")
@@ -144,6 +146,7 @@ class BCScanPage(QWidget):
         self.monitor = MonitorThread(folder, self.catalog, self.yara_path)
         self.monitor.ready.connect(self._monitor_ready)
         self.monitor.batch.connect(self._monitor_batch)
+        self.monitor.alert.connect(self._monitor_alert)
         self.monitor.failure.connect(self._monitor_failed)
         self.monitor.finished.connect(self._monitor_finished)
         self._sync_inputs()
@@ -166,13 +169,20 @@ class BCScanPage(QWidget):
         self.monitor_counts[2] += result["skipped"] + missed
         files, findings, skipped = self.monitor_counts
         for item in result["findings"][-100:]:
-            self.monitor_report.appendPlainText(f"{item['name']} — {item['path']}")
+            notice = f"{item['name']} — {item['path']}"
+            self.monitor_report.appendPlainText(notice)
+            self.monitor_notice.emit(notice)
         for error in result["errors"][-20:]:
             self.monitor_report.appendPlainText(error)
         if missed:
             self.monitor_report.appendPlainText(f"{missed} eventi con copertura parziale. Avvia una scansione manuale.")
         if not self.monitor.stop_event.is_set():
             self.monitor_status.setText(f"{self.monitor_folder} · {files} file · {findings} corrispondenze · {skipped} saltati")
+
+    def _monitor_alert(self, folder, alert):
+        notice = f"Attività da verificare · {folder}\n{alert.description()}"
+        self.monitor_report.appendPlainText(notice)
+        self.monitor_notice.emit(notice)
 
     def _monitor_failed(self, message):
         self.monitor_error = message

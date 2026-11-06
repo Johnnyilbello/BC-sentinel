@@ -89,3 +89,12 @@ positive rate, seconds/file, CPU seconds/file and peak RSS/file. Ties fail. Boot
 uncertainty is an estimate, not proof of representativeness. Independent evidence
 review must verify preregistration and comparability; the tool never authorizes a
 public claim. Synthetic metadata tests do not constitute a benchmark against Defender.
+
+A host smoke test exercised both command paths on the same harmless text file
+(SHA-256 `7c765f34210c19696973e5928f7f7349459797283d16d4ce07c5e1668161ba94`).
+BC scanned one file with no skips, errors or findings. Defender platform
+`4.18.26100.4`, engine `1.1.26100.4`, signatures `1.463.155.0`, reported
+no threats and exit code 0 with `MpCmdRun -Scan -ScanType 3 -File <fixture> -DisableRemediation`.
+The host reported real-time protection enabled. This single control verifies
+that both scan paths run on this host. It provides no estimate of detection
+sensitivity, false-positive rate or performance and is excluded from the benchmark.

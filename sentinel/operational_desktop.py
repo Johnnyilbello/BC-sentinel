@@ -13,7 +13,7 @@ from PySide6.QtCore import QSaveFile, QIODevice, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QMainWindow, QMessageBox, QPushButton, QStackedWidget, QTextEdit, QVBoxLayout, QWidget,
+    QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QStackedWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
 from sentinel.home_security_ui import _PageScroll
@@ -69,6 +69,7 @@ class OperationalWindow(QMainWindow):
         self.pending_scan = None
         self.offline_dialog = None
         self._closing_monitor = False
+        self._unread_bc_notices = 0
         self._load_events()
         QApplication.instance().setFont(QFont("Segoe UI", 10))
 
@@ -151,7 +152,16 @@ class OperationalWindow(QMainWindow):
                     "La scansione legge i file e segnala rilevamenti, errori e limiti della copertura.", page)
         self._button("offline_open", "Apri scansione offline", self.open_offline, page, primary=True)
 
-        page = self._page("Quarantena", "Minacce rilevate da Defender e accesso alla gestione di Windows")
+        page = self._page("Quarantena", "Segnalazioni del motore BC e rilevamenti di Microsoft Defender")
+        self._label("Motore BC · avvisi della sessione", page)
+        self.bc_notices = QPlainTextEdit()
+        self.bc_notices.setReadOnly(True)
+        self.bc_notices.setMaximumBlockCount(200)
+        self.bc_notices.setPlaceholderText("Le corrispondenze e gli avvisi del monitor appariranno qui.")
+        self.bc_notices.setMinimumHeight(112)
+        page.layout().addWidget(self.bc_notices)
+        self.bc_page.monitor_notice.connect(self._add_bc_notice)
+        self._label("Microsoft Defender", page)
         self.threats = QTextEdit()
         self.threats.setReadOnly(True)
         self.threats.setMinimumHeight(240)
@@ -276,6 +286,10 @@ class OperationalWindow(QMainWindow):
             self.storage_page.refresh_availability()
         if name == "Cronologia":
             self.render_history()
+        if name == "Quarantena":
+            self._unread_bc_notices = 0
+            self.nav_buttons["Quarantena"].setText("Minacce")
+            self.nav_buttons["Quarantena"].setAccessibleName("Minacce")
         if name == "Dashboard":
             self.dashboard.update_disk()
         self.pages[name].sync_width()
@@ -298,11 +312,24 @@ class OperationalWindow(QMainWindow):
         self.dashboard.shield.set_state("working", animate=True)
 
     def _bc_completed(self, result):
+        for finding in result["findings"][-100:]:
+            self._add_bc_notice(f"{finding['name']} — {finding['path']}")
         self._record("Scansione BC",
                      f"{result['files']} file analizzati · {result['skipped']} saltati",
                      rilevazioni=len(result["findings"]),
                      parziale=bool(result["cancelled"] or result["skipped"]))
         self.dashboard.shield.set_state(self.dashboard.shield.state, animate=True)
+
+    def _add_bc_notice(self, notice):
+        self.bc_notices.appendPlainText(notice)
+        if self.stack.currentWidget() is self.pages["Quarantena"]:
+            return
+        self._unread_bc_notices += 1
+        count = min(self._unread_bc_notices, 99)
+        suffix = "+" if self._unread_bc_notices > 99 else ""
+        button = self.nav_buttons["Quarantena"]
+        button.setText(f"Minacce  ·  {count}{suffix}")
+        button.setAccessibleName(f"Minacce, {count}{suffix} nuovi avvisi")
 
     def _bc_failed(self, message):
         self._record("Scansione BC", message, parziale=True, errore=True)
@@ -537,6 +564,7 @@ def _smoke_folder_monitor(page):
     from hashlib import sha256
     from tempfile import TemporaryDirectory
     from PySide6.QtCore import QEventLoop
+    from sentinel.bc_rename_activity import MIN_RENAMES
 
     def wait_for(predicate):
         loop = QEventLoop()
@@ -556,6 +584,9 @@ def _smoke_folder_monitor(page):
         root = base / "watched"
         root.mkdir()
         fixture = b"BC Sentinel harmless smoke fixture"
+        documents = [root / f"document-{index}.txt" for index in range(MIN_RENAMES)]
+        for document in documents:
+            document.write_bytes(b"Harmless document")
         catalog = base / "catalog.json"
         write_json(catalog, {
             "schema": "bc-sentinel-offline-intel-v1", "approved": True,
@@ -564,14 +595,19 @@ def _smoke_folder_monitor(page):
         page.catalog = catalog
         page.start_monitor(str(root))
         detected = False
+        alerted = False
         try:
             if wait_for(lambda: page.monitor is None or page.monitor_status.text().startswith("Monitoraggio attivo")) and page.monitor is not None:
                 (root / "fixture.txt").write_bytes(fixture)
                 detected = wait_for(lambda: "Campione di prova BC" in page.monitor_report.toPlainText())
+                for document in documents:
+                    document.rename(document.with_suffix(".bc-test"))
+                alerted = wait_for(lambda: "Attività da verificare" in page.monitor_report.toPlainText())
         finally:
             page.stop_monitor()
             stopped = wait_for(lambda: page.monitor is None)
-        return detected and stopped and page.monitor_error is None
+        healthy = stopped and page.monitor_error is None
+        return detected and healthy, alerted and healthy
 
 
 def smoke_test():
@@ -590,14 +626,19 @@ def smoke_test():
                 app.processEvents()
                 overflow[f"{width}/{name}"] = window.pages[name].horizontalScrollBar().maximum()
                 assert window.stack.currentWidget() is window.pages[name]
-        monitor_passed = _smoke_folder_monitor(window.bc_page)
+        monitor_passed, activity_passed = _smoke_folder_monitor(window.bc_page)
+        activity_passed = activity_passed and "Attività da verificare" in window.bc_notices.toPlainText()
+        activity_passed = activity_passed and window._unread_bc_notices >= 1
+        window.navigate("Quarantena")
+        activity_passed = activity_passed and window._unread_bc_notices == 0
         return {
-            "passed": monitor_passed and all(value == 0 for value in overflow.values()) and
+            "passed": monitor_passed and activity_passed and all(value == 0 for value in overflow.values()) and
                 (window.storage_page.launch_button.isEnabled() or not getattr(sys, "frozen", False)),
             "page_count": window.stack.count(), "command_count": len(window.command_buttons),
             "horizontal_overflow": overflow, "operational_desktop": True,
             "storage_ready": window.storage_page.launch_button.isEnabled(),
             "bc_folder_monitor": monitor_passed,
+            "bc_rename_activity": activity_passed,
         }
     finally:
         window.close()

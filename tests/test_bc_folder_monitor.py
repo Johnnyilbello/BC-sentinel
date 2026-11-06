@@ -5,6 +5,7 @@ from threading import Event, Thread
 from watchdog.events import FileCreatedEvent, FileModifiedEvent, FileMovedEvent
 
 from sentinel.bc_folder_monitor import PendingChanges, monitor_folder
+from sentinel.bc_rename_activity import MIN_RENAMES, WINDOW_SECONDS, RenameActivity
 
 
 def test_queue_coalesces_writes_keeps_move_destination_and_discloses_capacity(tmp_path):
@@ -59,3 +60,20 @@ def test_live_monitor_detects_new_nested_file_without_changing_it(tmp_path):
         monitor.join(10)
     assert not monitor.is_alive()
     assert not errors
+
+
+def test_rename_alert_uses_distinct_paths_and_window(tmp_path):
+    time = [0.0]
+    tracker = RenameActivity(tmp_path, clock=lambda: time[0])
+    same_source = tmp_path / "one.docx"
+    for i in range(MIN_RENAMES):
+        assert tracker.observe(same_source, tmp_path / f"{i}.bc-test") is None
+        assert tracker.observe(tmp_path / f"{i}.docx", tmp_path / f"{i}.pdf") is None
+    time[0] += WINDOW_SECONDS + 1
+    for i in range(MIN_RENAMES - 1):
+        assert tracker.observe(tmp_path / f"{i}.docx", tmp_path / f"{i}.bc-test") is None
+    assert tracker.observe(tmp_path.parent / "other.docx", tmp_path / "outside.bc-test") is None
+    alert = tracker.observe(tmp_path / "last.docx", tmp_path / "last.bc-test")
+    assert alert.distinct_renames == MIN_RENAMES
+    assert alert.extension == ".bc-test"
+    assert tracker.observe(tmp_path / "extra.docx", tmp_path / "extra.bc-test") is None

@@ -20,6 +20,8 @@ La scansione BC controlla anche il primo livello di ZIP, JAR e documenti Office 
 
 In **Scansione → Monitoraggio cartella**, selezionare una cartella per analizzare i file nuovi, rinominati o modificati anche nelle sottocartelle. Si usano il catalogo e le regole selezionati all'avvio del monitor. Gli eventi ripetuti vengono accorpati e la coda applicativa contiene al massimo 1.024 percorsi. La schermata espone rilevamenti, errori e saturazione della coda. I file già presenti richiedono una scansione manuale. Il monitor analizza dopo la modifica, funziona solo mentre l'app è aperta e non blocca l'apertura o l'esecuzione dei file.
 
+Il monitor segnala anche almeno 15 rinomine distinte di documenti, in 12 secondi, verso la stessa estensione esterna all'elenco dei tipi di documento osservati. L'avviso riporta la cartella, l'estensione e il conteggio. Può segnalare rinomine legittime in blocco e non attribuisce l'attività a un processo. **Minacce** mostra le corrispondenze e gli avvisi BC della sessione, in una sezione separata dai rilevamenti di Defender.
+
 Le pagine **Microsoft Defender**, **Protezione** e **Minacce** operano su Microsoft Defender tramite le API di Windows. Il componente BC e Defender sono distinti. Lo scanner offline BC è separato e può utilizzare anche regole YARA. Nessun confronto indipendente dimostra che il componente BC superi Defender o altri antivirus. Mantenere attiva una protezione antivirus affidabile.
 
 Avvio: aprire il file `BC Sentinel Sperimentale.exe`, selezionare **Scansione**, facoltativamente caricare un catalogo e scegliere la cartella. Per analizzare spazio e RAM aprire **Storage Analyzer**. I percorsi inaccessibili possono richiedere permessi superiori; non elevare il programma senza necessità.
