@@ -68,6 +68,7 @@ class OperationalWindow(QMainWindow):
         self.pages = {}
         self.pending_scan = None
         self.offline_dialog = None
+        self._closing_monitor = False
         self._load_events()
         QApplication.instance().setFont(QFont("Segoe UI", 10))
 
@@ -130,6 +131,7 @@ class OperationalWindow(QMainWindow):
         self.bc_page.scan_started.connect(self._bc_started)
         self.bc_page.scan_completed.connect(self._bc_completed)
         self.bc_page.scan_failed.connect(self._bc_failed)
+        self.bc_page.monitor_stopped.connect(self._close_after_monitor)
 
         page = self._page("Scansione", "Controlli operativi del motore Microsoft Defender")
         self.engine = WindowsDefenderDialog()
@@ -456,7 +458,7 @@ class OperationalWindow(QMainWindow):
         if not getattr(sys, "frozen", False):
             QMessageBox.information(self, "Permessi amministrativi", "Usa questo comando dalla versione .exe di BC Sentinel.")
             return
-        if self.bc_page.worker is not None or self.engine.busy() or self.storage_page.process is not None or (
+        if self.bc_page.worker is not None or self.bc_page.monitor is not None or self.engine.busy() or self.storage_page.process is not None or (
             self.offline_dialog is not None and self.offline_dialog._thread is not None
         ):
             QMessageBox.information(self, "Operazione in corso", "Concludi le operazioni e chiudi Storage Analyzer prima di riavviare.")
@@ -516,9 +518,60 @@ class OperationalWindow(QMainWindow):
             QMessageBox.information(self, "Storage Analyzer", "Chiudi Storage Analyzer prima di chiudere Sentinel.")
             event.ignore()
             return
+        if self.bc_page.monitor is not None:
+            self._closing_monitor = True
+            self.bc_page.stop_monitor()
+            event.ignore()
+            return
         self.refresh_timer.stop()
         self.storage_page.poll_timer.stop()
         super().closeEvent(event)
+
+    def _close_after_monitor(self):
+        if self._closing_monitor:
+            self._closing_monitor = False
+            QTimer.singleShot(0, self.close)
+
+
+def _smoke_folder_monitor(page):
+    from hashlib import sha256
+    from tempfile import TemporaryDirectory
+    from PySide6.QtCore import QEventLoop
+
+    def wait_for(predicate):
+        loop = QEventLoop()
+        poll = QTimer()
+        poll.setInterval(40)
+        poll.timeout.connect(lambda: loop.quit() if predicate() else None)
+        timeout = QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        poll.start()
+        timeout.start(8000)
+        loop.exec()
+        return predicate()
+
+    with TemporaryDirectory(prefix="bc-monitor-smoke-") as folder:
+        base = Path(folder)
+        root = base / "watched"
+        root.mkdir()
+        fixture = b"BC Sentinel harmless smoke fixture"
+        catalog = base / "catalog.json"
+        write_json(catalog, {
+            "schema": "bc-sentinel-offline-intel-v1", "approved": True,
+            "sha256": [{"value": sha256(fixture).hexdigest(), "name": "Campione di prova BC", "source": "smoke"}],
+        })
+        page.catalog = catalog
+        page.start_monitor(str(root))
+        detected = False
+        try:
+            if wait_for(lambda: page.monitor is None or page.monitor_status.text().startswith("Monitoraggio attivo")) and page.monitor is not None:
+                (root / "fixture.txt").write_bytes(fixture)
+                detected = wait_for(lambda: "Campione di prova BC" in page.monitor_report.toPlainText())
+        finally:
+            page.stop_monitor()
+            stopped = wait_for(lambda: page.monitor is None)
+        return detected and stopped and page.monitor_error is None
 
 
 def smoke_test():
@@ -537,12 +590,14 @@ def smoke_test():
                 app.processEvents()
                 overflow[f"{width}/{name}"] = window.pages[name].horizontalScrollBar().maximum()
                 assert window.stack.currentWidget() is window.pages[name]
+        monitor_passed = _smoke_folder_monitor(window.bc_page)
         return {
-            "passed": all(value == 0 for value in overflow.values()) and
+            "passed": monitor_passed and all(value == 0 for value in overflow.values()) and
                 (window.storage_page.launch_button.isEnabled() or not getattr(sys, "frozen", False)),
             "page_count": window.stack.count(), "command_count": len(window.command_buttons),
             "horizontal_overflow": overflow, "operational_desktop": True,
             "storage_ready": window.storage_page.launch_button.isEnabled(),
+            "bc_folder_monitor": monitor_passed,
         }
     finally:
         window.close()

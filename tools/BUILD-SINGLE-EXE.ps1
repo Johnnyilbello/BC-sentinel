@@ -20,6 +20,7 @@ $arguments = @(
     '--hidden-import', 'sentinel.guided_resolution_live_provider',
     '--hidden-import', 'sentinel.guided_resolution_real_file_execution',
     '--hidden-import', 'yara',
+    '--hidden-import', 'watchdog.observers.read_directory_changes',
     (Join-Path $repoRoot 'packaging\beta13_desktop_entry.py')
 )
 & $PythonPath (Join-Path $PSScriptRoot 'windows_packaging.py') @arguments
