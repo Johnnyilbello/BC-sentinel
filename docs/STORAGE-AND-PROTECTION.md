@@ -23,7 +23,7 @@ Le dimensioni delle applicazioni sono stime degli installer.
 
 ## Scansionare e rimuovere minacce con Defender
 
-Apri **Protezione → Apri i controlli di Microsoft Defender → Aggiorna stato**.
+Apri **Scansione** per i controlli Defender. La Dashboard legge lo stato all’avvio e offre anche i comandi di scansione rapida e completa. **Scansiona una cartella** permette di scegliere il percorso.
 Il pannello riporta modalità del motore, versione e data delle firme e minacce attive.
 Le scansioni si abilitano quando Defender dichiara servizio e antivirus attivi in modalità normale.
 
@@ -31,6 +31,8 @@ Defender applica le impostazioni di risposta del PC durante le scansioni, che po
 **Rimuovi tutte le minacce attive rilevate da Defender** richiede conferma e agisce su tutte le minacce attive del motore Microsoft. Errori e permessi insufficienti vengono mostrati nel pannello.
 
 La disponibilità dipende dalla configurazione Windows. Possono servire permessi amministrativi. La finestra richiede di attendere la conclusione del comando prima di chiudersi.
+
+In **Protezione** puoi aggiornare le firme, aprire Sicurezza di Windows o avviare Sentinel come amministratore. In **Quarantena** puoi aggiornare i rilevamenti e aprire la gestione degli elementi isolati in Sicurezza di Windows. **Cronologia** registra le operazioni del desktop e consente di esportarle.
 
 [Riferimento dei comandi Defender](https://learn.microsoft.com/en-us/powershell/module/defender/), [rimozione delle minacce attive](https://learn.microsoft.com/en-us/powershell/module/defender/remove-mpthreat)
 

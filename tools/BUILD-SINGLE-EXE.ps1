@@ -1,13 +1,14 @@
 param(
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [Parameter(Mandatory=$true)][string]$PythonPath
+    [Parameter(Mandatory=$true)][string]$PythonPath,
+    [string]$Name = 'BC Sentinel'
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildRoot = Join-Path $repoRoot 'build\single-exe'
 & (Join-Path $PSScriptRoot 'BUILD-STORAGE-ANALYZER.ps1')
 $arguments = @(
-    '--noconfirm', '--onefile', '--windowed', '--name', 'BC Sentinel',
+    '--noconfirm', '--onefile', '--windowed', '--name', $Name,
     '--distpath', $OutputDirectory,
     '--workpath', (Join-Path $buildRoot 'work'),
     '--specpath', (Join-Path $buildRoot 'spec'),

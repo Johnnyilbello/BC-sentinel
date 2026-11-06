@@ -8,12 +8,12 @@ La versione in sviluppo integra **BC Storage Analyzer** e i controlli di **Micro
 
 | Area | Utilizzo |
 | --- | --- |
-| Dashboard e Trust Center | Consultare stato, evidenze e limiti della protezione |
+| Dashboard | Leggere lo stato reale del motore Windows e avviare i controlli |
 | Scansione offline | Esaminare Windows offline con SHA-256, YARA e controlli strutturali su PE e ZIP |
 | Protezione → Microsoft Defender | Leggere lo stato del motore Windows, avviare scansioni e richiedere la rimozione delle minacce attive |
 | Storage Analyzer | Confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
 | Rimozioni in Storage Analyzer | Spostare nel Cestino, eliminare definitivamente o disinstallare un’app dopo conferma |
-| Quarantena e recupero | Usare i percorsi di ripristino previsti dal runtime e dai suoi controlli |
+| Quarantena | Consultare i rilevamenti di Defender e aprire la gestione di Sicurezza di Windows |
 
 ## Avvio su Windows
 
@@ -31,7 +31,7 @@ $env:PYTHONPATH = (Get-Location).Path
 .\.venv\Scripts\python.exe .\packaging\beta13_desktop_entry.py
 ~~~
 
-Apri **Storage Analyzer** nel menu laterale per analizzare spazio e RAM. Per le minacce apri **Protezione → Apri i controlli di Microsoft Defender**, poi **Aggiorna stato**.
+Apri **Storage Analyzer** nel menu laterale per analizzare spazio e RAM. Le scansioni antivirus si avviano dalla **Dashboard** o da **Scansione**. La Dashboard legge automaticamente lo stato del motore. **Protezione** offre aggiornamento firme, accesso a Sicurezza di Windows e avvio come amministratore.
 
 Defender applica le impostazioni di risposta configurate in Windows durante le scansioni. Il comando di rimozione riguarda tutte le minacce attive riconosciute da Defender. Permessi insufficienti, motore disabilitato o modalità passiva vengono riportati nell’interfaccia.
 

@@ -10,6 +10,8 @@ ACTIONS = {
     "quick": "Start-MpScan -ScanType QuickScan -ErrorAction Stop;",
     "full": "Start-MpScan -ScanType FullScan -ErrorAction Stop;",
     "remove": "Remove-MpThreat -ErrorAction Stop;",
+    "update": "Update-MpSignature -ErrorAction Stop;",
+    "custom": "Start-MpScan -ScanType CustomScan -ScanPath $env:BC_SENTINEL_SCAN_PATH -ErrorAction Stop;",
 }
 
 
@@ -36,13 +38,22 @@ def command(action: str, *, removal_confirmed: bool = False) -> tuple[str, list[
         try {
     """ + readiness + ACTIONS[action] + """
             $status = Get-MpComputerStatus -ErrorAction Stop
-            $threats = @(Get-MpThreat -ErrorAction Stop | Where-Object { $_.IsActive })
+            $allThreats = @(Get-MpThreat -ErrorAction Stop)
+            $threats = @($allThreats | Where-Object { $_.IsActive })
+            $signatureUpdated = ''
+            if ($null -ne $status.AntivirusSignatureLastUpdated) {
+                $signatureUpdated = $status.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd HH:mm:ss')
+            }
             [ordered]@{
                 service_enabled = [bool]$status.AMServiceEnabled
                 antivirus_enabled = [bool]$status.AntivirusEnabled
                 mode = [string]$status.AMRunningMode
                 signature_version = [string]$status.AntivirusSignatureVersion
-                signature_updated = [string]$status.AntivirusSignatureLastUpdated
+                signature_updated = $signatureUpdated
+                realtime_enabled = [bool]$status.RealTimeProtectionEnabled
+                threat_history = @($allThreats | ForEach-Object {
+                    [ordered]@{ name = [string]$_.ThreatName; id = [string]$_.ThreatID; active = [bool]$_.IsActive }
+                })
                 active_threats = @($threats | ForEach-Object {
                     [ordered]@{ name = [string]$_.ThreatName; id = [string]$_.ThreatID }
                 })

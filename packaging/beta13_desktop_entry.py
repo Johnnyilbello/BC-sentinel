@@ -259,38 +259,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     QApplication, _, _, commercial_ui = _load_ui_stack()
-    snapshot = _snapshot()
-    center = response.NotificationCenter(_notification_store())
-    state = _commercial_state()
 
     if args.smoke:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        from sentinel.offline_scan_dialog import OfflineScanDialog
-        smoke = commercial_ui.smoke_test_window(
-            snapshot,
-            commercial_state=state,
-            include_storage=True,
-        )
-        offline_dialog = OfflineScanDialog()
-        offline_dialog_ready = bool(offline_dialog.start_button.isEnabled()
-                                    and not offline_dialog.cancel_button.isEnabled())
-        offline_dialog.close()
-        report = {
-            "passed": bool(smoke["passed"] and offline_dialog_ready),
-            "offline_dialog_ready": offline_dialog_ready,
-            "profile": PROFILE,
-            "page_count": smoke["page_count"],
-            "commercial_selected": smoke["commercial_selected"],
-            "policy_card_count": smoke["policy_card_count"],
-            "diagnostic_export_button_enabled": smoke["diagnostic_export_button_enabled"],
-            "horizontal_overflow": smoke["horizontal_overflow"],
-            "core_protection_enabled": smoke["core_protection_enabled"],
-            "automatic_quarantine": False,
-            "service_or_driver_required": False,
-            "network_required_for_startup": False,
-            "cloud_required_for_startup": False,
-            "license_failure_may_disable_core_protection": False,
-        }
+        from sentinel.operational_desktop import smoke_test
+        report = smoke_test()
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report["passed"] else 1
 
@@ -299,30 +272,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setApplicationVersion(PRODUCT_VERSION)
     app.setOrganizationName(installer.PUBLISHER)
 
-    window = commercial_ui.B136ConsumerWindow(
-        snapshot=snapshot,
-        notification_center=center,
-        commercial_state=state,
-        on_export_diagnostics=lambda: _interactive_export(state),
-        include_storage=True,
-    )
-    window.setWindowTitle(PRODUCT_NAME)
-    window.setProperty("bcSentinelRuntimeProfile", PROFILE)
-    window.setProperty("bcSentinelSourceCheckpoint", commercial.SOURCE_CHECKPOINT)
-    window.setProperty("bcSentinelSourceCommit", commercial.SOURCE_CHECKPOINT_COMMIT)
-    from PySide6.QtWidgets import QPushButton
-    from sentinel.offline_scan_dialog import OfflineScanDialog
-
-    def open_offline_scan() -> None:
-        dialog = OfflineScanDialog(window)
-        dialog.exec()
-
-    offline_button = QPushButton("Scansione offline")
-    offline_button.setObjectName("OfflineScanEntry")
-    offline_button.setToolTip("Esamina un volume Windows offline in sola lettura")
-    offline_button.clicked.connect(open_offline_scan)
-    window.sidebar.layout().insertWidget(max(0, window.sidebar.layout().count() - 1), offline_button)
-    window.offline_scan_button = offline_button
+    from sentinel.operational_desktop import OperationalWindow, install_exception_reporting
+    window = OperationalWindow()
+    install_exception_reporting(window)
     window.show()
     return app.exec()
 

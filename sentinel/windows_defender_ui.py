@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import QProcess
+from PySide6.QtCore import QProcess, QProcessEnvironment, Signal
 from PySide6.QtWidgets import QDialog, QLabel, QMessageBox, QPushButton, QVBoxLayout, QTextEdit
 
 from sentinel import windows_defender
@@ -12,6 +12,8 @@ from sentinel.ui_styles import home_stylesheet
 
 
 class WindowsDefenderDialog(QDialog):
+    dispatch_failed = Signal(str)
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Scansione e rimozione · Microsoft Defender")
@@ -19,6 +21,8 @@ class WindowsDefenderDialog(QDialog):
         self.ready = False
         self.active_count = 0
         self.action = "status"
+        self.last_result = None
+        self.last_error = ""
         self.process = QProcess(self)
         self.process.finished.connect(self._finished)
         self.process.errorOccurred.connect(self._failed)
@@ -90,24 +94,54 @@ class WindowsDefenderDialog(QDialog):
         if result == QMessageBox.StandardButton.Yes:
             self.run("remove", removal_confirmed=True)
 
-    def run(self, action: str, *, removal_confirmed: bool = False) -> None:
+    def run(self, action: str, *, removal_confirmed: bool = False, scan_path: str | None = None) -> None:
         if self.busy() or (action != "status" and not self.ready):
             return
+        self.action = action
         try:
             program, arguments = windows_defender.command(action, removal_confirmed=removal_confirmed)
         except (OSError, ValueError) as error:
-            self.status.setText(str(error))
+            self._dispatch_error(str(error))
             return
         self.action = action
+        self.last_error = ""
+        environment = QProcessEnvironment.systemEnvironment()
+        if action == "custom":
+            from pathlib import Path
+            try:
+                valid_path = scan_path and Path(scan_path).is_absolute() and Path(scan_path).exists()
+            except OSError:
+                valid_path = False
+            if not valid_path:
+                self._dispatch_error("Seleziona un file o una cartella esistente.")
+                return
+            environment.insert("BC_SENTINEL_SCAN_PATH", scan_path)
+        else:
+            environment.remove("BC_SENTINEL_SCAN_PATH")
+        self.process.setProcessEnvironment(environment)
         self.process.setProgram(program)
         self.process.setArguments(arguments)
         self.status.setText("Operazione Defender in corso. La scansione completa può richiedere tempo.")
         self.process.start()
         self._sync()
 
+    def _dispatch_error(self, message: str) -> None:
+        self.ready = False
+        self.active_count = 0
+        self.last_result = None
+        self.last_error = message
+        self.status.setText(message)
+        self.report.setPlainText(message)
+        self._sync()
+        self.dispatch_failed.emit(message)
+
     def _failed(self, error) -> None:
         self.ready = False
+        self.last_result = None
+        self.active_count = 0
         self.status.setText("Impossibile avviare Defender. " + self.process.errorString())
+        self.last_error = self.status.text()
+        self.report.setPlainText(self.last_error)
         self._sync()
 
     def _finished(self, code: int, exit_status) -> None:
@@ -115,6 +149,7 @@ class WindowsDefenderDialog(QDialog):
         error = bytes(self.process.readAllStandardError()).decode("utf-8-sig", errors="replace").strip()
         self.ready = False
         self.active_count = 0
+        self.last_result = None
         try:
             if code != 0 or exit_status != QProcess.ExitStatus.NormalExit:
                 raise ValueError(error[:2000] or "Il comando Defender non è stato completato.")
@@ -122,6 +157,7 @@ class WindowsDefenderDialog(QDialog):
             if not isinstance(data, dict) or not isinstance(data.get("active_threats"), list):
                 raise ValueError("Risposta Defender non valida.")
             self.ready = data.get("service_enabled") is True and data.get("antivirus_enabled") is True and data.get("mode") == "Normal"
+            self.last_result = data
             threats = data["active_threats"]
             self.active_count = len(threats)
             lines = [
@@ -139,6 +175,8 @@ class WindowsDefenderDialog(QDialog):
             )
         except (ValueError, TypeError) as failure:
             self.status.setText("Operazione non completata. " + str(failure))
+            self.last_error = self.status.text()
+            self.report.setPlainText(self.last_error)
         self._sync()
 
     def closeEvent(self, event) -> None:
