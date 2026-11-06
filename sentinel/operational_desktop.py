@@ -23,6 +23,7 @@ from sentinel.ui_pages import PageHeader
 from sentinel.ui_styles import home_stylesheet
 from sentinel.windows_defender_ui import WindowsDefenderDialog
 from sentinel.bc_scan_ui import BCScanPage
+from sentinel.operational_overview import OperationalOverview
 
 
 def write_json(path: Path, value) -> None:
@@ -81,9 +82,20 @@ class OperationalWindow(QMainWindow):
         navigation = QVBoxLayout(sidebar)
         navigation.setContentsMargins(16, 24, 16, 20)
         navigation.setSpacing(8)
+        brand_row = QHBoxLayout()
+        mark = QLabel()
+        mark.setPixmap(make_icon("shield", "#4ceba2", 42).pixmap(42))
+        brand_row.addWidget(mark)
+        brand_copy = QVBoxLayout()
+        brand_copy.setSpacing(1)
         brand = QLabel("BC Sentinel")
-        brand.setObjectName("PageTitle")
-        navigation.addWidget(brand)
+        brand.setObjectName("OverviewBrand")
+        brand_copy.addWidget(brand)
+        subtitle = QLabel("Sicurezza e archiviazione")
+        subtitle.setObjectName("OverviewMuted")
+        brand_copy.addWidget(subtitle)
+        brand_row.addLayout(brand_copy, 1)
+        navigation.addLayout(brand_row)
         navigation.addSpacing(20)
         self.stack = QStackedWidget()
         self.stack.setObjectName("PageStack")
@@ -95,40 +107,29 @@ class OperationalWindow(QMainWindow):
             ("Quarantena", "quarantine"), ("Cronologia", "history"),
             ("Protezione", "shield"), ("Storage Analyzer", "folder"), ("Impostazioni e aiuto", "settings"),
         ):
-            button = QPushButton(name)
+            label = {"Dashboard": "Panoramica", "Motore BC": "Scansione",
+                     "Scansione": "Microsoft Defender", "Quarantena": "Minacce",
+                     "Storage Analyzer": "Archivio", "Impostazioni e aiuto": "Impostazioni"}.get(name, name)
+            button = QPushButton(label)
             button.setObjectName("NavItem")
             button.setIcon(make_icon(icon))
             button.setMinimumHeight(44)
             button.setCheckable(True)
-            button.setAccessibleName(name)
+            button.setAccessibleName(label)
             button.clicked.connect(lambda checked=False, route=name: self.navigate(route))
             navigation.addWidget(button)
             self.nav_buttons[name] = button
         navigation.addStretch()
         self.sidebar = sidebar
 
-        page = self._page("Dashboard", "Sicurezza e archiviazione, in un unico posto")
-        self._label("Scegli un’azione per iniziare. Il motore BC esegue analisi su richiesta; lo stato qui sotto riguarda Microsoft Defender.", page)
-        self._button("dashboard_bc", "Avvia scansione BC  →", lambda: self.navigate("Motore BC"), page, primary=True)
-        panel = QFrame()
-        panel.setObjectName('OverviewPanel')
-        panel_layout = QVBoxLayout(panel)
-        panel_layout.setContentsMargins(20, 18, 20, 18)
-        section = QLabel('Stato di Microsoft Defender')
-        section.setObjectName('SectionTitle')
-        panel_layout.addWidget(section)
-        self.overview = self._label("Verifica dello stato antivirus in corso…", panel)
-        self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, panel)
-        page.layout().addWidget(panel)
-        section = QLabel('Azioni rapide')
-        section.setObjectName('SectionTitle')
-        page.layout().addWidget(section)
-        self._button("dashboard_quick", "Scansione rapida con Defender", lambda: self.request_scan("quick"), page)
-        self._button("dashboard_full", "Scansione completa con Defender", lambda: self.request_scan("full"), page)
-        self._button("dashboard_storage", "Analizza spazio e RAM", lambda: self.navigate("Storage Analyzer"), page)
-
         self.bc_page = BCScanPage()
+        self.bc_folder = None
+        self.dashboard = OperationalOverview(self)
+        self._add_page("Dashboard", self.dashboard)
         self._add_page("Motore BC", self.bc_page)
+        self.bc_page.scan_started.connect(self._bc_started)
+        self.bc_page.scan_completed.connect(self._bc_completed)
+        self.bc_page.scan_failed.connect(self._bc_failed)
 
         page = self._page("Scansione", "Controlli operativi del motore Microsoft Defender")
         self.engine = WindowsDefenderDialog()
@@ -136,6 +137,8 @@ class OperationalWindow(QMainWindow):
         self.engine.setWindowFlags(Qt.WindowType.Widget)
         page.layout().addWidget(self.engine)
         self._button("custom_scan", "Scansiona una cartella…", self.custom_scan, page)
+        self._button("dashboard_quick", "Scansione rapida con Defender", lambda: self.request_scan("quick"), page)
+        self._button("dashboard_full", "Scansione completa con Defender", lambda: self.request_scan("full"), page)
         self.engine.process.finished.connect(self._engine_finished)
         self.engine.process.errorOccurred.connect(self._engine_error)
         self.engine.dispatch_failed.connect(self._engine_error)
@@ -167,6 +170,8 @@ class OperationalWindow(QMainWindow):
 
         page = self._page("Protezione", "Stato e gestione del motore antivirus di Windows")
         self.protection = self._label("Aggiorna lo stato per leggere i valori correnti del motore.", page)
+        self.overview = self.protection
+        self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, page)
         self._button("protection_refresh", "Aggiorna stato protezione", self.refresh_status, page)
         self._button("signatures", "Aggiorna firme antivirus", lambda: self.request_scan("update"), page)
         self._button("security_settings", "Apri Sicurezza di Windows", self.open_windows_security, page)
@@ -174,6 +179,7 @@ class OperationalWindow(QMainWindow):
 
         self.storage_page = StorageAnalyzerPage()
         self._add_page("Storage Analyzer", self.storage_page)
+        self.command_buttons["dashboard_storage"] = self.nav_buttons["Storage Analyzer"]
 
         page = self._page("Impostazioni e aiuto", "Preferenze locali, diagnostica e istruzioni")
         self.auto_refresh = QCheckBox("Aggiorna lo stato antivirus ogni 60 secondi")
@@ -196,16 +202,34 @@ class OperationalWindow(QMainWindow):
         self.navigate("Dashboard")
         self.setStyleSheet(home_stylesheet() + f"""
             QMainWindow, QWidget {{ background: {COLORS['bg_app']}; color: {COLORS['text_primary']}; }}
-            #Sidebar {{ background: {COLORS['bg_sidebar']}; }}
-            #OverviewPanel {{ background: {COLORS['surface_1']}; border: 1px solid {COLORS['border_subtle']}; border-radius: 12px; }}
-            #OverviewPanel QLabel {{ background: transparent; border: none; }}
-            #SectionTitle {{ font-size: 17px; font-weight: 600; }}
+            #Sidebar {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #151b1e,stop:0.68 #101618,stop:1 #0b2b22); border-right: 1px solid #222d32; }}
             QPushButton {{ padding: 10px; border: 1px solid {COLORS['border_strong']};
                 border-radius: 8px; background: {COLORS['surface_1']}; text-align: left; }}
             QPushButton:hover {{ background: {COLORS['hover']}; }}
             QPushButton:checked {{ background: {COLORS['selected']}; border-color: {COLORS['accent']}; }}
             QPushButton:disabled {{ color: {COLORS['disabled_text']}; }}
             #PrimaryButton {{ background: {COLORS['accent_container']}; color: {COLORS['text_primary']}; }}
+            #Sidebar QLabel, #OperationalOverview QLabel {{ background: transparent; }}
+            #Sidebar #NavItem {{ background: transparent; border: 1px solid transparent; }}
+            #Sidebar #NavItem:hover {{ background: #1b2829; }}
+            #Sidebar #NavItem:checked {{ background: #193b2e; border-color: #387e61; }}
+            #OverviewBrand {{ font-size: 20px; font-weight: 700; }}
+            #OverviewKicker {{ color: #c6d0da; font-size: 12px; letter-spacing: 1px; }}
+            #OverviewTitle {{ font-size: 30px; font-weight: 700; }}
+            #OverviewStatus {{ font-size: 24px; font-weight: 700; }}
+            #OverviewMuted {{ color: #b8c5ce; }}
+            #OverviewMetric {{ font-size: 17px; font-weight: 650; }}
+            #DashboardPanel {{ background: #171e22; border: 1px solid #343f46; border-radius: 12px; }}
+            #OverviewHero {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #123229,stop:0.52 #131b1d,stop:1 #111719); border-radius: 12px; }}
+            #OverviewEvent {{ border-top: 1px solid #344047; padding-top: 8px; padding-bottom: 4px; }}
+            #OverviewPrimary {{ color: #052016; font-size: 16px; font-weight: 700; text-align: center;
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #58eda8,stop:1 #23ca72); border: 1px solid #54e6a0; }}
+            #OverviewPrimary:hover {{ background: #75f1b6; }}
+            #OverviewSecondary {{ text-align: center; background: #141a1e; border: 1px solid #83919a; }}
+            #OverviewSecondary:hover {{ background: #222d33; }}
+            QPushButton:focus {{ border-color: #72f0b6; }}
+            #OverviewDisk {{ background: #323e43; border: none; border-radius: 6px; }}
+            #OverviewDisk::chunk {{ background: #45e294; border-radius: 6px; }}
             QTextEdit {{ background: {COLORS['surface_lowest']}; border: 1px solid {COLORS['border_subtle']}; padding: 12px; }}
         """)
         if auto_status:
@@ -250,7 +274,37 @@ class OperationalWindow(QMainWindow):
             self.storage_page.refresh_availability()
         if name == "Cronologia":
             self.render_history()
+        if name == "Dashboard":
+            self.dashboard.update_disk()
         self.pages[name].sync_width()
+
+    def choose_bc_from_dashboard(self):
+        self.bc_page.choose_folder()
+
+    def start_bc_from_dashboard(self):
+        if self.bc_page.worker is not None:
+            self.navigate("Motore BC")
+        elif self.bc_folder is not None:
+            self.bc_page.start_scan(self.bc_folder)
+        else:
+            self.choose_bc_from_dashboard()
+
+    def _bc_started(self, folder):
+        self.bc_folder = folder
+        self.dashboard.status.setText("Scansione in corso")
+        self.dashboard.detail.setText(folder)
+        self.dashboard.shield.set_state("working", animate=True)
+
+    def _bc_completed(self, result):
+        self._record("Scansione BC",
+                     f"{result['files']} file analizzati · {result['skipped']} saltati",
+                     rilevazioni=len(result["findings"]),
+                     parziale=bool(result["cancelled"] or result["skipped"]))
+        self.dashboard.shield.set_state(self.dashboard.shield.state, animate=True)
+
+    def _bc_failed(self, message):
+        self._record("Scansione BC", message, parziale=True, errore=True)
+        self.dashboard.render_events(self.events)
 
     def refresh_if_idle(self):
         if not self.engine.busy():
@@ -299,7 +353,6 @@ class OperationalWindow(QMainWindow):
     def _engine_finished(self, code, exit_status):
         data = self.engine.last_result
         if data is not None:
-            self.overview.setText(self.engine.report.toPlainText())
             self.protection.setText(self.engine.report.toPlainText() + "\nProtezione in tempo reale: " +
                                     ("attiva" if data.get("realtime_enabled") else "non attiva"))
             records = data.get("threat_history", [])
@@ -308,7 +361,6 @@ class OperationalWindow(QMainWindow):
                 for item in records if isinstance(item, dict)
             ) or "Defender non riporta minacce nella cronologia disponibile.")
         else:
-            self.overview.setText(self.engine.status.text())
             self.protection.setText(self.engine.status.text() + "\nProva l’avvio come amministratore o apri Sicurezza di Windows.")
             self.threats.setPlainText("Rilevamenti non aggiornati. " + self.engine.status.text())
         self._record(self.engine.action, "completata" if data is not None else self.engine.status.text())
@@ -335,8 +387,9 @@ class OperationalWindow(QMainWindow):
         except (OSError, ValueError):
             pass
 
-    def _record(self, action, result):
-        self.events.append({"ora": datetime.now().isoformat(timespec="seconds"), "azione": action, "esito": result})
+    def _record(self, action, result, **metadata):
+        self.events.append({"ora": datetime.now().isoformat(timespec="seconds"), "azione": action, "esito": result,
+                            **metadata})
         self.events = self.events[-200:]
         try:
             write_json(self.data_root / "history.json", self.events)
@@ -349,6 +402,8 @@ class OperationalWindow(QMainWindow):
             f"{item.get('ora', '')}  ·  {item.get('azione', '')}  ·  {item.get('esito', '')}"
             for item in reversed(self.events)
         ) or "Nessuna operazione ancora registrata da questo desktop.")
+        if self.bc_page.worker is None or self.bc_page.last_result is not None:
+            self.dashboard.render_events(self.events)
 
     def _export(self, title, filename, payload):
         destination, _ = QFileDialog.getSaveFileName(self, title, filename, "JSON (*.json)")

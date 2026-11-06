@@ -2,14 +2,55 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 from pathlib import Path
+import zipfile
+import zlib
 
-from sentinel.rescue_offline_scanner import load_approved_intel_catalog, _is_reparse_or_symlink, _validate_local_path, _compile_yara, _yara_matches
+from sentinel.archive_container_preflight import ARCHIVE_SUFFIXES, MAX_EOCD_TAIL_BYTES, read_zip_directory_tail
+from sentinel.rescue_offline_scanner import load_approved_intel_catalog, _is_reparse_or_symlink, _validate_local_path, _compile_yara
 
 # EICAR's harmless 68-byte standard test file, not a malware signature database.
 EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
 MAX_BYTES = 64 * 1024 * 1024
+MAX_MEMBER_BYTES = 16 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 256
+MAX_ARCHIVE_EXPANSION = 64 * 1024 * 1024
+
+
+def _scan_archive(data, path, cancelled, inspect, error):
+    expected, _, reasons = read_zip_directory_tail(data[-MAX_EOCD_TAIL_BYTES:], len(data))
+    if reasons or expected > MAX_ARCHIVE_MEMBERS:
+        error(f"Contenuto ZIP non analizzato: {path} ({', '.join(reasons) or 'limite elementi'})")
+        return
+    try:
+        with zipfile.ZipFile(io.BytesIO(data), allowZip64=False) as archive:
+            members = archive.infolist()
+            if len(members) != expected or sum(member.file_size for member in members) > MAX_ARCHIVE_EXPANSION:
+                error(f"Contenuto ZIP non analizzato: {path} (limite espansione o indice incoerente)")
+                return
+            for member in members:
+                if cancelled():
+                    return
+                if member.is_dir():
+                    continue
+                location = f"{path} → {member.filename!r}"
+                if (member.file_size > MAX_MEMBER_BYTES or member.flag_bits & 1 or
+                        member.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED) or
+                        member.file_size > 250 * max(1, member.compress_size)):
+                    error(f"Elemento ZIP non analizzato: {location}")
+                    continue
+                with archive.open(member) as stream:
+                    payload = stream.read(MAX_MEMBER_BYTES + 1)
+                if len(payload) != member.file_size or len(payload) > MAX_MEMBER_BYTES:
+                    error(f"Dimensione elemento ZIP incoerente: {location}")
+                    continue
+                inspect(payload, hashlib.sha256(payload).hexdigest(), location)
+                if Path(member.filename).suffix.casefold() in ARCHIVE_SUFFIXES or payload.startswith(b"PK\x03\x04"):
+                    error(f"Archivio annidato non aperto: {location}")
+    except (OSError, ValueError, RuntimeError, EOFError, zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as exc:
+        error(f"Contenuto ZIP non analizzato: {path} ({exc})")
 
 
 def scan_folder(root, *, catalog_path=None, yara_path=None, cancelled=lambda: False, progress=lambda *_: None):
@@ -28,6 +69,20 @@ def scan_folder(root, *, catalog_path=None, yara_path=None, cancelled=lambda: Fa
         result["skipped"] += 1
         if len(result["errors"]) < 100:
             result["errors"].append(str(exc))
+
+    def inspect(data, digest, path):
+        if digest in catalog:
+            result["findings"].append({"path": str(path), "sha256": digest, **catalog[digest]})
+        if rules is None:
+            return
+        try:
+            matches = rules.match(data=data, timeout=2)
+        except Exception as exc:
+            error(f"YARA non ha completato {path}: {type(exc).__name__}")
+            return
+        for name in sorted({match.rule for match in matches}):
+            result["findings"].append({"path": str(path), "sha256": digest,
+                                       "name": "Regola YARA: " + name, "source": "regola locale"})
 
     for directory, dirs, files in os.walk(root, topdown=True, followlinks=False, onerror=error):
         if cancelled():
@@ -55,6 +110,9 @@ def scan_folder(root, *, catalog_path=None, yara_path=None, cancelled=lambda: Fa
                     continue
                 before = p.stat()
                 digest = hashlib.sha256()
+                buffer = None
+                read_size = 0
+                is_archive = p.suffix.casefold() in ARCHIVE_SUFFIXES
                 with p.open("rb") as f:
                     while True:
                         if cancelled():
@@ -63,24 +121,29 @@ def scan_folder(root, *, catalog_path=None, yara_path=None, cancelled=lambda: Fa
                         block = f.read(1024 * 1024)
                         if not block:
                             break
+                        if read_size == 0:
+                            is_archive = is_archive or block.startswith((b"PK\x03\x04", b"PK\x05\x06"))
+                            if rules is not None or is_archive:
+                                buffer = bytearray()
+                        read_size += len(block)
+                        if read_size > MAX_BYTES:
+                            raise OSError(f"File oltre il limite durante la scansione: {p}")
                         digest.update(block)
+                        if buffer is not None:
+                            buffer.extend(block)
                 if result["cancelled"]:
                     break
                 after = p.stat()
-                if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+                if read_size != before.st_size or (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
                     raise OSError(f"File modificato durante la scansione: {p}")
                 result["files"] += 1
-                value = digest.hexdigest()
-                if value in catalog:
-                    result["findings"].append({"path": str(p), "sha256": value, **catalog[value]})
-                if rules is not None:
-                    matches = _yara_matches(rules, p, expected_sha256=value)
-                    for match in matches:
-                        if match.startswith('__YARA_ERROR__:'):
-                            error(f'YARA non ha completato {p}: {match}')
-                        else:
-                            result['findings'].append({'path': str(p), 'sha256': value,
-                                'name': 'Regola YARA: ' + match, 'source': 'regola locale'})
+                data = bytes(buffer) if buffer is not None else b""
+                inspect(data, digest.hexdigest(), p)
+                if is_archive:
+                    _scan_archive(data, p, cancelled, inspect, error)
+                    if cancelled():
+                        result["cancelled"] = True
+                        break
                 if result["files"] % 25 == 0:
                     progress(result["files"], str(p))
             except OSError as exc:

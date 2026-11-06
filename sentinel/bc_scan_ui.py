@@ -27,6 +27,10 @@ class ScanThread(QThread):
 
 
 class BCScanPage(QWidget):
+    scan_started = Signal(str)
+    scan_completed = Signal(object)
+    scan_failed = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.worker = None
@@ -124,6 +128,7 @@ class BCScanPage(QWidget):
         self.worker.result_ready.connect(self.finished_scan)
         self.worker.failure.connect(self.failed_scan)
         self.worker.finished.connect(self.thread_finished)
+        self.scan_started.emit(str(folder))
         self.worker.start()
 
     def cancel(self):
@@ -142,11 +147,13 @@ class BCScanPage(QWidget):
         if result["errors"]:
             lines.append("Errori di lettura (primi 100):\n" + "\n".join(result["errors"]))
         if result["skipped"]:
-            lines.append("Elementi saltati: accesso negato, collegamenti o file oltre 64 MiB.")
+            lines.append("Copertura parziale: file, contenuti ZIP o controlli non analizzati. Vedi i dettagli disponibili sopra.")
         self.report.setPlainText("\n\n".join(lines))
+        self.scan_completed.emit(result)
 
     def failed_scan(self, message):
         self.status.setText("Scansione non riuscita: " + message)
+        self.scan_failed.emit(message)
 
     def thread_finished(self):
         self.worker.deleteLater()

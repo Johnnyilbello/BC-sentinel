@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import zipfile
 
 import pytest
 from PySide6.QtCore import QEventLoop, QTimer
@@ -47,6 +48,31 @@ def test_invalid_catalog_fails_closed(tmp_path):
     bad.write_text('{}')
     with pytest.raises(ValueError):
         scan_folder(tmp_path, catalog_path=bad)
+
+
+def test_zip_member_matches_catalog_without_extraction(tmp_path):
+    folder = tmp_path / "scan"
+    folder.mkdir()
+    archive = folder / "fixture.zip"
+    data = b"harmless archived fixture"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as writer:
+        writer.writestr("inner/sample.txt", data)
+    result = scan_folder(folder, catalog_path=catalog(tmp_path, data))
+    assert result["files"] == 1 and result["skipped"] == 0
+    assert result["findings"][0]["path"] == f"{archive} → 'inner/sample.txt'"
+    assert list(folder.iterdir()) == [archive]
+
+
+def test_zip_rejected_by_member_limit_marks_incomplete(tmp_path, monkeypatch):
+    import sentinel.bc_scan as module
+
+    archive = tmp_path / "fixture.zip"
+    with zipfile.ZipFile(archive, "w") as writer:
+        writer.writestr("sample.txt", b"harmless")
+    monkeypatch.setattr(module, "MAX_ARCHIVE_MEMBERS", 0)
+    result = scan_folder(tmp_path)
+    assert result["files"] == 1 and result["skipped"] == 1
+    assert "limite elementi" in result["errors"][0]
 
 
 def test_user_yara_rule_matches_content_without_modifying_file(tmp_path):

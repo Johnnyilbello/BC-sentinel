@@ -167,7 +167,7 @@ def test_storage_buttons_and_offline_button_open_real_components(desktop, monkey
 
 def test_all_main_command_buttons_are_covered(desktop):
     assert set(desktop.command_buttons) == {
-        "dashboard_bc", "dashboard_refresh", "dashboard_quick", "dashboard_full", "dashboard_storage", "custom_scan",
+        "dashboard_bc", "dashboard_folder", "dashboard_refresh", "dashboard_quick", "dashboard_full", "dashboard_storage", "custom_scan",
         "offline_open", "quarantine_refresh", "quarantine_windows", "quarantine_remove",
         "history_refresh", "history_export", "protection_refresh", "signatures",
         "security_settings", "administrator", "diagnostics", "data_folder", "help", "about",
