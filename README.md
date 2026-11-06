@@ -2,13 +2,14 @@
 
 BC Sentinel è un progetto Windows per analisi delle minacce, scansione offline, recupero e gestione dello spazio del PC. L’interfaccia è in italiano.
 
-La versione in sviluppo integra **BC Storage Analyzer** e i controlli di **Microsoft Defender** per scansione e rimozione delle minacce attive rilevate. Il progetto è in valutazione interna. I test descrivono i casi verificati e non garantiscono il riconoscimento di ogni malware.
+La versione in sviluppo integra **BC Storage Analyzer**, un **motore BC sperimentale** di confronto hash su richiesta e i controlli separati di **Microsoft Defender** per scansione e rimozione delle minacce attive rilevate. Il motore BC include soltanto l'hash EICAR e non offre protezione in tempo reale. Il progetto è in valutazione interna. I test non garantiscono il riconoscimento di ogni malware.
 
 ## Cosa puoi fare
 
 | Area | Utilizzo |
 | --- | --- |
 | Dashboard | Leggere lo stato reale del motore Windows e avviare i controlli |
+| Motore BC | Confrontare gli hash di una cartella con EICAR e un catalogo locale approvato; nessuna modifica ai file |
 | Scansione offline | Esaminare Windows offline con SHA-256, YARA e controlli strutturali su PE e ZIP |
 | Protezione → Microsoft Defender | Leggere lo stato del motore Windows, avviare scansioni e richiedere la rimozione delle minacce attive |
 | Storage Analyzer | Confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
@@ -38,6 +39,7 @@ Defender applica le impostazioni di risposta configurate in Windows durante le s
 ## Guide e limiti
 
 - [Storage Analyzer e controlli di protezione](docs/STORAGE-AND-PROTECTION.md)
+- [Motore BC sperimentale: utilizzo e limiti](docs/MOTORE-BC-SPERIMENTALE.md)
 - [Risultati delle verifiche dell’integrazione](docs/VALIDATION-STORAGE-PROTECTION.md)
 - [Scansione offline e qualificazione](docs/OFFLINE-CANDIDATE.md)
 - [Installazione Windows](docs/WINDOWS-INSTALLATION.md)

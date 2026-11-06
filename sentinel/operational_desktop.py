@@ -22,6 +22,7 @@ from sentinel.ui_design_system import COLORS, make_icon
 from sentinel.ui_pages import PageHeader
 from sentinel.ui_styles import home_stylesheet
 from sentinel.windows_defender_ui import WindowsDefenderDialog
+from sentinel.bc_scan_ui import BCScanPage
 
 
 def write_json(path: Path, value) -> None:
@@ -90,7 +91,7 @@ class OperationalWindow(QMainWindow):
         root.addWidget(self.stack, 1)
         self.setCentralWidget(shell)
         for name, icon in (
-            ("Dashboard", "dashboard"), ("Scansione", "scan"), ("Scansione offline", "folder"),
+            ("Dashboard", "dashboard"), ("Motore BC", "scan"), ("Scansione", "scan"), ("Scansione offline", "folder"),
             ("Quarantena", "quarantine"), ("Cronologia", "history"),
             ("Protezione", "shield"), ("Storage Analyzer", "folder"), ("Impostazioni e aiuto", "settings"),
         ):
@@ -106,12 +107,17 @@ class OperationalWindow(QMainWindow):
         navigation.addStretch()
         self.sidebar = sidebar
 
-        page = self._page("Dashboard", "Stato del PC e azioni principali")
+        page = self._page("Dashboard", "Sicurezza e spazio, con controlli chiari")
+        self._label("Benvenuto in BC Sentinel. Scegli il motore BC per analizzare una cartella oppure consulta lo stato di Microsoft Defender.", page)
+        self._button("dashboard_bc", "Avvia scansione BC", lambda: self.navigate("Motore BC"), page, primary=True)
         self.overview = self._label("Verifica dello stato antivirus in corso…", page)
         self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, page)
-        self._button("dashboard_quick", "Avvia scansione rapida", lambda: self.request_scan("quick"), page, primary=True)
-        self._button("dashboard_full", "Avvia scansione completa", lambda: self.request_scan("full"), page)
+        self._button("dashboard_quick", "Scansione rapida con Defender", lambda: self.request_scan("quick"), page)
+        self._button("dashboard_full", "Scansione completa con Defender", lambda: self.request_scan("full"), page)
         self._button("dashboard_storage", "Analizza spazio e RAM", lambda: self.navigate("Storage Analyzer"), page)
+
+        self.bc_page = BCScanPage()
+        self._add_page("Motore BC", self.bc_page)
 
         page = self._page("Scansione", "Controlli operativi del motore Microsoft Defender")
         self.engine = WindowsDefenderDialog()
@@ -163,7 +169,7 @@ class OperationalWindow(QMainWindow):
         self.auto_refresh.setChecked(self._load_auto_refresh())
         self.auto_refresh.toggled.connect(self.save_settings)
         page.layout().addWidget(self.auto_refresh)
-        self._label("Scansione usa Microsoft Defender. Storage Analyzer mostra spazio e RAM e offre rimozioni con conferma. "
+        self._label("Motore BC analizza su richiesta con un catalogo hash limitato; Scansione usa Microsoft Defender. Storage Analyzer mostra spazio e RAM e offre rimozioni con conferma. "
                     "Le operazioni protette possono richiedere l’avvio come amministratore. "
                     "La disponibilità di Defender dipende dalla configurazione Windows.", page)
         self._button("diagnostics", "Esporta diagnostica…", self.export_diagnostics, page)
@@ -381,7 +387,7 @@ class OperationalWindow(QMainWindow):
         if not getattr(sys, "frozen", False):
             QMessageBox.information(self, "Permessi amministrativi", "Usa questo comando dalla versione .exe di BC Sentinel.")
             return
-        if self.engine.busy() or self.storage_page.process is not None or (
+        if self.bc_page.worker is not None or self.engine.busy() or self.storage_page.process is not None or (
             self.offline_dialog is not None and self.offline_dialog._thread is not None
         ):
             QMessageBox.information(self, "Operazione in corso", "Concludi le operazioni e chiudi Storage Analyzer prima di riavviare.")
@@ -418,10 +424,16 @@ class OperationalWindow(QMainWindow):
 
     def show_about(self):
         QMessageBox.information(self, "BC Sentinel", "BC Sentinel · desktop operativo Windows\n"
-            "Storage Analyzer incluso. Le scansioni antivirus del PC utilizzano Microsoft Defender.\n"
-            "La rilevazione dipende dal motore e dalle firme disponibili.")
+            "Storage Analyzer incluso. Il motore BC controlla gli hash su richiesta; "
+            "Defender è un motore distinto. BC non offre protezione in tempo reale.")
 
     def closeEvent(self, event):
+        if self.bc_page.worker is not None:
+            self.bc_page.cancel()
+            self.navigate("Motore BC")
+            QMessageBox.information(self, "Scansione in corso", "Annullamento richiesto. Attendi il termine prima di chiudere.")
+            event.ignore()
+            return
         if self.engine.busy():
             self.navigate("Scansione")
             QMessageBox.information(self, "Operazione in corso", "Attendi il termine del comando antivirus prima di chiudere.")
