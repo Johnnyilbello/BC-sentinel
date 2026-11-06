@@ -98,3 +98,14 @@ no threats and exit code 0 with `MpCmdRun -Scan -ScanType 3 -File <fixture> -Dis
 The host reported real-time protection enabled. This single control verifies
 that both scan paths run on this host. It provides no estimate of detection
 sensitivity, false-positive rate or performance and is excluded from the benchmark.
+
+During validation of the ESET Research bundle, BC flagged the Microsoft-signed
+`certutil.exe` with the rule `skip20_sqllang_hook`. REA identified the same PE
+by SHA-256 `541bb72a4a204df42b38eb74196d7c49b690480b02f23fce07bcb52d52501cfb`
+(resource evidence `ev_273fe129b64da3d34cb65d71c7092fbb9406693ee8969caeda07d9aaf0dba34c`).
+The source rule file was excluded. BC then scanned all 60 binaries in the
+original control set and 60 different signed System32 executables with no
+findings or skipped files. Defender also reported no threats in both scans.
+The two groups had 120 distinct SHA-256 values. The first group informed rule
+selection and both groups came from one host. These controls do not establish
+general false-positive rates or malware detection effectiveness.

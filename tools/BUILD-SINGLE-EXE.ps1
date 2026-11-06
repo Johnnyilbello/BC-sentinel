@@ -14,6 +14,7 @@ $arguments = @(
     '--specpath', (Join-Path $buildRoot 'spec'),
     '--paths', $repoRoot,
     '--add-binary', ((Join-Path $repoRoot 'build\storage_analyzer') + ';storage_analyzer'),
+    '--add-data', ((Join-Path $repoRoot 'sentinel\data\eset_ioc') + ';sentinel/data/eset_ioc'),
     '--runtime-hook', (Join-Path $repoRoot 'packaging\beta11_windowed_runtime_hook.py'),
     '--hidden-import', 'sentinel.smart_scan_live_provider',
     '--hidden-import', 'sentinel.smart_scan_runtime_compat',

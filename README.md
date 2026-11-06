@@ -2,19 +2,19 @@
 
 BC Sentinel è un progetto Windows per analisi delle minacce, scansione offline, recupero e gestione dello spazio del PC. L’interfaccia è in italiano.
 
-La versione in sviluppo integra **BC Storage Analyzer**, un **motore BC sperimentale** di confronto hash su richiesta e i controlli separati di **Microsoft Defender** per scansione e rimozione delle minacce attive rilevate. Il motore BC include soltanto l'hash EICAR e non offre protezione in tempo reale. Il progetto è in valutazione interna. I test non garantiscono il riconoscimento di ogni malware.
+La versione in sviluppo integra **BC Storage Analyzer**, un **motore BC sperimentale** con indicatori ESET Research, monitoraggio di una cartella e quarantena cifrata, oltre ai controlli separati di **Microsoft Defender**. Il monitor BC analizza i file dopo la modifica mentre l'applicazione è aperta. Il progetto è in valutazione interna.
 
 ## Cosa puoi fare
 
 | Area | Utilizzo |
 | --- | --- |
-| Dashboard | Leggere lo stato reale del motore Windows e avviare i controlli |
-| Motore BC | Confrontare gli hash di una cartella con EICAR e un catalogo locale approvato; nessuna modifica ai file |
+| Panoramica | Avviare la scansione BC e consultare risultati, attività recenti e spazio su disco |
+| Scansione | Analizzare una cartella e i file modificati con SHA-256 e regole YARA |
 | Scansione offline | Esaminare Windows offline con SHA-256, YARA e controlli strutturali su PE e ZIP |
 | Protezione → Microsoft Defender | Leggere lo stato del motore Windows, avviare scansioni e richiedere la rimozione delle minacce attive |
 | Storage Analyzer | Confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
 | Rimozioni in Storage Analyzer | Spostare nel Cestino, eliminare definitivamente o disinstallare un’app dopo conferma |
-| Quarantena | Consultare i rilevamenti di Defender e aprire la gestione di Sicurezza di Windows |
+| Minacce | Consultare gli avvisi BC, isolare e ripristinare file idonei, leggere i rilevamenti di Defender |
 
 ## Avvio su Windows
 

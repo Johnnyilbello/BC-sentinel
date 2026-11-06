@@ -1,6 +1,8 @@
 # Motore BC sperimentale
 
-La pagina **Motore BC** esegue una scansione locale su richiesta, indipendente da Microsoft Defender. Calcola lo SHA-256 dei file e confronta gli hash con un catalogo scelto dall'utente. Il catalogo integrato contiene esclusivamente l'hash del file EICAR standard di 68 byte: è un test innocuo, non un database di malware. Le varianti EICAR con spazi o a capo non corrispondono a questo hash. Nessun aggiornamento automatico delle firme è incluso.
+La pagina **Scansione** esegue una scansione locale con il motore BC. Confronta gli SHA-256 con 6.138 indicatori pubblici di ESET Research e con il file di prova innocuo EICAR. Applica inoltre 12 sorgenti di regole YARA ESET ai contenuti che iniziano con l'intestazione DOS `MZ`. Le regole e gli indicatori provengono dalla revisione [825b826c5cbf](https://github.com/eset/malware-ioc/tree/825b826c5cbffcc1e59c16581ffdf7d527e8b695) e sono inclusi con la [licenza BSD](../sentinel/data/eset_ioc/LICENSE.txt). La scansione funziona offline.
+
+Il generatore `python tools/build_eset_intel.py` legge da GitHub soltanto file di testo con hash, regole selezionate e licenza. Verifica l'identità Git dei file sorgente e compila le regole prima di scrivere il bundle. Per cambiare la revisione occorre anche aggiornare impronta e conteggio in `sentinel/bc_research_intel.py`. Il prodotto distribuito usa una revisione fissa, senza aggiornamento automatico.
 
 Il pulsante **Carica catalogo hash** accetta il formato JSON già usato dallo scanner offline:
 
@@ -14,7 +16,7 @@ Il pulsante **Carica catalogo hash** accetta il formato JSON già usato dallo sc
 }
 ```
 
-Si possono caricare regole YARA locali usando **Carica regole YARA**. Le regole vengono compilate senza include, ogni analisi ha un limite di tempo e gli errori vengono segnalati. Le regole sono fornite dall'utente: non è incluso un set di regole malware né un servizio di aggiornamento. Usare soltanto cataloghi e regole verificati: una corrispondenza non è una prova indipendente di pericolosità. La scansione può essere annullata; collegamenti, file oltre 64 MiB e errori di accesso sono conteggiati come elementi saltati. Non elimina, isola o modifica i file. Non analizza memoria o comportamenti, e non offre monitoraggio in tempo reale. Un esito senza corrispondenze non garantisce la sicurezza del PC.
+Si possono aggiungere regole YARA locali usando **Carica regole YARA**. Le regole vengono compilate senza include, ogni analisi ha un limite di tempo e gli errori vengono segnalati. Usare soltanto cataloghi e regole verificati. Una corrispondenza è un indicatore da esaminare. La scansione può essere annullata e conteggia i collegamenti, i file oltre 64 MiB e gli errori di accesso tra gli elementi saltati. La scansione è in sola lettura. La risposta richiede una conferma dalla pagina Minacce.
 
 La scansione BC controlla anche il primo livello di ZIP, JAR e documenti Office basati su ZIP. I membri vengono letti in memoria e confrontati con gli stessi hash e regole. La scansione ammette fino a 256 membri, 16 MiB per membro e 64 MiB di espansione complessiva, con metodi Store e Deflate. I contenitori annidati vengono analizzati come file e la mancata apertura dei loro membri è segnalata come copertura parziale.
 

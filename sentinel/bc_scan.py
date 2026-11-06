@@ -10,6 +10,7 @@ import zipfile
 import zlib
 
 from sentinel.archive_container_preflight import ARCHIVE_SUFFIXES, MAX_EOCD_TAIL_BYTES, read_zip_directory_tail
+from sentinel import bc_research_intel
 from sentinel.rescue_offline_scanner import load_approved_intel_catalog, _is_reparse_or_symlink, _validate_local_path, _compile_yara
 
 # EICAR's harmless 68-byte standard test file, not a malware signature database.
@@ -58,6 +59,7 @@ def _scan_archive(data, path, cancelled, inspect, error):
 class BCScanEngine:
     catalog: dict
     rules: object | None
+    research: bc_research_intel.ResearchIntel
 
     @classmethod
     def load(cls, catalog_path=None, yara_path=None):
@@ -66,7 +68,7 @@ class BCScanEngine:
         rules, rule_status = _compile_yara(Path(yara_path) if yara_path else None)
         if yara_path and rules is None:
             raise ValueError("Motore YARA non disponibile: " + rule_status)
-        return cls(catalog, rules)
+        return cls(catalog, rules, bc_research_intel.load())
 
 
 def scan_root(root):
@@ -127,19 +129,26 @@ def _scan(engine, candidates, cancelled, progress):
             result["errors"].append(str(exc))
 
     def inspect(data, digest, path):
-        if digest in catalog:
-            result["findings"].append({"path": str(path), "sha256": digest, **catalog[digest],
+        signature = catalog.get(digest)
+        if signature is None and digest in engine.research.hashes:
+            signature = {"name": engine.research.hashes[digest], "source": bc_research_intel.SOURCE}
+        if signature is not None:
+            result["findings"].append({"path": str(path), "sha256": digest, **signature,
                                        "isolate_path": str(path) if isinstance(path, Path) else None})
-        if rules is None:
-            return
+        if data.startswith(b"MZ"):
+            inspect_rules(engine.research.rules, bc_research_intel.SOURCE, data, digest, path)
+        if rules is not None:
+            inspect_rules(rules, "regola locale", data, digest, path)
+
+    def inspect_rules(ruleset, source, data, digest, path):
         try:
-            matches = rules.match(data=data, timeout=2)
+            matches = ruleset.match(data=data, timeout=2)
         except Exception as exc:
-            error(f"YARA non ha completato {path}: {type(exc).__name__}")
+            error(f"YARA non ha completato {path} ({source}): {type(exc).__name__}")
             return
         for name in sorted({match.rule for match in matches}):
             result["findings"].append({"path": str(path), "sha256": digest,
-                                       "name": "Regola YARA: " + name, "source": "regola locale"})
+                                       "name": "Regola YARA: " + name, "source": source})
 
     for p in candidates(error):
         if cancelled():
@@ -166,7 +175,7 @@ def _scan(engine, candidates, cancelled, progress):
                         break
                     if read_size == 0:
                         is_archive = is_archive or block.startswith((b"PK\x03\x04", b"PK\x05\x06"))
-                        if rules is not None or is_archive:
+                        if rules is not None or is_archive or block.startswith(b"MZ"):
                             buffer = bytearray()
                     read_size += len(block)
                     if read_size > MAX_BYTES:

@@ -23,6 +23,7 @@ from sentinel.ui_pages import PageHeader
 from sentinel.ui_styles import home_stylesheet
 from sentinel.windows_defender_ui import WindowsDefenderDialog
 from sentinel.bc_scan_ui import BCScanPage
+from sentinel import bc_research_intel
 from sentinel.bc_quarantine_ui import BCVaultPane
 from sentinel.operational_overview import OperationalOverview
 
@@ -202,7 +203,7 @@ class OperationalWindow(QMainWindow):
         self.auto_refresh.setChecked(self._load_auto_refresh())
         self.auto_refresh.toggled.connect(self.save_settings)
         page.layout().addWidget(self.auto_refresh)
-        self._label("Motore BC analizza su richiesta con un catalogo hash limitato; Scansione usa Microsoft Defender. Storage Analyzer mostra spazio e RAM e offre rimozioni con conferma. "
+        self._label("Scansione usa il motore BC e gli indicatori integrati. Microsoft Defender ha comandi separati. Storage Analyzer mostra spazio e RAM e offre rimozioni con conferma. "
                     "Le operazioni protette possono richiedere l’avvio come amministratore. "
                     "La disponibilità di Defender dipende dalla configurazione Windows.", page)
         self._button("diagnostics", "Esporta diagnostica…", self.export_diagnostics, page)
@@ -527,9 +528,13 @@ class OperationalWindow(QMainWindow):
             "6. Cronologia e diagnostica possono essere esportate dalle rispettive pagine.")
 
     def show_about(self):
+        try:
+            notice = (bc_research_intel.ROOT / "LICENSE.txt").read_text(encoding="utf-8")
+        except OSError:
+            notice = "Avviso di licenza ESET Research non disponibile."
         QMessageBox.information(self, "BC Sentinel", "BC Sentinel · desktop operativo Windows\n"
-            "Storage Analyzer incluso. Il motore BC controlla gli hash su richiesta; "
-            "Defender è un motore distinto. BC non offre protezione in tempo reale.")
+            "Storage Analyzer incluso. Il motore BC usa hash e regole YARA locali.\n\n"
+            f"Indicatori ESET Research · revisione {bc_research_intel.REVISION[:12]}\n\n{notice}")
 
     def closeEvent(self, event):
         if self.bc_page.worker is not None:
@@ -638,8 +643,9 @@ def smoke_test():
         window.navigate("Quarantena")
         activity_passed = activity_passed and window._unread_bc_notices == 0
         vault_passed = _smoke_quarantine()
+        intel_passed = _smoke_research_intel()
         return {
-            "passed": monitor_passed and activity_passed and vault_passed and all(value == 0 for value in overflow.values()) and
+            "passed": monitor_passed and activity_passed and vault_passed and intel_passed and all(value == 0 for value in overflow.values()) and
                 (window.storage_page.launch_button.isEnabled() or not getattr(sys, "frozen", False)),
             "page_count": window.stack.count(), "command_count": len(window.command_buttons),
             "horizontal_overflow": overflow, "operational_desktop": True,
@@ -647,9 +653,19 @@ def smoke_test():
             "bc_folder_monitor": monitor_passed,
             "bc_rename_activity": activity_passed,
             "bc_quarantine": vault_passed,
+            "bc_research_intel": intel_passed,
         }
     finally:
         window.close()
+
+
+def _smoke_research_intel():
+    # An inert string fixture with a DOS marker, never executed or written.
+    intel = bc_research_intel.load()
+    fixture = b"MZ" + bytes(80) + b"A95BL765" + b"MNG2GPRS"
+    rules = {match.rule for match in intel.rules.match(data=fixture, timeout=2)}
+    return ("Prikormka" in rules and len(intel.hashes) == bc_research_intel.IOC_COUNT
+            and (bc_research_intel.ROOT / "LICENSE.txt").is_file())
 
 
 def _smoke_quarantine():

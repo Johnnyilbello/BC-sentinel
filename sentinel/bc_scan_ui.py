@@ -6,6 +6,7 @@ from PySide6.QtCore import QThread, Qt, Signal
 from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from sentinel.bc_folder_monitor import monitor_folder
+from sentinel.bc_research_intel import IOC_COUNT
 from sentinel.bc_scan import scan_folder
 
 
@@ -67,7 +68,7 @@ class BCScanPage(QWidget):
         title = QLabel("Scansione con motore BC")
         title.setObjectName("PageTitle")
         layout.addWidget(title)
-        explanation = QLabel("Analisi locale con hash e regole YARA. Il catalogo incluso riconosce il test innocuo EICAR. Puoi caricare un catalogo verificato e regole locali.")
+        explanation = QLabel("Analisi locale con hash e regole YARA. Gli indicatori ESET Research integrati funzionano senza rete. Puoi aggiungere un catalogo verificato e regole locali.")
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         row = QHBoxLayout()
@@ -90,7 +91,7 @@ class BCScanPage(QWidget):
         self.yara_label = QLabel('Regole YARA: nessuna selezionata')
         self.yara_label.setWordWrap(True)
         layout.addWidget(self.yara_label)
-        self.catalog_label = QLabel("Catalogo: test EICAR integrato")
+        self.catalog_label = QLabel(f"Catalogo integrato: {IOC_COUNT} indicatori ESET Research e test EICAR")
         self.catalog_label.setWordWrap(True)
         layout.addWidget(self.catalog_label)
         self.status = QLabel("Seleziona una cartella per iniziare.")
@@ -216,7 +217,7 @@ class BCScanPage(QWidget):
                 QMessageBox.warning(self, "Catalogo non valido", str(exc))
                 return
             self.catalog = path
-            self.catalog_label.setText(f"Catalogo: {Path(path).name} · {len(entries)} hash, oltre a EICAR")
+            self.catalog_label.setText(f"Catalogo locale: {Path(path).name} · {len(entries)} hash in aggiunta agli indicatori integrati")
 
     def choose_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Seleziona la cartella da analizzare")
@@ -265,7 +266,7 @@ class BCScanPage(QWidget):
         self.last_result = result
         state = "Annullata" if result["cancelled"] else "Completata"
         self.status.setText(f"{state} · {result['files']} file analizzati · {result['skipped']} saltati · {len(result['findings'])} corrispondenze")
-        lines = [f"{x['name']} — {x['path']}\nSHA-256: {x['sha256']}" for x in result["findings"]]
+        lines = [f"{x['name']} — {x['path']}\nFonte: {x['source']} · SHA-256: {x['sha256']}" for x in result["findings"]]
         if not lines:
             lines.append("Nessuna corrispondenza con il catalogo utilizzato. Questo non garantisce che i file siano sicuri.")
         if result["errors"]:
