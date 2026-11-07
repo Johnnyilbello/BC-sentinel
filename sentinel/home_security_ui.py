@@ -14,7 +14,7 @@ import os
 import sys
 from typing import Callable, Mapping
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, SIGNAL
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -200,7 +200,8 @@ class SecurityOverviewWindow(_impl.SecurityOverviewWindow):
             button.setCheckable(True)
             button.setChecked(index == 0)
             try:
-                button.clicked.disconnect()
+                if button.receivers(SIGNAL("clicked(bool)")):
+                    button.clicked.disconnect()
             except (RuntimeError, TypeError):
                 pass
             button.clicked.connect(lambda checked=False, page=name: self._navigate(page))
