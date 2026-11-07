@@ -1,4 +1,30 @@
-# Verifica dell’integrazione Storage Analyzer e protezione Windows
+# Verifiche del pacchetto BC Sentinel
+
+## Pacchetto corrente
+
+Il file singolo BC Sentinel Sperimentale.exe include il codice applicativo del commit a8e03c7. La sua impronta SHA-256 è b643b5e71cdadf5061b6cb41685b00387e0bf76eb2eb75855498271a575e3520. Il commit successivo d561e8b aggiunge una prova di annullamento senza modificare il codice applicativo.
+
+| Verifica | Evidenza |
+| --- | --- |
+| Suite completa al commit fc13eba | 2.255 test passati senza warning |
+| ZIP accodato a un contenitore MZ, al commit a8e03c7 | Nove test mirati passati, incluso il nuovo contenitore |
+| Annullamento durante la visita ZIP, al commit d561e8b | Dieci test mirati passati |
+| Eseguibile al commit a8e03c7 | Sei profili superati per autocontrollo, diagnostica e smoke UI |
+| Portabilità | Avvio verificato da una cartella contenente il solo eseguibile |
+| Storage Analyzer incluso | Apertura della finestra nativa superata |
+| Interfaccia nativa al commit 8c8eeb5 | Nessuno scorrimento orizzontale nelle cinque pagine principali a 760, 960 e 1.440 pixel |
+| Interfaccia nativa con percorso lungo | Sette pagine a 720 × 600 senza scorrimento orizzontale |
+| Monitor e file bloccati | Recupero verificato con un handle Windows esclusivo rilasciato prima del secondo tentativo. Il blocco persistente produce un file saltato con errore |
+| Moduli del pacchetto al commit 8c8eeb5 | Inventario verificato con scanner BC, monitor, quarantena e Storage Analyzer. Moduli di integrazione Defender assenti |
+
+Le prove di avvio sono automatiche e locali. La verifica su una macchina pulita resta aperta. Il pacchetto è senza firma digitale. La suite completa precede l'ultima modifica applicativa agli ZIP, coperta dai test mirati indicati. La corrispondenza visiva al mockup richiede ancora una revisione finale di tutte le schermate e degli stati.
+
+Il confronto con Defender è ancora da eseguire su un corpus autorizzato in un laboratorio con snapshot. Il classificatore Win64 valutato separatamente resta fuori dal pacchetto. [Valutazione Win64](EMBER-WIN64-VALUTAZIONE.md) · [Procedura del confronto](OFFLINE-CANDIDATE.md)
+
+## Resoconto storico del 5 novembre 2026
+
+Le sezioni seguenti descrivono il checkpoint a19b896. L'integrazione Defender riportata in questo checkpoint è stata rimossa dalle versioni correnti.
+
 
 Verifiche eseguite su Windows il 5 novembre 2026, con Python 3.12.10, PySide6 6.11.2 e .NET Framework 4.8.
 Il codice compilato del pacchetto corrisponde al commit a19b896fcab18de0cc2bb2dd4b1bf6cc5afa69a1. Gli aggiornamenti successivi a questa verifica riguardano le istruzioni e questo resoconto.
