@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
 from sentinel.bc_quarantine import BCQuarantine
 
@@ -19,6 +19,10 @@ class BCVaultPane(QWidget):
         scope = QLabel("Isola i file fino a 16 MiB corrispondenti a un hash del catalogo in Desktop, Documenti o Download. Il deposito cifrato permette il ripristino.")
         scope.setWordWrap(True)
         layout.addWidget(scope)
+        self.auto_isolate = QCheckBox("Autorizza isolamento automatico per questa sessione")
+        self.auto_isolate.setToolTip("Per le corrispondenze hash idonee, verifica e cifra il file prima di rimuovere l'originale.")
+        self.auto_isolate.toggled.connect(self._approve_automatic)
+        layout.addWidget(self.auto_isolate)
         self.candidates = self._selector("File rilevati dal catalogo BC")
         layout.addWidget(self.candidates)
         self.isolate_button = QPushButton("Isola il file selezionato…")
@@ -62,6 +66,32 @@ class BCVaultPane(QWidget):
         if self.candidates.currentIndex() < 0:
             self.candidates.setCurrentIndex(0)
         self.isolate_button.setEnabled(True)
+        if self.auto_isolate.isChecked():
+            try:
+                self.vault.isolate(path, item["sha256"])
+            except (OSError, ValueError) as exc:
+                self.status.setText(f"Isolamento automatico non completato: {exc}")
+            else:
+                index = self.candidates.findData(identity)
+                self.candidates.removeItem(index)
+                self.isolate_button.setEnabled(self.candidates.count() > 0)
+                self.status.setText(f"Isolato automaticamente nel deposito cifrato: {path}")
+            self.refresh()
+
+    def _approve_automatic(self, enabled):
+        if not enabled:
+            return
+        approved = QMessageBox.question(
+            self, "Autorizza isolamento automatico",
+            "Autorizzi per questa sessione l'isolamento automatico dei nuovi file rilevati "
+            "tramite hash del catalogo? Si applicano i limiti indicati sopra. "
+            "Il file viene verificato, cifrato e rimosso dalla posizione originale. "
+            "Puoi ripristinarlo dal deposito. La quarantena conserva il file cifrato. "
+            "Per eseguirlo in isolamento occorre una macchina virtuale dedicata.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if approved != QMessageBox.StandardButton.Yes:
+            self.auto_isolate.setChecked(False)
 
     def refresh(self):
         selection = self.stored.currentData()

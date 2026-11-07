@@ -154,3 +154,21 @@ def test_monitor_coverage_warnings_reach_threats_and_badge(desktop):
         assert desktop._unread_bc_notices == 0
     finally:
         page.monitor = None
+
+
+def test_automatic_isolation_requires_approval_and_uses_verified_vault(desktop, monkeypatch):
+    pane = desktop.bc_vault
+    calls = []
+    monkeypatch.setattr(pane.vault, "isolate", lambda path, digest: calls.append((path, digest)))
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **kw: QMessageBox.StandardButton.No)
+    pane.auto_isolate.setChecked(True)
+    assert not pane.auto_isolate.isChecked()
+    first = {"isolate_path": "C:/fixture-one.txt", "sha256": "a" * 64}
+    pane.add_finding(first)
+    assert not calls
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **kw: QMessageBox.StandardButton.Yes)
+    pane.auto_isolate.setChecked(True)
+    second = {"isolate_path": "C:/fixture-two.txt", "sha256": "b" * 64}
+    pane.add_finding(second)
+    assert calls == [(second["isolate_path"], second["sha256"])]
+    assert pane.candidates.count() == 1
