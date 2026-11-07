@@ -85,7 +85,11 @@ The metadata-only `sentinel.offline_benchmark` evaluator checks paired five-run
 records and corpus counts. It resamples paired files within each class, preserving
 within-file repetitions, and computes five one-sided 99% lower bounds (Bonferroni
 familywise 95%). BC advantage must be strictly positive in sensitivity, false
-positive rate, seconds/file, CPU seconds/file and peak RSS/file. Ties fail. Bootstrap
+positive rate, seconds/file, CPU seconds/file and peak RSS/file. Ties fail. The report also lists paired
+detection counts by label and category. An observed drop in malicious detections
+or increase in benign detections in any registered category fails the gate.
+These category checks are descriptive, and the independent review must confirm
+coverage and adequate sample sizes before drawing conclusions. Bootstrap
 uncertainty is an estimate, not proof of representativeness. Independent evidence
 review must verify preregistration and comparability; the tool never authorizes a
 public claim. Synthetic metadata tests do not constitute a benchmark against Defender.
