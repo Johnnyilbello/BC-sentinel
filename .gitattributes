@@ -1,0 +1,2 @@
+# The runtime verifies the exact SHA-256, including the final newline.
+sentinel/data/eset_ioc/bundle.json -text

@@ -54,8 +54,10 @@ $tests = @(
 $testBase = Join-Path ([IO.Path]::GetTempPath()) ('BCSentinel-t1-hardening-' + [guid]::NewGuid().ToString('N'))
 try {
     & $py -m pytest -q --basetemp $testBase @tests
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Beta5 through Beta14 T1 hardening regression failed.'
+    $pytestExitCode = $LASTEXITCODE
+    Write-Host ('T1 pytest process exit code: ' + $pytestExitCode)
+    if ($pytestExitCode -ne 0) {
+        throw ('Beta5 through Beta14 T1 hardening regression failed; process exit=' + $pytestExitCode)
     }
 }
 finally {

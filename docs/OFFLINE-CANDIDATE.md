@@ -85,7 +85,39 @@ The metadata-only `sentinel.offline_benchmark` evaluator checks paired five-run
 records and corpus counts. It resamples paired files within each class, preserving
 within-file repetitions, and computes five one-sided 99% lower bounds (Bonferroni
 familywise 95%). BC advantage must be strictly positive in sensitivity, false
-positive rate, seconds/file, CPU seconds/file and peak RSS/file. Ties fail. Bootstrap
+positive rate, seconds/file, CPU seconds/file and peak RSS/file. Ties fail. The report also lists paired
+detection counts by label and category. An observed drop in malicious detections
+or increase in benign detections in any registered category fails the gate.
+These category checks are descriptive, and the independent review must confirm
+coverage and adequate sample sizes before drawing conclusions. Bootstrap
 uncertainty is an estimate, not proof of representativeness. Independent evidence
 review must verify preregistration and comparability; the tool never authorizes a
 public claim. Synthetic metadata tests do not constitute a benchmark against Defender.
+
+A host smoke test exercised both command paths on the same harmless text file
+(SHA-256 `7c765f34210c19696973e5928f7f7349459797283d16d4ce07c5e1668161ba94`).
+BC scanned one file with no skips, errors or findings. Defender platform
+`4.18.26100.4`, engine `1.1.26100.4`, signatures `1.463.155.0`, reported
+no threats and exit code 0 with `MpCmdRun -Scan -ScanType 3 -File <fixture> -DisableRemediation`.
+The host reported real-time protection enabled. This single control verifies
+that both scan paths run on this host. It provides no estimate of detection
+sensitivity, false-positive rate or performance and is excluded from the benchmark.
+
+During validation of the ESET Research bundle, BC flagged the Microsoft-signed
+`certutil.exe` with the rule `skip20_sqllang_hook`. REA identified the same PE
+by SHA-256 `541bb72a4a204df42b38eb74196d7c49b690480b02f23fce07bcb52d52501cfb`
+(resource evidence `ev_273fe129b64da3d34cb65d71c7092fbb9406693ee8969caeda07d9aaf0dba34c`).
+The source rule file was excluded. BC then scanned all 60 binaries in the
+original control set and 60 different signed System32 executables with no
+findings or skipped files. Defender also reported no threats in both scans.
+The two groups had 120 distinct SHA-256 values. The first group informed rule
+selection and both groups came from one host. These controls do not establish
+general false-positive rates or malware detection effectiveness.
+
+A second host control exercised the script analyzer on 60 different PowerShell
+scripts or modules shipped under the Windows System32 PowerShell modules tree.
+Each file had a valid Microsoft Authenticode signature and a distinct SHA-256.
+BC analyzed every file without a skip or finding, and Defender reported no
+threats using its custom scan without remediation. Inert controls verified
+PowerShell, encoded batch and Shell Link patterns and a ZIP member. These
+checks do not exercise a malicious sample or a malicious process.

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - hardening/v014-t1-variants
+      - feature/storage-analyzer
   pull_request:
   workflow_dispatch:
 
@@ -34,6 +35,16 @@ jobs:
           $testBase = Join-Path $env:TEMP ('BCSentinel-candidate-' + [guid]::NewGuid().ToString('N'))
           python -m pytest -q --basetemp $testBase --junitxml="$env:RUNNER_TEMP/candidate-junit.xml" -o faulthandler_timeout=60
           if ($LASTEXITCODE -ne 0) { throw 'Applicable candidate regression failed.' }
+      - name: Build and test native Storage Analyzer on disposable samples
+        shell: pwsh
+        run: |
+          ./tools/BUILD-STORAGE-ANALYZER.ps1
+          ./tools/TEST-STORAGE-ANALYZER.ps1
+      - name: Archived Beta1 compatibility regression
+        shell: powershell
+        run: |
+          python tools/run_historical_beta1_tests.py
+          if ($LASTEXITCODE -ne 0) { throw 'Beta1 compatibility regression failed.' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:

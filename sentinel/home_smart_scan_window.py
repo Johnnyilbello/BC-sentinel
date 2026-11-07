@@ -15,7 +15,7 @@ import os
 import sys
 from typing import Callable, Mapping
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, SIGNAL
 from PySide6.QtWidgets import QApplication
 
 from sentinel import home_security_ui as base_ui
@@ -106,7 +106,8 @@ class B63SecurityOverviewWindow(base_ui.SecurityOverviewWindow):
     @staticmethod
     def _disconnect(button) -> None:
         try:
-            button.clicked.disconnect()
+            if button.receivers(SIGNAL("clicked(bool)")):
+                button.clicked.disconnect()
         except (RuntimeError, TypeError):
             pass
 

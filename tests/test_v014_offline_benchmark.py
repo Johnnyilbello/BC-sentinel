@@ -65,3 +65,17 @@ def test_missing_repetition_and_duplicate_identity_are_rejected():
     raw["samples"][1]["sha256"] = raw["samples"][0]["sha256"]
     with pytest.raises(ValueError, match="duplicate"):
         validate_manifest(raw)
+
+
+def test_aggregate_advantage_cannot_hide_missed_evasive_category():
+    raw = manifest(better=True)
+    row = raw["samples"][1]
+    row["category"] = "evasive"
+    for run in row["results"]["bc_sentinel"]:
+        run["detected"] = False
+    report = evaluate(raw, bootstrap_iterations=1000)
+    assert all(value > 0 for value in report["simultaneous_95_lower_bounds"].values())
+    assert report["statistical_gate_passed"] is False
+    evasive = next(row for row in report["category_detection"] if row["category"] == "evasive")
+    assert evasive == {"label": "malicious", "category": "evasive", "samples": 1,
+                       "bc_hits": 0, "defender_hits": 5, "bc_regression": True}

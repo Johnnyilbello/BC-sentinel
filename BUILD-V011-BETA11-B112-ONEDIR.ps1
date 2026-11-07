@@ -102,6 +102,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'PyInstaller/PySide6 unavailable in selected Python runtime.' }
 
     $Entry = Join-Path $RepoRoot 'packaging\beta11_desktop_entry.py'
+    & (Join-Path $RepoRoot 'tools\BUILD-STORAGE-ANALYZER.ps1')
+    $StorageDirectory = Join-Path $RepoRoot 'build\storage_analyzer'
     $RuntimeHook = Join-Path $RepoRoot 'packaging\beta11_windowed_runtime_hook.py'
     if (-not (Test-Path -LiteralPath $Entry -PathType Leaf)) { throw 'B11-1 canonical desktop entrypoint missing.' }
     if (-not (Test-Path -LiteralPath $RuntimeHook -PathType Leaf)) { throw 'B11-2 windowed runtime hook missing.' }
@@ -155,6 +157,7 @@ try {
                 --workpath $WorkPath `
                 --specpath $SpecPath `
                 --paths $RepoRoot `
+                --add-binary "$StorageDirectory;storage_analyzer" `
                 --runtime-hook $RuntimeHook `
                 --hidden-import sentinel.smart_scan_live_provider `
                 --hidden-import sentinel.smart_scan_runtime_compat `

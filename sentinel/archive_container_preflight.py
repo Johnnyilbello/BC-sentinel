@@ -152,6 +152,11 @@ def _read_eocd_metadata(path: Path) -> tuple[int, int, tuple[str, ...]]:
     except OSError:
         return 0, 0, ("archive_unreadable",)
 
+    return read_zip_directory_tail(tail, size)
+
+
+def read_zip_directory_tail(tail: bytes, size: int) -> tuple[int, int, tuple[str, ...]]:
+    """Validate the ZIP end record before allocating a central directory."""
     signature = b"PK\x05\x06"
     search_end = len(tail)
     position = -1
@@ -200,7 +205,7 @@ def _read_eocd_metadata(path: Path) -> tuple[int, int, tuple[str, ...]]:
         if directory_size > MAX_CENTRAL_DIRECTORY_BYTES:
             reasons.append("central_directory_size_limit")
 
-        absolute_eocd_offset = size - read_size + position
+        absolute_eocd_offset = size - len(tail) + position
         if (
             directory_offset > absolute_eocd_offset
             or directory_size > absolute_eocd_offset

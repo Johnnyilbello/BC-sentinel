@@ -170,6 +170,15 @@ def test_seeded_metadata_mutations_are_deterministic_and_non_crashing(tmp_path):
         assert path.read_bytes() == data
 
 
+def test_bounded_byte_parser_does_not_force_global_garbage_collection(tmp_path, monkeypatch):
+    import gc
+    path = tmp_path / "bounded.exe"
+    path.write_bytes(_build_pe())
+    monkeypatch.setattr(gc, "collect", lambda *args: pytest.fail("process-wide collection per file"))
+    assert pecheck.inspect_pe_metadata(path).passed
+    path.unlink()  # The byte-backed parser leaves no native file mapping open.
+
+
 def test_real_yara_and_ioc_with_benign_negative_controls(tmp_path, monkeypatch):
     root = _offline_root(tmp_path)
     folder = root / "Windows" / "System32"

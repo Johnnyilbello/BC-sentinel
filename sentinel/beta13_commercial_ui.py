@@ -24,6 +24,7 @@ from sentinel import beta13_commercial_readiness as commercial
 from sentinel import beta13_response_ui as response_ui
 from sentinel import home_security_ui
 from sentinel.ui_design_system import COLORS, make_icon
+from sentinel.storage_analyzer_ui import StorageWindowMixin
 
 COMMERCIAL_PAGE_NAME = "Licenza & Supporto"
 
@@ -179,7 +180,7 @@ class B136CommercialPage(QWidget):
         self.setMinimumWidth(0)
 
 
-class B136ConsumerWindow(response_ui.B13ConsumerWindow):
+class B136ConsumerWindow(StorageWindowMixin, response_ui.B13ConsumerWindow):
     def __init__(
         self,
         *,
@@ -189,6 +190,7 @@ class B136ConsumerWindow(response_ui.B13ConsumerWindow):
         on_export_diagnostics: Callable[[], object] | None = None,
         tray_adapter: response_ui.TrayNotificationAdapter | None = None,
         status_provider=None,
+        include_storage: bool = False,
     ) -> None:
         self.commercial_state = commercial_state
         self.on_export_diagnostics = on_export_diagnostics
@@ -199,6 +201,8 @@ class B136ConsumerWindow(response_ui.B13ConsumerWindow):
             status_provider=status_provider,
         )
         self._install_commercial_support()
+        if include_storage:
+            self._install_storage_analyzer()
         QTimer.singleShot(0, lambda: self._apply_responsive_layout(force=True))
 
     def _install_commercial_support(self) -> None:
@@ -263,6 +267,7 @@ def smoke_test_window(
     snapshot: dict,
     *,
     commercial_state: commercial.CommercialState | None = None,
+    include_storage: bool = False,
 ) -> dict[str, object]:
     app = QApplication.instance() or QApplication([])
     center = response_ui._sample_center()
@@ -285,6 +290,7 @@ def smoke_test_window(
         commercial_state=state,
         on_export_diagnostics=_export,
         tray_adapter=response_ui.TrayNotificationAdapter(),
+        include_storage=include_storage,
     )
     widths = (1440, 960, 680, 560)
     overflow: dict[str, int] = {}
@@ -311,7 +317,7 @@ def smoke_test_window(
         app.processEvents()
 
         passed = (
-            window.stack.count() == 9
+            window.stack.count() == (10 if include_storage else 9)
             and window.stack.currentWidget() is window.commercial_scroll
             and window.commercial_nav_button.isEnabled()
             and window.commercial_page.export_button.isEnabled()
@@ -319,7 +325,7 @@ def smoke_test_window(
             and len(export_calls) == 1
             and state.protection_enabled is True
             and all(value == 0 for value in overflow.values())
-            and len(navigation) == 9
+            and len(navigation) == (10 if include_storage else 9)
             and all(navigation.values())
         )
         return {
