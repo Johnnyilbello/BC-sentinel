@@ -15,6 +15,7 @@ _TOKEN = re.compile(
     r"(?P<comment>\#[^\r\n]*)|"
     r"""(?P<quoted>'(?:[^'\r\n]|'')*'|"(?:[^"\x60\r\n]|\x60[^\r\n])*")|"""
     r"(?P<url>https?://[^\s'\";|(){}]+)|"
+    r"(?P<qualified>Microsoft\.PowerShell\.Utility\\(?:Invoke-Expression|Invoke-WebRequest|Invoke-RestMethod)\b)|"
     r"(?P<word>\$[A-Za-z_]\w*|[A-Za-z_][\w.-]*)|(?P<other>.)",
     re.IGNORECASE,
 )
@@ -74,6 +75,8 @@ def _statements(text):
             tokens.append("<url>" if _URL.fullmatch(value[1:-1]) else "<string>")
         elif kind == "url":
             tokens.append("<url>")
+        elif kind == "qualified":
+            tokens.append(value.rsplit("\\", 1)[-1])
         elif kind not in {"space", "comment"}:
             tokens.append(value)
     if tokens:

