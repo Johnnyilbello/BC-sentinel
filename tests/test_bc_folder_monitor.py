@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from threading import Event, Thread
 
 from watchdog.events import FileCreatedEvent, FileModifiedEvent, FileMovedEvent
@@ -119,7 +120,10 @@ def test_changed_file_recovers_from_temporary_windows_sharing_violation(tmp_path
         if path == target:
             attempts.append(path)
             if len(attempts) == 1:
-                raise OSError(13, "sharing violation", str(path), 32)
+                error = PermissionError(13, "sharing violation", str(path))
+                if os.name != "nt":
+                    error.winerror = 32
+                raise error
         return original_open(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", open_file)

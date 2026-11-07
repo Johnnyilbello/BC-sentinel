@@ -125,7 +125,9 @@ def _open_file(path, wait_for_retry):
     try:
         return path.open("rb")
     except OSError as exc:
-        if (getattr(exc, "winerror", None) not in {32, 33} or
+        code = getattr(exc, "winerror", None)
+        transient = code in {32, 33} or (os.name == "nt" and code is None and isinstance(exc, PermissionError))
+        if (not transient or
                 wait_for_retry is None or wait_for_retry(0.2)):
             raise
     return path.open("rb")

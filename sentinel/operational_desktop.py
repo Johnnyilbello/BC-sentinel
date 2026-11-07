@@ -193,7 +193,7 @@ class OperationalWindow(QMainWindow):
             #OverviewMuted {{ color: #b8c5ce; }}
             #OverviewMetric {{ font-size: 17px; font-weight: 650; }}
             #DashboardPanel {{ background: #171e22; border: 1px solid #343f46; border-radius: 12px; }}
-            #OverviewHero {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #123229,stop:0.52 #131b1d,stop:1 #111719); border-radius: 12px; }}
+            #OverviewHero {{ background: qradialgradient(cx:0.13,cy:0.50,radius:0.55,stop:0 #174235,stop:0.38 #142521,stop:1 #111719); border-radius: 12px; }}
             #OverviewEvent {{ border-top: 1px solid #344047; padding-top: 8px; padding-bottom: 4px; }}
             #OverviewPrimary {{ color: #052016; font-size: 16px; font-weight: 700; text-align: center;
                 background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #58eda8,stop:1 #23ca72); border: 1px solid #54e6a0; }}

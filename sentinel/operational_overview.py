@@ -155,6 +155,8 @@ class OperationalOverview(QWidget):
         layout.addWidget(hero)
 
         actions = QHBoxLayout()
+        actions.setSpacing(14)
+        actions.addStretch(2)
         for key, title, icon, action, primary in (
             ("dashboard_bc", "Avvia scansione", "scan", window.start_bc_from_dashboard, True),
             ("dashboard_folder", "Scegli cartella", "folder", window.choose_bc_from_dashboard, False),
@@ -163,8 +165,9 @@ class OperationalOverview(QWidget):
             button.setObjectName("OverviewPrimary" if primary else "OverviewSecondary")
             button.setMinimumHeight(48)
             button.clicked.connect(action)
-            actions.addWidget(button, 1)
+            actions.addWidget(button, 4 if primary else 3)
             window.command_buttons[key] = button
+        actions.addStretch(2)
         layout.addLayout(actions)
 
         cards = QHBoxLayout()
