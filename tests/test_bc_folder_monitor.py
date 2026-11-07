@@ -102,3 +102,29 @@ def test_ready_busy_file_is_not_hidden_behind_settling_file(monkeypatch):
     assert pending.take_ready() == (["busy.txt"], 0)
     clock[0] = 5.6
     assert pending.take_ready() == (["new.txt"], 0)
+
+
+def test_changed_file_recovers_from_temporary_windows_sharing_violation(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from sentinel.bc_scan import BCScanEngine, scan_changed
+
+    target = tmp_path / "busy.txt"
+    target.write_text("harmless fixture")
+    engine = BCScanEngine.load(None, None)
+    original_open = Path.open
+    attempts = []
+
+    def open_file(path, *args, **kwargs):
+        if path == target:
+            attempts.append(path)
+            if len(attempts) == 1:
+                raise OSError(13, "sharing violation", str(path), 32)
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_file)
+    result = scan_changed(tmp_path, [target], engine, cancelled=lambda: False,
+                          wait_for_retry=lambda _: False)
+    assert len(attempts) == 2
+    assert result["files"] == 1
+    assert result["skipped"] == 0

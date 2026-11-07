@@ -102,7 +102,7 @@ def scan_folder(root, *, catalog_path=None, yara_path=None, cancelled=lambda: Fa
     return _scan(engine, lambda error: _walk_files(root, error, cancelled), cancelled, progress)
 
 
-def scan_changed(root, paths, engine, *, cancelled):
+def scan_changed(root, paths, engine, *, cancelled, wait_for_retry=None):
     def candidates(error):
         for value in paths:
             path = Path(os.path.abspath(value))
@@ -118,10 +118,20 @@ def scan_changed(root, paths, engine, *, cancelled):
                 continue
             yield path
 
-    return _scan(engine, candidates, cancelled, lambda *_: None)
+    return _scan(engine, candidates, cancelled, lambda *_: None, wait_for_retry=wait_for_retry)
 
 
-def _scan(engine, candidates, cancelled, progress):
+def _open_file(path, wait_for_retry):
+    try:
+        return path.open("rb")
+    except OSError as exc:
+        if (getattr(exc, "winerror", None) not in {32, 33} or
+                wait_for_retry is None or wait_for_retry(0.2)):
+            raise
+    return path.open("rb")
+
+
+def _scan(engine, candidates, cancelled, progress, *, wait_for_retry=None):
     catalog, rules = engine.catalog, engine.rules
     result = {"files": 0, "skipped": 0, "errors": [], "findings": [], "cancelled": False}
 
@@ -176,7 +186,7 @@ def _scan(engine, candidates, cancelled, progress):
             suffix = p.suffix.casefold()
             script_limited = suffix in SCRIPT_SUFFIXES and before.st_size > MAX_SCRIPT_BYTES
             is_archive = suffix in ARCHIVE_SUFFIXES
-            with p.open("rb") as f:
+            with _open_file(p, wait_for_retry) as f:
                 opened = os.fstat(f.fileno())
                 if not os.path.samestat(before, opened):
                     raise OSError(f"Identità del file cambiata prima della lettura: {p}")

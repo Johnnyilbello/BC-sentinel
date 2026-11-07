@@ -89,7 +89,8 @@ def monitor_folder(folder, *, catalog, yara_path, stop, started, report, on_aler
                 raise OSError("La cartella monitorata è stata sostituita.")
             paths, missed = changes.take_ready()
             if paths or missed:
-                result = scan_changed(root, paths, engine, cancelled=stop.is_set)
+                result = scan_changed(root, paths, engine, cancelled=stop.is_set,
+                                      wait_for_retry=stop.wait)
                 report(result, missed)
     finally:
         observer.stop()
