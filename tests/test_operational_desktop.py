@@ -136,3 +136,21 @@ def test_unexpected_callback_exception_is_reported_and_logged(desktop, monkeypat
         module.sys.excepthook(*module.sys.exc_info())
     assert messages and "Errore campione" in messages[0]
     assert "Errore campione" in (desktop.data_root / "errors.log").read_text(encoding="utf-8")
+
+
+def test_monitor_coverage_warnings_reach_threats_and_badge(desktop):
+    page = desktop.bc_page
+    page.monitor_counts = [0, 0, 0]
+    page.monitor_folder = "C:/test-watch"
+    page.monitor = SimpleNamespace(stop_event=SimpleNamespace(is_set=lambda: False))
+    try:
+        page._monitor_batch({"files": 0, "findings": [], "skipped": 0, "errors": []}, 3)
+        page._monitor_failed("Sorgente eventi persa")
+        assert desktop._unread_bc_notices == 2
+        desktop.nav_buttons["Quarantena"].click()
+        notices = desktop.bc_notices.toPlainText()
+        assert "3 eventi da verificare" in notices
+        assert "Sorgente eventi persa" in notices
+        assert desktop._unread_bc_notices == 0
+    finally:
+        page.monitor = None
