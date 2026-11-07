@@ -55,3 +55,21 @@ def test_corrupt_zip_member_does_not_hide_later_script(tmp_path):
     assert result["skipped"] == 1
     assert "first.txt" in result["errors"][0]
     assert any("second.ps1" in hit["path"] for hit in result["findings"])
+
+
+def test_nested_zip_is_scanned_with_shared_member_budget(tmp_path, monkeypatch):
+    import io
+
+    inner = io.BytesIO()
+    with zipfile.ZipFile(inner, "w") as archive:
+        archive.writestr("script.ps1", FLOW)
+    with zipfile.ZipFile(tmp_path / "outer.zip", "w") as archive:
+        archive.writestr("inner.zip", inner.getvalue())
+    result = scan_folder(tmp_path)
+    assert result["skipped"] == 0
+    assert any("inner.zip" in hit["path"] and "script.ps1" in hit["path"]
+               for hit in result["findings"])
+    monkeypatch.setattr("sentinel.bc_scan.MAX_ARCHIVE_MEMBERS", 1)
+    limited = scan_folder(tmp_path)
+    assert limited["skipped"] == 1
+    assert not limited["findings"]

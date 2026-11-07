@@ -22,17 +22,22 @@ MAX_ARCHIVE_MEMBERS = 256
 MAX_ARCHIVE_EXPANSION = 64 * 1024 * 1024
 
 
-def _scan_archive(data, path, cancelled, inspect, error):
+def _scan_archive(data, path, cancelled, inspect, error, *, depth=0, budget=None):
+    if budget is None:
+        budget = [MAX_ARCHIVE_MEMBERS, MAX_ARCHIVE_EXPANSION]
     expected, _, reasons = read_zip_directory_tail(data[-MAX_EOCD_TAIL_BYTES:], len(data))
-    if reasons or expected > MAX_ARCHIVE_MEMBERS:
+    if reasons or expected > budget[0]:
         error(f"Contenuto ZIP non analizzato: {path} ({', '.join(reasons) or 'limite elementi'})")
         return
     try:
         with zipfile.ZipFile(io.BytesIO(data), allowZip64=False) as archive:
             members = archive.infolist()
-            if len(members) != expected or sum(member.file_size for member in members) > MAX_ARCHIVE_EXPANSION:
+            expansion = sum(member.file_size for member in members)
+            if len(members) != expected or expansion > budget[1]:
                 error(f"Contenuto ZIP non analizzato: {path} (limite espansione o indice incoerente)")
                 return
+            budget[0] -= expected
+            budget[1] -= expansion
             for member in members:
                 if cancelled():
                     return
@@ -56,7 +61,10 @@ def _scan_archive(data, path, cancelled, inspect, error):
                 suffix = Path(member.filename).suffix.casefold()
                 inspect(payload, hashlib.sha256(payload).hexdigest(), location, suffix)
                 if suffix in ARCHIVE_SUFFIXES or payload.startswith(b"PK\x03\x04"):
-                    error(f"Archivio annidato non aperto: {location}")
+                    if depth == 0:
+                        _scan_archive(payload, location, cancelled, inspect, error, depth=1, budget=budget)
+                    else:
+                        error(f"Archivio annidato non aperto: {location}")
     except (OSError, ValueError, RuntimeError, EOFError, zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as exc:
         error(f"Contenuto ZIP non analizzato: {path} ({exc})")
 
