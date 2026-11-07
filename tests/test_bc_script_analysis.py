@@ -142,3 +142,9 @@ def test_cancel_stops_archive_traversal_before_following_member():
     assert len(inspected) == 1
     assert "one.ps1" in inspected[0]
     assert not errors
+
+
+def test_bomless_utf16_scripts_and_benign_text():
+    for encoding in ("utf-16-le", "utf-16-be"):
+        assert inspect_script(FLOW.encode(encoding), ".ps1")
+        assert not inspect_script("Write-Output 'hello'".encode(encoding), ".ps1")

@@ -34,8 +34,10 @@ def _text(data):
         return data.decode("utf-16", errors="replace")
     if b"\0" in data[:256]:
         sample = data[:256]
-        if len(data) % 2 == 0 and sample[1::2].count(0) >= len(sample) // 4 and 0 not in sample[::2]:
-            return data.decode("utf-16-le", errors="replace")
+        if len(data) % 2 == 0:
+            for offset, encoding in ((1, "utf-16-le"), (0, "utf-16-be")):
+                if sample[offset::2].count(0) >= len(sample) // 4 and 0 not in sample[1 - offset::2]:
+                    return data.decode(encoding, errors="replace")
         raise ValueError("codifica script non riconosciuta")
     return data.decode("utf-8-sig", errors="replace")
 
