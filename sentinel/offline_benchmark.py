@@ -101,6 +101,23 @@ def _advantage(scores: dict[str, dict[str, float]]) -> dict[str, float]:
     }
 
 
+def _category_detection(rows: list[dict]) -> list[dict]:
+    groups = {}
+    for row in rows:
+        key = (row["label"], row["category"].strip())
+        group = groups.setdefault(key, {"samples": 0, "bc_hits": 0, "defender_hits": 0})
+        group["samples"] += 1
+        bc, defender = (row["results"][product] for product in PRODUCTS)
+        group["bc_hits"] += sum(run["detected"] for run in bc)
+        group["defender_hits"] += sum(run["detected"] for run in defender)
+    return [
+        {"label": label, "category": category, **group,
+         "bc_regression": (group["bc_hits"] < group["defender_hits"] if label == "malicious"
+                           else group["bc_hits"] > group["defender_hits"])}
+        for (label, category), group in sorted(groups.items())
+    ]
+
+
 def evaluate(raw: object, *, bootstrap_iterations: int = 2000) -> dict:
     rows = validate_manifest(raw)
     if type(bootstrap_iterations) is not int or not 1000 <= bootstrap_iterations <= 10000:
@@ -136,12 +153,15 @@ def evaluate(raw: object, *, bootstrap_iterations: int = 2000) -> dict:
     # Bonferroni: five one-sided 99% lower bounds give familywise >=95%.
     lower_bounds = {name: sorted(draws[name])[max(0, int(bootstrap_iterations * 0.01) - 1)]
                     for name in METRICS}
-    passed = all(differences[name] > 0 and lower_bounds[name] > 0 for name in METRICS)
+    category_detection = _category_detection(rows)
+    passed = (all(differences[name] > 0 and lower_bounds[name] > 0 for name in METRICS)
+              and not any(group["bc_regression"] for group in category_detection))
     return {
         "schema": SCHEMA,
         "sample_counts": {name: len(group) for name, group in by_label.items()},
         "repetitions_per_product": REPEATS,
         "scores": scores,
+        "category_detection": category_detection,
         "bc_advantage": differences,
         "simultaneous_95_lower_bounds": lower_bounds,
         "statistical_gate_passed": passed,
