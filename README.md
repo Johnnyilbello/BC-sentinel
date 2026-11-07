@@ -2,7 +2,7 @@
 
 BC Sentinel è un progetto Windows per analisi delle minacce, scansione offline, recupero e gestione dello spazio del PC. L’interfaccia è in italiano.
 
-La versione in sviluppo integra **BC Storage Analyzer**, un **motore BC sperimentale** con indicatori ESET Research, monitoraggio di una cartella e quarantena cifrata, oltre ai controlli separati di **Microsoft Defender**. Il monitor BC analizza i file dopo la modifica mentre l'applicazione è aperta. Il progetto è in valutazione interna.
+La versione in sviluppo integra **BC Storage Analyzer** e un **motore BC sperimentale** con indicatori ESET Research, monitoraggio di una cartella e quarantena cifrata. Il monitor BC analizza i file dopo la modifica mentre l'applicazione è aperta. Il progetto è in valutazione interna.
 
 ## Cosa puoi fare
 
@@ -10,11 +10,9 @@ La versione in sviluppo integra **BC Storage Analyzer**, un **motore BC sperimen
 | --- | --- |
 | Panoramica | Avviare la scansione BC e consultare risultati, attività recenti e spazio su disco |
 | Scansione | Analizzare una cartella e i file modificati con SHA-256 e regole YARA |
-| Scansione offline | Esaminare Windows offline con SHA-256, YARA e controlli strutturali su PE e ZIP |
-| Protezione → Microsoft Defender | Leggere lo stato del motore Windows, avviare scansioni e richiedere la rimozione delle minacce attive |
-| Storage Analyzer | Confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
-| Rimozioni in Storage Analyzer | Spostare nel Cestino, eliminare definitivamente o disinstallare un’app dopo conferma |
-| Minacce | Consultare gli avvisi BC, isolare e ripristinare file idonei, leggere i rilevamenti di Defender |
+| Minacce | Consultare gli avvisi BC, isolare e ripristinare file idonei |
+| Archivio | Aprire Storage Analyzer per confrontare unità, cartelle, file, estensioni, applicazioni e RAM per processo |
+| Impostazioni | Consultare la diagnostica e aprire lo scanner offline di Windows |
 
 ## Avvio su Windows
 
@@ -32,9 +30,7 @@ $env:PYTHONPATH = (Get-Location).Path
 .\.venv\Scripts\python.exe .\packaging\beta13_desktop_entry.py
 ~~~
 
-Apri **Storage Analyzer** nel menu laterale per analizzare spazio e RAM. Le scansioni antivirus si avviano dalla **Dashboard** o da **Scansione**. La Dashboard legge automaticamente lo stato del motore. **Protezione** offre aggiornamento firme, accesso a Sicurezza di Windows e avvio come amministratore.
-
-Defender applica le impostazioni di risposta configurate in Windows durante le scansioni. Il comando di rimozione riguarda tutte le minacce attive riconosciute da Defender. Permessi insufficienti, motore disabilitato o modalità passiva vengono riportati nell’interfaccia.
+Apri **Archivio → Apri BC Storage Analyzer** per analizzare spazio e RAM. Le scansioni BC si avviano da **Panoramica** o da **Scansione**. **Panoramica → Vedi tutto** apre la cronologia delle operazioni. **Impostazioni** include l'accesso alla scansione offline, alla diagnostica e all'avvio come amministratore.
 
 ## Guide e limiti
 

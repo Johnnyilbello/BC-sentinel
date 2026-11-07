@@ -32,29 +32,6 @@ class StorageWindowMixin:
         layout = self.sidebar.layout()
         layout.insertWidget(max(layout.indexOf(b) for b in self.nav_buttons.values()) + 1, button)
         self.nav_buttons[PAGE_NAME] = button
-        self._install_defender_entry()
-
-    def _install_defender_entry(self) -> None:
-        from sentinel.ui_pages import SectionHeader
-        self.protection_page.layout().addWidget(SectionHeader(
-            "Scansione e rimozione con Microsoft Defender",
-            "Usa il motore presente in Windows per controllare il PC e rimuovere le minacce attive rilevate.",
-        ))
-        self.defender_button = QPushButton("Apri i controlli di Microsoft Defender")
-        self.defender_button.setObjectName("DetailsButton")
-        self.defender_button.setMinimumHeight(44)
-        self.defender_button.clicked.connect(self._open_defender)
-        self.protection_page.layout().addWidget(self.defender_button)
-
-    def _open_defender(self) -> None:
-        from sentinel.windows_defender_ui import WindowsDefenderDialog
-        dialog = WindowsDefenderDialog(self)
-        dialog.exec()
-
-    def _refresh_snapshot(self) -> None:
-        super()._refresh_snapshot()
-        if hasattr(self, "storage_page"):
-            self._install_defender_entry()
 
     def closeEvent(self, event) -> None:
         page = getattr(self, "storage_page", None)

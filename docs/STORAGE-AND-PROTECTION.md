@@ -2,7 +2,7 @@
 
 ## Spazio su disco e RAM
 
-Nel desktop apri **Storage Analyzer → Apri BC Storage Analyzer**.
+Nel desktop apri **Archivio → Apri BC Storage Analyzer**.
 Lo strumento usa una finestra dedicata. **Avvia scansione** analizza tutte le unità locali con lettera pronte all’uso oppure una singola unità.
 
 Le schede mostrano dischi, cartelle, file, estensioni, stime delle applicazioni desktop e RAM residente per processo. Cartelle parte dal primo livello e permette di mostrare le sottocartelle. File e Cartelle mostrano fino a 500 voci ordinate per dimensione decrescente.
@@ -21,20 +21,11 @@ In Applicazioni, **Disinstalla applicazione** avvia la procedura registrata in W
 Se il comando manca o non è supportato, viene proposto di aprire App installate.
 Le dimensioni delle applicazioni sono stime degli installer.
 
-## Scansionare e rimuovere minacce con Defender
+## Scansionare e isolare minacce con BC
 
-Apri **Scansione** per i controlli Defender. La Dashboard legge lo stato all’avvio e offre anche i comandi di scansione rapida e completa. **Scansiona una cartella** permette di scegliere il percorso.
-Il pannello riporta modalità del motore, versione e data delle firme e minacce attive.
-Le scansioni si abilitano quando Defender dichiara servizio e antivirus attivi in modalità normale.
+Apri **Scansione** per scegliere una cartella o avviare il monitoraggio. **Minacce** raccoglie i rilevamenti e offre la quarantena cifrata e il ripristino dei file idonei. L'isolamento richiede conferma. [Motore BC sperimentale](MOTORE-BC-SPERIMENTALE.md)
 
-Defender applica le impostazioni di risposta del PC durante le scansioni, che possono includere quarantena e rimozione.
-**Rimuovi tutte le minacce attive rilevate da Defender** richiede conferma e agisce su tutte le minacce attive del motore Microsoft. Errori e permessi insufficienti vengono mostrati nel pannello.
-
-La disponibilità dipende dalla configurazione Windows. Possono servire permessi amministrativi. La finestra richiede di attendere la conclusione del comando prima di chiudersi.
-
-In **Protezione** puoi aggiornare le firme, aprire Sicurezza di Windows o avviare Sentinel come amministratore. In **Quarantena** puoi aggiornare i rilevamenti e aprire la gestione degli elementi isolati in Sicurezza di Windows. **Cronologia** registra le operazioni del desktop e consente di esportarle.
-
-[Riferimento dei comandi Defender](https://learn.microsoft.com/en-us/powershell/module/defender/), [rimozione delle minacce attive](https://learn.microsoft.com/en-us/powershell/module/defender/remove-mpthreat)
+**Impostazioni** include la scansione offline, la diagnostica e l'avvio come amministratore. **Panoramica → Vedi tutto** apre **Cronologia**, che consente di esportare le operazioni del desktop.
 
 ## Compilazione e integrazione
 
@@ -48,8 +39,7 @@ La versione a file singolo estrae automaticamente i componenti temporanei. Chiud
 
 ## Verifiche e limiti
 
-I test verificano disponibilità, errori di avvio, navigazione, finestre ridotte, riapertura e conferma negata della rimozione Defender.
-Scansioni e rimozioni Defender vengono simulate nei test automatici.
+I test verificano navigazione, finestre ridotte, avvio e riapertura di Storage Analyzer, scansioni BC e quarantena su campioni dedicati.
 I test nativi di Storage Analyzer provano realmente Cestino ed eliminazione definitiva su campioni creati appositamente.
 
-La nuova pagina usa il motore Microsoft. Le classificazioni autonome di Sentinel restano limitate ai rilevatori e ai casi provati. Una scansione conclusa non garantisce che il PC sia libero da tutte le minacce.
+Le classificazioni di Sentinel coprono i rilevatori e i casi documentati nella guida del motore BC.

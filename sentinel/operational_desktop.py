@@ -12,7 +12,7 @@ import traceback
 from PySide6.QtCore import QSaveFile, QIODevice, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel,
     QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QStackedWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -21,7 +21,6 @@ from sentinel.storage_analyzer_ui import StorageAnalyzerPage
 from sentinel.ui_design_system import COLORS, make_icon
 from sentinel.ui_pages import PageHeader
 from sentinel.ui_styles import home_stylesheet
-from sentinel.windows_defender_ui import WindowsDefenderDialog
 from sentinel.bc_scan_ui import BCScanPage
 from sentinel import bc_research_intel
 from sentinel.bc_quarantine_ui import BCVaultPane
@@ -54,7 +53,7 @@ def install_exception_reporting(window) -> None:
 
 
 class OperationalWindow(QMainWindow):
-    def __init__(self, *, data_root: Path | None = None, auto_status: bool = True) -> None:
+    def __init__(self, *, data_root: Path | None = None) -> None:
         super().__init__()
         self.setWindowTitle("BC Sentinel")
         self.resize(1180, 820)
@@ -68,7 +67,6 @@ class OperationalWindow(QMainWindow):
         self.command_buttons = {}
         self.nav_buttons = {}
         self.pages = {}
-        self.pending_scan = None
         self.offline_dialog = None
         self._closing_monitor = False
         self._unread_bc_notices = 0
@@ -107,13 +105,11 @@ class OperationalWindow(QMainWindow):
         root.addWidget(self.stack, 1)
         self.setCentralWidget(shell)
         for name, icon in (
-            ("Dashboard", "dashboard"), ("Motore BC", "scan"), ("Scansione", "scan"), ("Scansione offline", "folder"),
-            ("Quarantena", "quarantine"), ("Cronologia", "history"),
-            ("Protezione", "shield"), ("Storage Analyzer", "folder"), ("Impostazioni e aiuto", "settings"),
+            ("Dashboard", "dashboard"), ("Motore BC", "scan"),
+            ("Quarantena", "quarantine"), ("Storage Analyzer", "folder"), ("Impostazioni e aiuto", "settings"),
         ):
-            label = {"Dashboard": "Panoramica", "Motore BC": "Scansione",
-                     "Scansione": "Microsoft Defender", "Quarantena": "Minacce",
-                     "Storage Analyzer": "Archivio", "Impostazioni e aiuto": "Impostazioni"}.get(name, name)
+            label = {"Dashboard": "Panoramica", "Motore BC": "Scansione", "Quarantena": "Minacce",
+                     "Storage Analyzer": "Archivio", "Impostazioni e aiuto": "Impostazioni"}[name]
             button = QPushButton(label)
             button.setObjectName("NavItem")
             button.setIcon(make_icon(icon))
@@ -136,25 +132,12 @@ class OperationalWindow(QMainWindow):
         self.bc_page.scan_failed.connect(self._bc_failed)
         self.bc_page.monitor_stopped.connect(self._close_after_monitor)
 
-        page = self._page("Scansione", "Controlli operativi del motore Microsoft Defender")
-        self.engine = WindowsDefenderDialog()
-        self.engine.setParent(page)
-        self.engine.setWindowFlags(Qt.WindowType.Widget)
-        page.layout().addWidget(self.engine)
-        self._button("custom_scan", "Scansiona una cartella…", self.custom_scan, page)
-        self._button("dashboard_quick", "Scansione rapida con Defender", lambda: self.request_scan("quick"), page)
-        self._button("dashboard_full", "Scansione completa con Defender", lambda: self.request_scan("full"), page)
-        self.engine.process.finished.connect(self._engine_finished)
-        self.engine.process.errorOccurred.connect(self._engine_error)
-        self.engine.dispatch_failed.connect(self._engine_error)
-        self.engine.setMinimumHeight(500)
-
         page = self._page("Scansione offline", "Esamina un’installazione Windows offline con SHA-256 e YARA")
         self._label("Scegli il volume Windows da esaminare e una cartella dei report su un altro volume. "
                     "La scansione legge i file e segnala rilevamenti, errori e limiti della copertura.", page)
         self._button("offline_open", "Apri scansione offline", self.open_offline, page, primary=True)
 
-        page = self._page("Quarantena", "Segnalazioni del motore BC e rilevamenti di Microsoft Defender")
+        page = self._page("Quarantena", "Segnalazioni e quarantena del motore BC")
         self.bc_vault = BCVaultPane(self.data_root / "quarantine")
         page.layout().addWidget(self.bc_vault)
         self.bc_page.monitor_finding.connect(self.bc_vault.add_finding)
@@ -166,17 +149,6 @@ class OperationalWindow(QMainWindow):
         self.bc_notices.setMinimumHeight(112)
         page.layout().addWidget(self.bc_notices)
         self.bc_page.monitor_notice.connect(self._add_bc_notice)
-        self._label("Microsoft Defender", page)
-        self.threats = QTextEdit()
-        self.threats.setReadOnly(True)
-        self.threats.setMinimumHeight(240)
-        page.layout().addWidget(self.threats)
-        self._label("Per consultare gli elementi isolati o ripristinarli, apri Sicurezza di Windows e scegli "
-                    "Protezione da virus e minacce → Cronologia della protezione.", page)
-        self._button("quarantine_refresh", "Aggiorna rilevamenti", self.refresh_status, page)
-        self._button("quarantine_windows", "Apri Sicurezza di Windows", self.open_windows_security, page)
-        self._button("quarantine_remove", "Rimuovi le minacce attive rilevate", self.request_removal, page)
-
         page = self._page("Cronologia", "Operazioni effettivamente eseguite da questo desktop")
         self.history = QTextEdit()
         self.history.setReadOnly(True)
@@ -185,36 +157,20 @@ class OperationalWindow(QMainWindow):
         self._button("history_refresh", "Aggiorna cronologia", self.render_history, page)
         self._button("history_export", "Esporta cronologia…", self.export_history, page)
 
-        page = self._page("Protezione", "Stato e gestione del motore antivirus di Windows")
-        self.protection = self._label("Aggiorna lo stato per leggere i valori correnti del motore.", page)
-        self.overview = self.protection
-        self._button("dashboard_refresh", "Aggiorna stato", self.refresh_status, page)
-        self._button("protection_refresh", "Aggiorna stato protezione", self.refresh_status, page)
-        self._button("signatures", "Aggiorna firme antivirus", lambda: self.request_scan("update"), page)
-        self._button("security_settings", "Apri Sicurezza di Windows", self.open_windows_security, page)
-        self._button("administrator", "Apri BC Sentinel come amministratore", self.elevate, page)
-
         self.storage_page = StorageAnalyzerPage()
         self._add_page("Storage Analyzer", self.storage_page)
         self.command_buttons["dashboard_storage"] = self.nav_buttons["Storage Analyzer"]
 
         page = self._page("Impostazioni e aiuto", "Preferenze locali, diagnostica e istruzioni")
-        self.auto_refresh = QCheckBox("Aggiorna lo stato antivirus ogni 60 secondi")
-        self.auto_refresh.setChecked(self._load_auto_refresh())
-        self.auto_refresh.toggled.connect(self.save_settings)
-        page.layout().addWidget(self.auto_refresh)
-        self._label("Scansione usa il motore BC e gli indicatori integrati. Microsoft Defender ha comandi separati. Storage Analyzer mostra spazio e RAM e offre rimozioni con conferma. "
-                    "Le operazioni protette possono richiedere l’avvio come amministratore. "
-                    "La disponibilità di Defender dipende dalla configurazione Windows.", page)
+        self._label("La scansione usa il motore BC e gli indicatori integrati. "
+                    "Il monitor controlla la cartella scelta mentre BC Sentinel è aperto. "
+                    "Archivio mostra spazio e RAM e offre rimozioni con conferma.", page)
+        self._button("offline_settings", "Scansione offline", lambda: self.navigate("Scansione offline"), page)
+        self._button("administrator", "Apri BC Sentinel come amministratore", self.elevate, page)
         self._button("diagnostics", "Esporta diagnostica…", self.export_diagnostics, page)
         self._button("data_folder", "Apri cartella dati", self.open_data_folder, page)
         self._button("help", "Come usare BC Sentinel", self.show_help, page)
         self._button("about", "Informazioni sul programma", self.show_about, page)
-        self.refresh_timer = QTimer(self)
-        self.refresh_timer.setInterval(60000)
-        self.refresh_timer.timeout.connect(self.refresh_if_idle)
-        if self.auto_refresh.isChecked():
-            self.refresh_timer.start()
         self.render_history()
         self.navigate("Dashboard")
         self.setStyleSheet(home_stylesheet() + f"""
@@ -249,8 +205,6 @@ class OperationalWindow(QMainWindow):
             #OverviewDisk::chunk {{ background: #45e294; border-radius: 6px; }}
             QTextEdit {{ background: {COLORS['surface_lowest']}; border: 1px solid {COLORS['border_subtle']}; padding: 12px; }}
         """)
-        if auto_status:
-            QTimer.singleShot(0, self.refresh_if_idle)
 
     def _label(self, text, page):
         label = QLabel(text)
@@ -286,7 +240,7 @@ class OperationalWindow(QMainWindow):
     def navigate(self, name):
         self.stack.setCurrentWidget(self.pages[name])
         for route, button in self.nav_buttons.items():
-            button.setChecked(route == name)
+            button.setChecked(route == {"Cronologia": "Dashboard", "Scansione offline": "Impostazioni e aiuto"}.get(name, name))
         if name == "Storage Analyzer":
             self.storage_page.refresh_availability()
         if name == "Cronologia":
@@ -342,84 +296,15 @@ class OperationalWindow(QMainWindow):
         self._record("Scansione BC", message, parziale=True, errore=True)
         self.dashboard.render_events(self.events)
 
-    def refresh_if_idle(self):
-        if not self.engine.busy():
-            self.engine.run("status")
-
-    def refresh_status(self):
-        if self.engine.busy():
-            self.navigate("Scansione")
-            QMessageBox.information(self, "Operazione in corso", "Il motore sta eseguendo un comando. "
-                "Il risultato apparirà nella pagina Scansione al termine.")
-            return
-        self.engine.run("status")
-
-    def request_scan(self, action, path=None):
-        self.navigate("Scansione")
-        if self.engine.busy():
-            QMessageBox.information(self, "Operazione in corso", "Attendi il termine del comando in esecuzione.")
-            return
-        if action != "update" and QMessageBox.question(
-            self, "Avvia scansione", "Defender applicherà le impostazioni di risposta del PC, che possono includere "
-            "quarantena o rimozione delle minacce rilevate. Avviare la scansione?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No,
-        ) != QMessageBox.StandardButton.Yes:
-            return
-        if self.engine.ready:
-            self.engine.run(action, scan_path=path)
-        else:
-            self.pending_scan = (action, path)
-            self.engine.run("status")
-
-    def custom_scan(self):
-        folder = QFileDialog.getExistingDirectory(self, "Cartella da scansionare")
-        if folder:
-            self.request_scan("custom", folder)
-
-    def request_removal(self):
-        self.navigate("Scansione")
-        if self.engine.remove_button.isEnabled():
-            self.engine.remove()
-        else:
-            self.engine.run("status")
-            QMessageBox.information(self, "Rimozione delle minacce",
-                "Lo stato viene aggiornato. La rimozione si abilita nella pagina Scansione quando Defender "
-                "è attivo e riporta minacce attive.")
-
-    def _engine_finished(self, code, exit_status):
-        data = self.engine.last_result
-        if data is not None:
-            self.protection.setText(self.engine.report.toPlainText() + "\nProtezione in tempo reale: " +
-                                    ("attiva" if data.get("realtime_enabled") else "non attiva"))
-            records = data.get("threat_history", [])
-            self.threats.setPlainText("\n".join(
-                str(item.get("name", "")) + (" · attiva" if item.get("active") else " · rilevata in passato")
-                for item in records if isinstance(item, dict)
-            ) or "Defender non riporta minacce nella cronologia disponibile.")
-        else:
-            self.protection.setText(self.engine.status.text() + "\nProva l’avvio come amministratore o apri Sicurezza di Windows.")
-            self.threats.setPlainText("Rilevamenti non aggiornati. " + self.engine.status.text())
-        self._record(self.engine.action, "completata" if data is not None else self.engine.status.text())
-        pending, self.pending_scan = self.pending_scan, None
-        if pending is not None:
-            if self.engine.ready:
-                self.engine.run(pending[0], scan_path=pending[1])
-            else:
-                self.engine.status.setText("Scansione non avviata. " + self.engine.status.text() +
-                    " Controlla Protezione o avvia BC Sentinel come amministratore.")
-
-    def _engine_error(self, error):
-        self.pending_scan = None
-        self.overview.setText(self.engine.status.text())
-        self.protection.setText(self.engine.status.text())
-        self.threats.setPlainText("Rilevamenti non aggiornati. " + self.engine.status.text())
-        self._record(self.engine.action, self.engine.status.text())
-
     def _load_events(self):
+        self.history_path = self.data_root / "history-bc.json"
+        source = self.history_path if self.history_path.exists() else self.data_root / "history.json"
+        retired_actions = {"status", "quick", "full", "custom", "remove", "update"}
         try:
-            value = json.loads((self.data_root / "history.json").read_text(encoding="utf-8"))
+            value = json.loads(source.read_text(encoding="utf-8"))
             if isinstance(value, list):
-                self.events = [item for item in value[-200:] if isinstance(item, dict)]
+                self.events = [item for item in value[-200:] if isinstance(item, dict)
+                               and str(item.get("azione", "")) not in retired_actions]
         except (OSError, ValueError):
             pass
 
@@ -428,7 +313,7 @@ class OperationalWindow(QMainWindow):
                             **metadata})
         self.events = self.events[-200:]
         try:
-            write_json(self.data_root / "history.json", self.events)
+            write_json(self.history_path, self.events)
         except OSError as error:
             self.statusBar().showMessage("Cronologia non salvata: " + str(error))
         self.render_history()
@@ -455,31 +340,22 @@ class OperationalWindow(QMainWindow):
         self._export("Esporta cronologia", "BC-Sentinel-cronologia.json", self.events)
 
     def export_diagnostics(self):
-        self._export("Esporta diagnostica", "BC-Sentinel-diagnostica.json",
-            {"programma": "BC Sentinel", "stato_defender": self.engine.last_result,
-             "errore": self.engine.last_error, "storage_disponibile": self.storage_page.launch_button.isEnabled()})
-
-    def _load_auto_refresh(self):
-        try:
-            value = json.loads((self.data_root / "settings.json").read_text(encoding="utf-8"))
-            return isinstance(value, dict) and value.get("auto_refresh") is True
-        except (OSError, ValueError):
-            return False
-
-    def save_settings(self, enabled):
-        try:
-            write_json(self.data_root / "settings.json", {"auto_refresh": enabled})
-            self.refresh_timer.start() if enabled else self.refresh_timer.stop()
-            self.statusBar().showMessage("Preferenze salvate.", 4000)
-        except OSError as error:
-            QMessageBox.warning(self, "Preferenze", str(error))
+        result = self.bc_page.last_result
+        summary = None if result is None else {
+            "file": result["files"], "saltati": result["skipped"],
+            "segnalazioni": len(result["findings"]), "annullata": result["cancelled"],
+        }
+        self._export("Esporta diagnostica", "BC-Sentinel-diagnostica.json", {
+            "programma": "BC Sentinel",
+            "ultima_scansione_bc": summary,
+            "monitor_attivo": self.bc_page.monitor is not None,
+            "revisione_catalogo": bc_research_intel.REVISION,
+            "storage_disponibile": self.storage_page.launch_button.isEnabled(),
+        })
 
     def _open_url(self, url):
         if not QDesktopServices.openUrl(QUrl(url)):
             QMessageBox.warning(self, "Apertura non riuscita", "Windows non ha aperto la destinazione richiesta.")
-
-    def open_windows_security(self):
-        self._open_url("ms-settings:windowsdefender")
 
     def open_data_folder(self):
         try:
@@ -492,7 +368,7 @@ class OperationalWindow(QMainWindow):
         if not getattr(sys, "frozen", False):
             QMessageBox.information(self, "Permessi amministrativi", "Usa questo comando dalla versione .exe di BC Sentinel.")
             return
-        if self.bc_page.worker is not None or self.bc_page.monitor is not None or self.engine.busy() or self.storage_page.process is not None or (
+        if self.bc_page.worker is not None or self.bc_page.monitor is not None or self.storage_page.process is not None or (
             self.offline_dialog is not None and self.offline_dialog._thread is not None
         ):
             QMessageBox.information(self, "Operazione in corso", "Concludi le operazioni e chiudi Storage Analyzer prima di riavviare.")
@@ -520,12 +396,11 @@ class OperationalWindow(QMainWindow):
 
     def show_help(self):
         QMessageBox.information(self, "Come usare BC Sentinel",
-            "1. Dashboard legge lo stato reale di Microsoft Defender.\n"
-            "2. Scansione avvia i controlli antivirus e la rimozione delle minacce attive.\n"
-            "3. Scansione offline esamina un altro volume Windows.\n"
-            "4. Quarantena apre la gestione di Windows per gli elementi isolati.\n"
-            "5. Storage Analyzer analizza spazio e RAM e offre rimozioni con conferma.\n"
-            "6. Cronologia e diagnostica possono essere esportate dalle rispettive pagine.")
+            "1. Panoramica mostra l’ultima scansione BC.\n"
+            "2. Scansione analizza una cartella e può monitorarne le modifiche.\n"
+            "3. Minacce raccoglie gli avvisi e apre la quarantena BC.\n"
+            "4. Archivio analizza spazio e RAM e offre rimozioni con conferma.\n"
+            "5. Impostazioni apre la scansione offline e l’esportazione della diagnostica.")
 
     def show_about(self):
         try:
@@ -543,11 +418,6 @@ class OperationalWindow(QMainWindow):
             QMessageBox.information(self, "Scansione in corso", "Annullamento richiesto. Attendi il termine prima di chiudere.")
             event.ignore()
             return
-        if self.engine.busy():
-            self.navigate("Scansione")
-            QMessageBox.information(self, "Operazione in corso", "Attendi il termine del comando antivirus prima di chiudere.")
-            event.ignore()
-            return
         if self.offline_dialog is not None and self.offline_dialog._thread is not None:
             self.offline_dialog.show()
             event.ignore()
@@ -561,7 +431,6 @@ class OperationalWindow(QMainWindow):
             self.bc_page.stop_monitor()
             event.ignore()
             return
-        self.refresh_timer.stop()
         self.storage_page.poll_timer.stop()
         super().closeEvent(event)
 
@@ -623,7 +492,7 @@ def _smoke_folder_monitor(page):
 
 def smoke_test():
     app = QApplication.instance() or QApplication([])
-    window = OperationalWindow(auto_status=False)
+    window = OperationalWindow()
     overflow = {}
     try:
         window.show()
