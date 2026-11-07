@@ -121,3 +121,24 @@ def test_prefixed_zip_with_executable_suffix_is_inspected(tmp_path):
     assert result["files"] == 1
     assert result["skipped"] == 0
     assert any("script.ps1" in hit["path"] for hit in result["findings"])
+
+
+def test_cancel_stops_archive_traversal_before_following_member():
+    import io
+
+    from sentinel.bc_scan import _scan_archive
+
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w") as archive:
+        archive.writestr("one.ps1", FLOW)
+        archive.writestr("two.ps1", FLOW)
+    inspected = []
+    errors = []
+
+    def inspect(*args):
+        inspected.append(args[2])
+
+    _scan_archive(stream.getvalue(), "sample.zip", lambda: bool(inspected), inspect, errors.append)
+    assert len(inspected) == 1
+    assert "one.ps1" in inspected[0]
+    assert not errors
