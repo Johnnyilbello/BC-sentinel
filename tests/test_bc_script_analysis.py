@@ -73,3 +73,30 @@ def test_nested_zip_is_scanned_with_shared_member_budget(tmp_path, monkeypatch):
     limited = scan_folder(tmp_path)
     assert limited["skipped"] == 1
     assert not limited["findings"]
+
+
+def test_sibling_archives_share_budget_and_deeper_zip_is_disclosed(tmp_path, monkeypatch):
+    import io
+
+    def archive_bytes(name, payload):
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            archive.writestr(name, payload)
+        return stream.getvalue()
+
+    leaf = archive_bytes("script.ps1", FLOW)
+    with zipfile.ZipFile(tmp_path / "siblings.zip", "w") as archive:
+        archive.writestr("one.zip", leaf)
+        archive.writestr("two.zip", leaf)
+    monkeypatch.setattr("sentinel.bc_scan.MAX_ARCHIVE_MEMBERS", 3)
+    result = scan_folder(tmp_path)
+    assert len(result["findings"]) == 1
+    assert result["skipped"] == 1
+    assert "two.zip" in result["errors"][0]
+    monkeypatch.setattr("sentinel.bc_scan.MAX_ARCHIVE_MEMBERS", 256)
+    (tmp_path / "siblings.zip").unlink()
+    (tmp_path / "deep.zip").write_bytes(archive_bytes("middle.zip", archive_bytes("inner.zip", leaf)))
+    deep = scan_folder(tmp_path)
+    assert deep["skipped"] == 1
+    assert "Archivio annidato non aperto" in deep["errors"][0]
+    assert not deep["findings"]
