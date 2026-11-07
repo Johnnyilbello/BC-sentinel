@@ -107,3 +107,17 @@ def test_module_qualified_download_and_evaluation():
     assert inspect_script(flow.encode(), ".ps1")
     assert not inspect_script(("# " + flow).encode(), ".ps1")
     assert not inspect_script(("Write-Output '" + flow.replace("'", '"') + "'").encode(), ".ps1")
+
+
+def test_prefixed_zip_with_executable_suffix_is_inspected(tmp_path):
+    import io
+
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w") as archive:
+        archive.writestr("script.ps1", FLOW)
+    target = tmp_path / "carrier.exe"
+    target.write_bytes(b"MZ" + bytes(510) + stream.getvalue())
+    result = scan_folder(tmp_path)
+    assert result["files"] == 1
+    assert result["skipped"] == 0
+    assert any("script.ps1" in hit["path"] for hit in result["findings"])

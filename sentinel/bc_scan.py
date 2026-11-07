@@ -230,6 +230,8 @@ def _scan(engine, candidates, cancelled, progress, *, wait_for_retry=None):
                 raise OSError(f"File modificato durante la scansione: {p}")
             result["files"] += 1
             data = bytes(buffer) if buffer is not None else b""
+            if not is_archive and data.startswith(b"MZ"):
+                is_archive = zipfile.is_zipfile(io.BytesIO(data))
             inspect(data, digest.hexdigest(), p, suffix, script_limited=script_limited)
             if is_archive:
                 _scan_archive(data, p, cancelled, inspect, error)
