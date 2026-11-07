@@ -44,8 +44,12 @@ def _scan_archive(data, path, cancelled, inspect, error):
                         member.file_size > 250 * max(1, member.compress_size)):
                     error(f"Elemento ZIP non analizzato: {location}")
                     continue
-                with archive.open(member) as stream:
-                    payload = stream.read(MAX_MEMBER_BYTES + 1)
+                try:
+                    with archive.open(member) as stream:
+                        payload = stream.read(MAX_MEMBER_BYTES + 1)
+                except (OSError, ValueError, RuntimeError, EOFError, zipfile.BadZipFile, zlib.error) as exc:
+                    error(f"Elemento ZIP non analizzato: {location} ({exc})")
+                    continue
                 if len(payload) != member.file_size or len(payload) > MAX_MEMBER_BYTES:
                     error(f"Dimensione elemento ZIP incoerente: {location}")
                     continue

