@@ -110,11 +110,29 @@ def evaluate(raw: object, *, bootstrap_iterations: int = 2000) -> dict:
     by_label = {label: [row for row in rows if row["label"] == label]
                 for label in ("malicious", "benign")}
     rng = random.Random(0xBC1406)
+    # Fixed repetition counts make each metric a mean of paired file-level
+    # differences. Aggregate once before resampling the same files.
+    file_advantages = {}
+    for label, group in by_label.items():
+        detection_metric = "sensitivity" if label == "malicious" else "false_positive_rate"
+        sign = 1 if label == "malicious" else -1
+        vectors = []
+        for row in group:
+            bc, defender = (row["results"][product] for product in PRODUCTS)
+            pairs = list(zip(bc, defender, strict=True))
+            vector = {
+                detection_metric: sign * sum(int(a["detected"]) - int(b["detected"])
+                                             for a, b in pairs) / (REPEATS * len(group)),
+            }
+            for metric, key in zip(METRICS[2:], ("seconds", "cpu_seconds", "peak_rss_bytes"), strict=True):
+                vector[metric] = sum(float(b[key]) - float(a[key]) for a, b in pairs) / (REPEATS * len(rows))
+            vectors.append(tuple(vector.get(metric, 0.0) for metric in METRICS))
+        file_advantages[label] = vectors
     draws = {name: [] for name in METRICS}
     for _ in range(bootstrap_iterations):
-        subset = [rng.choice(group) for group in by_label.values() for _ in range(len(group))]
-        for name, value in _advantage(_scores(subset)).items():
-            draws[name].append(value)
+        subset = [rng.choice(group) for group in file_advantages.values() for _ in range(len(group))]
+        for name, values in zip(METRICS, zip(*subset), strict=True):
+            draws[name].append(sum(values))
     # Bonferroni: five one-sided 99% lower bounds give familywise >=95%.
     lower_bounds = {name: sorted(draws[name])[max(0, int(bootstrap_iterations * 0.01) - 1)]
                     for name in METRICS}
