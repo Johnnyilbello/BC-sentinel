@@ -53,6 +53,13 @@ def _statements(text):
             end = text.find("\n" + quote + "@", position + 2)
             position = len(text) if end < 0 else end + 3
             continue
+        # PowerShell treats a backtick immediately before a newline as continuation.
+        if text.startswith("`\r\n", position):
+            position += 3
+            continue
+        if text.startswith("`\n", position):
+            position += 2
+            continue
         token = _TOKEN.match(text, position)
         if token is None:
             position += 1
