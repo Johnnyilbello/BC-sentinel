@@ -44,7 +44,9 @@ class PendingChanges(FileSystemEventHandler):
             if key not in self._paths and len(self._paths) >= self.capacity:
                 self._missed += 1
             else:
-                self._paths[key] = (monotonic() + self.settle, path)
+                now = monotonic()
+                first_seen = self._paths[key][2] if key in self._paths else now
+                self._paths[key] = (min(now + self.settle, first_seen + 5.0), path, first_seen)
                 self._paths.move_to_end(key)
         if alert is not None and self._on_alert is not None:
             self._on_alert(alert)
@@ -53,12 +55,12 @@ class PendingChanges(FileSystemEventHandler):
         now = monotonic()
         ready = []
         with self._lock:
-            while self._paths and len(ready) < limit:
-                _, (deadline, path) = next(iter(self._paths.items()))
-                if deadline > now:
+            for key, (deadline, path, _) in list(self._paths.items()):
+                if len(ready) >= limit:
                     break
-                self._paths.popitem(last=False)
-                ready.append(path)
+                if deadline <= now:
+                    del self._paths[key]
+                    ready.append(path)
             missed, self._missed = self._missed, 0
         return ready, missed
 

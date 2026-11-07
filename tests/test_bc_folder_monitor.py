@@ -77,3 +77,28 @@ def test_rename_alert_uses_distinct_paths_and_window(tmp_path):
     assert alert.distinct_renames == MIN_RENAMES
     assert alert.extension == ".bc-test"
     assert tracker.observe(tmp_path / "extra.docx", tmp_path / "extra.bc-test") is None
+
+
+def test_continuous_writes_cannot_postpone_monitor_scan_forever(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr("sentinel.bc_folder_monitor.monotonic", lambda: clock[0])
+    pending = PendingChanges()
+    pending.dispatch(FileModifiedEvent("busy.txt"))
+    for step in range(1, 11):
+        clock[0] = step * 0.5
+        pending.dispatch(FileModifiedEvent("busy.txt"))
+    assert pending.take_ready() == (["busy.txt"], 0)
+
+
+def test_ready_busy_file_is_not_hidden_behind_settling_file(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr("sentinel.bc_folder_monitor.monotonic", lambda: clock[0])
+    pending = PendingChanges()
+    pending.dispatch(FileModifiedEvent("busy.txt"))
+    clock[0] = 4.9
+    pending.dispatch(FileModifiedEvent("new.txt"))
+    pending.dispatch(FileModifiedEvent("busy.txt"))
+    clock[0] = 5.0
+    assert pending.take_ready() == (["busy.txt"], 0)
+    clock[0] = 5.6
+    assert pending.take_ready() == (["new.txt"], 0)
