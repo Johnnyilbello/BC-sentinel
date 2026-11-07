@@ -1,5 +1,6 @@
 """Native overview with live BC scan, disk and activity data."""
 import ctypes
+from datetime import datetime
 import os
 import shutil
 
@@ -9,6 +10,16 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar, QPushBu
 
 from sentinel.ui_design_system import make_icon
 from sentinel.ui_motion_components import reduced_motion_enabled
+
+
+def _display_time(value):
+    text = str(value)
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return text
+    months = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+    return f"{parsed.day} {months[parsed.month - 1]} {parsed.year}, {parsed:%H:%M}"
 
 
 def motion_allowed():
@@ -197,8 +208,19 @@ class OperationalOverview(QWidget):
         history_button = QPushButton("Vedi tutto  ›")
         history_button.clicked.connect(lambda: window.navigate("Cronologia"))
         activity.layout().itemAt(0).layout().addWidget(history_button)
-        self.events = [_label("", "OverviewEvent") for _ in range(4)]
-        for row in self.events:
+        self.events = []
+        for _ in range(4):
+            row = QFrame()
+            row.setObjectName("OverviewEvent")
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(16)
+            description = _label("")
+            timestamp = _label("", "OverviewMuted")
+            timestamp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+            row_layout.addWidget(description, 3)
+            row_layout.addWidget(timestamp, 2)
+            self.events.append((row, description, timestamp))
             activity.layout().addWidget(row)
         layout.addWidget(activity)
 
@@ -215,7 +237,7 @@ class OperationalOverview(QWidget):
         last = next((item for item in recent if item.get("azione") == "Scansione BC"), None)
         if last:
             count = last.get("rilevazioni")
-            self.last.setText(str(last.get("ora", "")).replace("T", " "))
+            self.last.setText(_display_time(last.get("ora", "")))
             self.count.setText(str(count) if type(count) is int else "—")
             self.detail.setText(str(last.get("esito", "")))
             state = "findings" if count else "idle" if last.get("parziale") else "clean"
@@ -223,12 +245,13 @@ class OperationalOverview(QWidget):
             self.status.setText("Scansione non riuscita" if last.get("errore") else
                                 "Rilevazioni da esaminare" if count else
                                 "Scansione parziale" if last.get("parziale") else "Nessuna corrispondenza rilevata")
-        for index, row in enumerate(self.events):
+        for index, (row, description, timestamp) in enumerate(self.events):
             if index < len(recent):
                 item = recent[index]
-                row.setText(f"{item.get('azione', '')}  ·  {item.get('esito', '')}  ·  "
-                            f"{str(item.get('ora', '')).replace('T', ' ')}")
+                description.setText(f"{item.get('azione', '')} - {item.get('esito', '')}")
+                timestamp.setText(_display_time(item.get("ora", "")))
                 row.show()
             else:
-                row.setText("Le attività compariranno qui." if index == 0 else "")
+                description.setText("Le attività compariranno qui." if index == 0 else "")
+                timestamp.clear()
                 row.setVisible(index == 0)
