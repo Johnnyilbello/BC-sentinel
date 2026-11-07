@@ -178,7 +178,10 @@ class BCScanPage(QWidget):
         for error in result["errors"][-20:]:
             self.monitor_report.appendPlainText(error)
         if missed:
-            self.monitor_report.appendPlainText(f"{missed} eventi con copertura parziale. Avvia una scansione manuale.")
+            notice = (f"Copertura parziale del monitoraggio · {self.monitor_folder} · "
+                      f"{missed} eventi da verificare con una scansione manuale.")
+            self.monitor_report.appendPlainText(notice)
+            self.monitor_notice.emit(notice)
         if not self.monitor.stop_event.is_set():
             self.monitor_status.setText(f"{self.monitor_folder} · {files} file · {findings} corrispondenze · {skipped} saltati")
 
@@ -189,6 +192,9 @@ class BCScanPage(QWidget):
 
     def _monitor_failed(self, message):
         self.monitor_error = message
+        notice = f"Monitoraggio interrotto · {self.monitor_folder} · {message}"
+        self.monitor_report.appendPlainText(notice)
+        self.monitor_notice.emit(notice)
 
     def _monitor_finished(self):
         self.monitor.deleteLater()
